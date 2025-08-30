@@ -168,8 +168,6 @@ class ChartsPage extends ConsumerWidget {
   }
 
   Widget _buildStatisticsGrid(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -227,7 +225,7 @@ class ChartsPage extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceSm),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Column(

@@ -43,7 +43,7 @@ class AppTheme {
       ),
 
       // Card theme
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         elevation: elevationSm,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(radiusMd)),
@@ -104,7 +104,7 @@ class AppTheme {
       ),
 
       // Card theme
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         elevation: elevationSm,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(radiusMd)),
