@@ -1,82 +1,198 @@
----
-applyTo: "**"
----
+# Hydroponic Monitor App - Development Instructions
 
-# Repository Instructions for GitHub Copilot — Hydroponic Monitor App (Flutter)
+**ALWAYS follow these instructions first before searching or running bash commands. Only fallback to additional search and context gathering if the information in these instructions is incomplete or found to be in error.**
 
-## Project Goal
-Build a **cross-platform Flutter** application (Windows, Web, Android, iOS) to **monitor and control hydroponic systems** with:
-- **Real-time dashboard** (water height, humidity, temperature, pH, electricity usage)
-- **Device controls** (one pump, multiple fans, lighting)
-- **Video feed** (live MJPEG stream from Raspberry Pi; recording support)
-- **Historical charts** (trends/analytics powered by InfluxDB)
-- **System alerts** (automated rules + notifications)
-- **MQTT** for sensor ingest and (optionally) device control
+## Repository State
 
-When in doubt, **use official Flutter docs and APIs** and prefer first-party guidance. (Reference: https://docs.flutter.dev/)
+This repository is in early development. Currently contains:
+- `.github/copilot-instructions.md` - This file (operational instructions)
+- `.github/copilot-instructions-architecture.md` - Architecture and coding standards
+- `.github/workflows/copilot-setup-steps.yml` - Flutter/Dart environment setup for CI
 
-## Architecture & State
-- **State management:** Use **Riverpod (hooks_riverpod)** for app-wide state and DI.
-- **Layering:**
-  - `lib/core/` — shared utilities (errors, result types, theming, logging).
-  - `lib/features/<feature>/` — feature-first structure. Each feature contains:
-    - `data/` (clients, DTOs, repositories),
-    - `domain/` (entities, use cases),
-    - `presentation/` (widgets, screens, controllers/providers).
-- **Navigation:** `go_router`.
-- **Reactivity:** Streams for live sensor/MQTT updates; providers expose stream-backed state.
-- **Platform integration:** Prefer pure Dart packages. If a capability is missing, design a **thin Platform Channel** per feature.
+**NO Flutter project exists yet.** You must create one first (see Setup section).
 
-## Data & Integrations
-- **MQTT:** Use `mqtt_client` package. Connect using TLS when available. Reconnect with backoff. Topics are namespaced:  
-  `hydro/<site>/<system>/<sensor|device>/<id>`
-- **InfluxDB:** Use `influxdb_client` (Dart) for queries (v2, Flux). All writes happen server-side (gateway or edge) when possible; the app **reads/query-only** by default. Queries are encapsulated in repositories.
-- **Video (MJPEG):** Use `flutter_mjpeg` (or a lightweight custom widget) to render streams. Expose stream URL via secure config.
-- **Charts:** Use `fl_chart` for time-series (line/area). Large datasets: downsample on the query side.
+## Environment Setup
 
-## Configuration & Secrets
-- Use **`--dart-define`** for runtime configuration. Provide `dart_defines.example.json` in the repo with keys:
-  - `MQTT_BROKER_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD`
-  - `INFLUX_URL`, `INFLUX_TOKEN`, `INFLUX_ORG`, `INFLUX_BUCKET`
-  - `MJPEG_URL`
-- Never commit real secrets. Tests may read from a local `.env` file via `flutter_dotenv` only in dev/test builds.
+**NEVER CANCEL builds or long-running commands. Set timeouts appropriately.**
 
-## Coding Standards
-- **Dart/Flutter style:** Follow `flutter_lints`. Always run `dart format`.
-- **Naming:** Files `snake_case.dart`; classes `PascalCase`; providers end with `Provider`, states end with `State`.
-- **Widgets:** Favor small, pure widgets; keep build methods < 100 lines. Extract styling to theme/extensions.
-- **Error handling:** Never throw raw exceptions across layers. Use `Result<T, Failure>` (sealed classes) or typed errors.
-- **Null safety:** No `!` unless justified in a short comment.
-- **Async:** Prefer `Stream` for live updates; cancel subscriptions in `dispose`.
-- **Accessibility:** Ensure semantics, contrast, scalable text, and focus traversal on desktop/web.
+### Prerequisites
+Environment setup is handled by the GitHub workflow, but for manual setup:
+```bash
+# Dart and Flutter should already be installed via setup-dart and flutter-action
+dart --version     # Should show Dart 3.9.0+
+flutter --version  # Should show Flutter 3.35.2+
+flutter doctor -v  # Check environment - takes 10 seconds
+```
 
-## UI/UX Guidelines
-- Clean, modern, and legible:
-  - App-wide **dark & light themes**, responsive layouts, and platform-adaptive scrolling.
-  - Dashboard: **at-a-glance cards** for each sensor; trend sparklines; device toggles with clear states.
-  - Controls: distinct **safety affordances** (confirmations for pump/lighting).
-  - Charts screen: time range presets (1h/6h/24h/7d/30d) + pinch/drag on mobile.
-  - Video: show **latency indicator** and reconnect UI.
-- Follow Flutter’s official guidance where applicable (widgets, navigation, performance best practices). (See: https://docs.flutter.dev/)
+### Required Dependencies for Linux Desktop Builds
+```bash
+sudo apt-get update && sudo apt-get install -y libgtk-3-dev pkg-config
+# Takes ~60 seconds. NEVER CANCEL - use timeout 120+
+```
 
-## Testing & Quality
-- **Unit:** providers, repositories, and use cases.
-- **Widget tests:** key screens (Dashboard, Controls, Charts).
-- **Golden tests:** critical widgets/states in light/dark.
-- **CI expectations:** `flutter analyze`, `dart test`, build dry-runs for web and Windows at minimum.
+## Project Initialization
 
-## Telemetry & Logging
-- Use structured logging (tag by feature). Redact secrets. In dev, log MQTT topic + payload sizes only.
+**Since no Flutter project exists yet, create one first:**
 
-## Commit & PR Conventions
-- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
-- Keep PRs small, focused, and accompanied by tests and screenshot/gif of UI where relevant.
+```bash
+cd [repository-root]
+flutter create --org com.hydroponicmonitor --project-name hydroponic_monitor .
+# Takes ~3 seconds - creates Flutter project in current directory
+```
 
-## Package Suggestions (Guidance, not hard requirements)
-- State/DI: `hooks_riverpod`
-- Routing: `go_router`
-- MQTT: `mqtt_client`
-- Charts: `fl_chart`
-- InfluxDB: `influxdb_client`
-- MJPEG: `flutter_mjpeg`
-- Env (dev/test): `flutter_dotenv`
+**Alternative if directory is not empty:**
+```bash
+# Create in subdirectory first, then move files
+mkdir temp_flutter && cd temp_flutter
+flutter create --org com.hydroponicmonitor --project-name hydroponic_monitor .
+mv * ../ && cd .. && rmdir temp_flutter
+```
+
+## Build Commands and Timing
+
+**CRITICAL: Set timeouts appropriately and NEVER CANCEL builds.**
+
+### Dependencies and Analysis
+```bash
+flutter pub get          # <1 second
+flutter analyze          # ~10 seconds - NEVER CANCEL, use timeout 60+
+dart format --output none --set-exit-if-changed .  # <1 second
+```
+
+### Build Targets
+```bash
+# Web build (recommended for development)
+flutter build web        # ~22 seconds - NEVER CANCEL, use timeout 120+
+
+# Linux desktop build (if GTK dependencies installed)
+flutter config --enable-linux-desktop
+flutter build linux      # ~20 seconds - NEVER CANCEL, use timeout 120+
+
+# Android APK build 
+flutter build apk --debug # May FAIL in CI due to Gradle issues - document if fails
+                          # If successful: ~60 seconds - NEVER CANCEL, use timeout 300+
+```
+
+### Testing
+```bash
+flutter test             # ~10 seconds - NEVER CANCEL, use timeout 60+
+```
+
+## Running the Application
+
+### Web Development Server
+```bash
+flutter run -d web-server --web-port 8080
+# Starts in ~20 seconds
+# Access at http://localhost:8080
+# Type 'q' to quit, 'r' for hot reload
+```
+
+### Available Devices
+```bash
+flutter devices          # Check available targets
+# Expected: Web Server, Chrome, Linux (if GTK installed)
+```
+
+## Validation Scenarios
+
+**ALWAYS test these scenarios after making changes:**
+
+1. **Basic Build Validation**:
+   ```bash
+   flutter pub get && flutter analyze && flutter test
+   ```
+
+2. **Web App Functionality**:
+   ```bash
+   flutter run -d web-server --web-port 8080 &
+   sleep 25  # Wait for startup
+   curl -s http://localhost:8080 | head -10  # Should show HTML
+   # Manually stop with 'q' command
+   ```
+
+3. **Code Quality Checks**:
+   ```bash
+   dart format --output none --set-exit-if-changed .
+   flutter analyze  # Must show "No issues found!"
+   ```
+
+## Common Timing Expectations
+
+- **Project creation**: 3 seconds
+- **Dependency resolution**: <1 second  
+- **Code analysis**: 10 seconds - **NEVER CANCEL, timeout 60+**
+- **Unit tests**: 10 seconds - **NEVER CANCEL, timeout 60+**
+- **Web build**: 22 seconds - **NEVER CANCEL, timeout 120+**
+- **Linux build**: 20 seconds - **NEVER CANCEL, timeout 120+**
+- **Android build**: 60 seconds (may fail) - **NEVER CANCEL, timeout 300+**
+- **Web server startup**: 20 seconds
+- **Code formatting**: <1 second
+
+## Troubleshooting
+
+### Android Build Issues
+Android builds may fail in CI environments due to Gradle plugin version issues:
+```
+Plugin [id: 'com.android.application', version: '8.9.1'] was not found
+```
+This is expected in headless environments. Focus on web and Linux builds for validation.
+
+### Missing GTK Dependencies
+If Linux builds fail:
+```bash
+sudo apt-get install -y libgtk-3-dev pkg-config
+```
+
+### Web Server Port Conflicts
+If port 8080 is busy, use different port:
+```bash
+flutter run -d web-server --web-port 8081
+```
+
+## Project Structure (After Initialization)
+
+```
+[repo-root]/
+├── .github/                 # GitHub configuration
+├── lib/                     # Dart source code
+│   └── main.dart           # Entry point
+├── test/                    # Test files
+├── web/                     # Web-specific files
+├── android/                 # Android platform files
+├── ios/                     # iOS platform files  
+├── linux/                   # Linux platform files
+├── pubspec.yaml            # Dependencies and metadata
+└── analysis_options.yaml   # Linting rules
+```
+
+## Coding Standards (After Project Creation)
+
+**See `.github/copilot-instructions-architecture.md` for detailed coding standards and architecture guidelines.**
+
+Key points:
+- **State management**: Use Riverpod (hooks_riverpod)
+- **Navigation**: Use go_router  
+- **Architecture**: Feature-first structure under `lib/features/`
+- **Style**: Follow flutter_lints, always run `dart format`
+- **Testing**: Unit tests for providers/repositories, widget tests for screens
+
+## CI Integration
+
+The `.github/workflows/copilot-setup-steps.yml` handles environment setup. After project creation, add Flutter-specific CI steps:
+
+```yaml
+- name: Get dependencies
+  run: flutter pub get
+  
+- name: Analyze code
+  run: flutter analyze
+  
+- name: Run tests  
+  run: flutter test
+  
+- name: Build web
+  run: flutter build web
+```
+
+**Remember: NEVER CANCEL long-running operations. Always use appropriate timeouts and wait for completion.**
