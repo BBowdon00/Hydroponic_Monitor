@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
 /// Sensor trend indicator.
-enum SensorTrend {
-  up,
-  down,
-  stable,
-}
+enum SensorTrend { up, down, stable }
 
 /// A card displaying sensor data with value, trend, and sparkline placeholder.
 /// Follows Material 3 design principles with consistent spacing.
@@ -31,7 +27,7 @@ class SensorTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
@@ -41,11 +37,7 @@ class SensorTile extends StatelessWidget {
             // Header with icon and title
             Row(
               children: [
-                Icon(
-                  icon,
-                  color: color,
-                  size: 20,
-                ),
+                Icon(icon, color: color, size: 20),
                 const SizedBox(width: AppTheme.spaceSm),
                 Expanded(
                   child: Text(
@@ -60,7 +52,7 @@ class SensorTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppTheme.spaceSm),
-            
+
             // Main value
             Text(
               value,
@@ -69,9 +61,9 @@ class SensorTile extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
-            
+
             const SizedBox(height: AppTheme.spaceSm),
-            
+
             // Sparkline placeholder
             Expanded(
               child: Container(
@@ -110,7 +102,7 @@ class SensorTile extends StatelessWidget {
   Widget _buildTrendIcon() {
     IconData iconData;
     Color iconColor;
-    
+
     switch (trend) {
       case SensorTrend.up:
         iconData = Icons.trending_up;
@@ -125,11 +117,7 @@ class SensorTile extends StatelessWidget {
         iconColor = Colors.grey;
         break;
     }
-    
-    return Icon(
-      iconData,
-      color: iconColor,
-      size: 16,
-    );
+
+    return Icon(iconData, color: iconColor, size: 16);
   }
 }

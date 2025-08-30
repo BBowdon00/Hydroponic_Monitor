@@ -12,6 +12,7 @@ class AppTheme {
   static const double spaceXxl = 48.0;
 
   // Border radius constants
+  static const double radiusXs = 4.0;
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
@@ -33,7 +34,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       typography: Typography.material2021(),
-      
+
       // App bar theme
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
@@ -94,7 +95,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       typography: Typography.material2021(),
-      
+
       // App bar theme
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,

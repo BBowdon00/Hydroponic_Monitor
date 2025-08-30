@@ -13,11 +13,7 @@ import 'package:hydroponic_monitor/presentation/app.dart';
 void main() {
   testWidgets('App starts and loads dashboard', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: HydroponicMonitorApp(),
-      ),
-    );
+    await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
 
     // Verify that the app starts with the dashboard.
     expect(find.text('Dashboard'), findsWidgets);
@@ -26,11 +22,7 @@ void main() {
   });
 
   testWidgets('Bottom navigation works', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: HydroponicMonitorApp(),
-      ),
-    );
+    await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
 
     // Tap the devices tab
     await tester.tap(find.text('Devices'));

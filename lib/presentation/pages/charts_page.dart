@@ -11,7 +11,7 @@ class ChartsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedRange = ref.watch(chartRangeProvider);
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Charts & Analytics'),
@@ -35,10 +35,7 @@ class ChartsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Time Range',
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    Text('Time Range', style: theme.textTheme.titleMedium),
                     const SizedBox(height: AppTheme.spaceSm),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -46,16 +43,21 @@ class ChartsPage extends ConsumerWidget {
                         children: ChartRange.values.map((range) {
                           final isSelected = selectedRange == range;
                           return Padding(
-                            padding: const EdgeInsets.only(right: AppTheme.spaceSm),
+                            padding: const EdgeInsets.only(
+                              right: AppTheme.spaceSm,
+                            ),
                             child: FilterChip(
                               label: Text(_getRangeLabel(range)),
                               selected: isSelected,
                               onSelected: (selected) {
                                 if (selected) {
-                                  ref.read(chartRangeProvider.notifier).setRange(range);
+                                  ref
+                                      .read(chartRangeProvider.notifier)
+                                      .setRange(range);
                                 }
                               },
-                              selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                              selectedColor: theme.colorScheme.primary
+                                  .withOpacity(0.2),
                               checkmarkColor: theme.colorScheme.primary,
                             ),
                           );
@@ -66,9 +68,9 @@ class ChartsPage extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // Charts area
             Expanded(
               child: Card(
@@ -78,9 +80,9 @@ class ChartsPage extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // Chart legend and statistics
             Card(
               child: Padding(
@@ -88,10 +90,7 @@ class ChartsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Statistics',
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    Text('Statistics', style: theme.textTheme.titleMedium),
                     const SizedBox(height: AppTheme.spaceSm),
                     _buildStatisticsGrid(context),
                   ],
@@ -106,7 +105,7 @@ class ChartsPage extends ConsumerWidget {
 
   Widget _buildChartsPlaceholder(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -117,10 +116,7 @@ class ChartsPage extends ConsumerWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: AppTheme.spaceMd),
-          Text(
-            'No Data Yet',
-            style: theme.textTheme.titleLarge,
-          ),
+          Text('No Data Yet', style: theme.textTheme.titleLarge),
           const SizedBox(height: AppTheme.spaceSm),
           Text(
             'Charts will appear here once sensor data is collected',
@@ -155,7 +151,9 @@ class ChartsPage extends ConsumerWidget {
                   Text(
                     'Chart Area',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      color: theme.colorScheme.onSurfaceVariant.withOpacity(
+                        0.7,
+                      ),
                     ),
                   ),
                 ],
@@ -168,43 +166,49 @@ class ChartsPage extends ConsumerWidget {
   }
 
   Widget _buildStatisticsGrid(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      crossAxisSpacing: AppTheme.spaceMd,
-      mainAxisSpacing: AppTheme.spaceMd,
-      childAspectRatio: 2.5,
-      children: [
-        _buildStatCard(
-          context,
-          title: 'Avg Temperature',
-          value: '24.2°C',
-          trend: '+0.5°C',
-          trendPositive: true,
-        ),
-        _buildStatCard(
-          context,
-          title: 'Avg Humidity',
-          value: '68%',
-          trend: '-2%',
-          trendPositive: false,
-        ),
-        _buildStatCard(
-          context,
-          title: 'Water Usage',
-          value: '15.2L',
-          trend: '+1.2L',
-          trendPositive: null,
-        ),
-        _buildStatCard(
-          context,
-          title: 'pH Stability',
-          value: '±0.1',
-          trend: 'Good',
-          trendPositive: true,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Responsive grid: more columns on wider screens
+        final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: AppTheme.spaceMd,
+          mainAxisSpacing: AppTheme.spaceMd,
+          childAspectRatio: 2.5,
+          children: [
+            _buildStatCard(
+              context,
+              title: 'Avg Temperature',
+              value: '24.2°C',
+              trend: '+0.5°C',
+              trendPositive: true,
+            ),
+            _buildStatCard(
+              context,
+              title: 'Avg Humidity',
+              value: '68%',
+              trend: '-2%',
+              trendPositive: false,
+            ),
+            _buildStatCard(
+              context,
+              title: 'Water Usage',
+              value: '15.2L',
+              trend: '+1.2L',
+              trendPositive: null,
+            ),
+            _buildStatCard(
+              context,
+              title: 'pH Stability',
+              value: '±0.1',
+              trend: 'Good',
+              trendPositive: true,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -216,12 +220,12 @@ class ChartsPage extends ConsumerWidget {
     bool? trendPositive,
   }) {
     final theme = Theme.of(context);
-    
+
     Color? trendColor;
     if (trendPositive != null) {
       trendColor = trendPositive ? Colors.green : Colors.red;
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceSm),
       decoration: BoxDecoration(
@@ -237,6 +241,8 @@ class ChartsPage extends ConsumerWidget {
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           const SizedBox(height: AppTheme.spaceXs),
           Text(
@@ -244,6 +250,8 @@ class ChartsPage extends ConsumerWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           Text(
             trend,
@@ -251,6 +259,8 @@ class ChartsPage extends ConsumerWidget {
               color: trendColor ?? theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),
@@ -272,17 +282,13 @@ class ChartsPage extends ConsumerWidget {
 }
 
 /// Chart time range options.
-enum ChartRange {
-  hour1,
-  hours24,
-  days7,
-  days30,
-}
+enum ChartRange { hour1, hours24, days7, days30 }
 
 /// Provider for selected chart range.
-final chartRangeProvider = StateNotifierProvider<ChartRangeNotifier, ChartRange>((ref) {
-  return ChartRangeNotifier();
-});
+final chartRangeProvider =
+    StateNotifierProvider<ChartRangeNotifier, ChartRange>((ref) {
+      return ChartRangeNotifier();
+    });
 
 class ChartRangeNotifier extends StateNotifier<ChartRange> {
   ChartRangeNotifier() : super(ChartRange.hours24);

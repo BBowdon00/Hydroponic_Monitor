@@ -11,11 +11,9 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
         children: [
@@ -31,7 +29,9 @@ class SettingsPage extends ConsumerWidget {
                 onChanged: (value) {
                   ref.read(themeProvider.notifier).setDarkMode(value);
                 },
-                secondary: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
+                secondary: Icon(
+                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                ),
               ),
               ListTile(
                 leading: const Icon(Icons.language),
@@ -53,9 +53,9 @@ class SettingsPage extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppTheme.spaceMd),
-          
+
           // MQTT Configuration Section
           _buildSectionCard(
             context,
@@ -66,7 +66,11 @@ class SettingsPage extends ConsumerWidget {
                 icon: Icons.dns,
                 title: 'Broker Host',
                 value: 'mqtt.example.com',
-                onTap: () => _showConfigDialog(context, 'MQTT Broker Host', 'mqtt.example.com'),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'MQTT Broker Host',
+                  'mqtt.example.com',
+                ),
               ),
               _buildConfigTile(
                 context,
@@ -80,20 +84,26 @@ class SettingsPage extends ConsumerWidget {
                 icon: Icons.account_circle,
                 title: 'Username',
                 value: 'hydro_user',
-                onTap: () => _showConfigDialog(context, 'MQTT Username', 'hydro_user'),
+                onTap: () =>
+                    _showConfigDialog(context, 'MQTT Username', 'hydro_user'),
               ),
               _buildConfigTile(
                 context,
                 icon: Icons.lock,
                 title: 'Password',
                 value: '••••••••',
-                onTap: () => _showConfigDialog(context, 'MQTT Password', '', isPassword: true),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'MQTT Password',
+                  '',
+                  isPassword: true,
+                ),
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppTheme.spaceMd),
-          
+
           // InfluxDB Configuration Section
           _buildSectionCard(
             context,
@@ -104,21 +114,34 @@ class SettingsPage extends ConsumerWidget {
                 icon: Icons.storage,
                 title: 'Database URL',
                 value: 'http://influxdb.local:8086',
-                onTap: () => _showConfigDialog(context, 'InfluxDB URL', 'http://influxdb.local:8086'),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'InfluxDB URL',
+                  'http://influxdb.local:8086',
+                ),
               ),
               _buildConfigTile(
                 context,
                 icon: Icons.key,
                 title: 'Token',
                 value: '••••••••••••••••',
-                onTap: () => _showConfigDialog(context, 'InfluxDB Token', '', isPassword: true),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'InfluxDB Token',
+                  '',
+                  isPassword: true,
+                ),
               ),
               _buildConfigTile(
                 context,
                 icon: Icons.business,
                 title: 'Organization',
                 value: 'hydroponic-monitor',
-                onTap: () => _showConfigDialog(context, 'Organization', 'hydroponic-monitor'),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'Organization',
+                  'hydroponic-monitor',
+                ),
               ),
               _buildConfigTile(
                 context,
@@ -129,9 +152,9 @@ class SettingsPage extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppTheme.spaceMd),
-          
+
           // Video Configuration Section
           _buildSectionCard(
             context,
@@ -142,7 +165,11 @@ class SettingsPage extends ConsumerWidget {
                 icon: Icons.videocam,
                 title: 'MJPEG Stream URL',
                 value: 'http://raspberry.local:8080/stream',
-                onTap: () => _showConfigDialog(context, 'MJPEG Stream URL', 'http://raspberry.local:8080/stream'),
+                onTap: () => _showConfigDialog(
+                  context,
+                  'MJPEG Stream URL',
+                  'http://raspberry.local:8080/stream',
+                ),
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.record_voice_over),
@@ -155,9 +182,9 @@ class SettingsPage extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppTheme.spaceMd),
-          
+
           // System Information Section
           _buildSectionCard(
             context,
@@ -190,9 +217,9 @@ class SettingsPage extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppTheme.spaceLg),
-          
+
           // Test Connection Buttons
           Row(
             children: [
@@ -222,7 +249,8 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionCard(BuildContext context, {
+  Widget _buildSectionCard(
+    BuildContext context, {
     required String title,
     required List<Widget> children,
   }) {
@@ -234,9 +262,9 @@ class SettingsPage extends ConsumerWidget {
             padding: const EdgeInsets.all(AppTheme.spaceMd),
             child: Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           ...children,
@@ -268,7 +296,7 @@ class SettingsPage extends ConsumerWidget {
     bool isPassword = false,
   }) {
     final controller = TextEditingController(text: initialValue);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -290,9 +318,9 @@ class SettingsPage extends ConsumerWidget {
             onPressed: () {
               // Save configuration
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$title updated')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('$title updated')));
             },
             child: const Text('Save'),
           ),
@@ -371,7 +399,7 @@ class SettingsPage extends ConsumerWidget {
 
   void _showFeedbackDialog(BuildContext context) {
     final controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -404,10 +432,10 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _testMqttConnection(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Testing MQTT connection...')),
-    );
-    
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Testing MQTT connection...')));
+
     // Simulate connection test
     Future.delayed(const Duration(seconds: 2), () {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -423,7 +451,7 @@ class SettingsPage extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Testing InfluxDB connection...')),
     );
-    
+
     // Simulate connection test
     Future.delayed(const Duration(seconds: 2), () {
       ScaffoldMessenger.of(context).showSnackBar(

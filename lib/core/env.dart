@@ -6,14 +6,18 @@ class Env {
   static String get mqttHost => dotenv.env['MQTT_HOST'] ?? 'localhost';
   static String get mqttUsername => dotenv.env['MQTT_USERNAME'] ?? '';
   static String get mqttPassword => dotenv.env['MQTT_PASSWORD'] ?? '';
-  static int get mqttPort => int.tryParse(dotenv.env['MQTT_PORT'] ?? '1883') ?? 1883;
+  static int get mqttPort =>
+      int.tryParse(dotenv.env['MQTT_PORT'] ?? '1883') ?? 1883;
 
-  static String get influxUrl => dotenv.env['INFLUX_URL'] ?? 'http://localhost:8086';
+  static String get influxUrl =>
+      dotenv.env['INFLUX_URL'] ?? 'http://localhost:8086';
   static String get influxToken => dotenv.env['INFLUX_TOKEN'] ?? '';
-  static String get influxOrg => dotenv.env['INFLUX_ORG'] ?? 'hydroponic-monitor';
+  static String get influxOrg =>
+      dotenv.env['INFLUX_ORG'] ?? 'hydroponic-monitor';
   static String get influxBucket => dotenv.env['INFLUX_BUCKET'] ?? 'sensors';
 
-  static String get mjpegUrl => dotenv.env['MJPEG_URL'] ?? 'http://localhost:8080/stream';
+  static String get mjpegUrl =>
+      dotenv.env['MJPEG_URL'] ?? 'http://localhost:8080/stream';
 
   /// Initialize environment configuration.
   /// Call this in main() before runApp().
