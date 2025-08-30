@@ -31,7 +31,7 @@ class DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
@@ -47,11 +47,7 @@ class DeviceCard extends StatelessWidget {
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 24,
-                  ),
+                  child: Icon(icon, color: color, size: 24),
                 ),
                 const SizedBox(width: AppTheme.spaceMd),
                 Expanded(
@@ -87,21 +83,20 @@ class DeviceCard extends StatelessWidget {
                   ),
               ],
             ),
-            
+
             // Intensity slider (if applicable)
             if (intensity != null && onIntensityChanged != null) ...[
               const SizedBox(height: AppTheme.spaceMd),
               Row(
                 children: [
-                  Text(
-                    'Intensity',
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text('Intensity', style: theme.textTheme.bodyMedium),
                   const SizedBox(width: AppTheme.spaceMd),
                   Expanded(
                     child: Slider(
                       value: intensity!,
-                      onChanged: isEnabled && !isPending ? onIntensityChanged : null,
+                      onChanged: isEnabled && !isPending
+                          ? onIntensityChanged
+                          : null,
                       activeColor: color,
                       divisions: 10,
                       label: '${(intensity! * 100).round()}%',
@@ -116,13 +111,10 @@ class DeviceCard extends StatelessWidget {
                 ],
               ),
             ],
-            
+
             // Status indicator
             const SizedBox(height: AppTheme.spaceSm),
-            StatusBadge(
-              label: _getStatusLabel(),
-              status: _getDeviceStatus(),
-            ),
+            StatusBadge(label: _getStatusLabel(), status: _getDeviceStatus()),
           ],
         ),
       ),

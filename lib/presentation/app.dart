@@ -17,12 +17,12 @@ class HydroponicMonitorApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Hydroponic Monitor',
       debugShowCheckedModeBanner: false,
-      
+
       // Theme configuration
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      
+
       // Router configuration
       routerConfig: router,
     );

@@ -57,10 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 /// Main scaffold with bottom navigation.
 class MainScaffold extends StatelessWidget {
-  const MainScaffold({
-    required this.child,
-    super.key,
-  });
+  const MainScaffold({required this.child, super.key});
 
   final Widget child;
 
@@ -80,7 +77,7 @@ class MainBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentLocation = GoRouterState.of(context).uri.path;
-    
+
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: _getCurrentIndex(currentLocation),
@@ -90,26 +87,14 @@ class MainBottomNavigation extends StatelessWidget {
           icon: Icon(Icons.dashboard),
           label: 'Dashboard',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.devices),
-          label: 'Devices',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.videocam),
-          label: 'Video',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.analytics),
-          label: 'Charts',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.devices), label: 'Devices'),
+        BottomNavigationBarItem(icon: Icon(Icons.videocam), label: 'Video'),
+        BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Charts'),
         BottomNavigationBarItem(
           icon: Icon(Icons.notifications),
           label: 'Alerts',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: 'Settings',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
     );
   }

@@ -12,15 +12,12 @@ class DevicesPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final deviceStates = ref.watch(deviceStatesProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Devices'),
         actions: [
-          StatusBadge(
-            label: 'System',
-            status: deviceStates.systemStatus,
-          ),
+          StatusBadge(label: 'System', status: deviceStates.systemStatus),
           const SizedBox(width: AppTheme.spaceMd),
         ],
       ),
@@ -40,9 +37,9 @@ class DevicesPage extends ConsumerWidget {
                 ref.read(deviceStatesProvider.notifier).togglePump(enabled);
               },
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // Circulation fans
             DeviceCard(
               title: 'Circulation Fans',
@@ -56,12 +53,14 @@ class DevicesPage extends ConsumerWidget {
                 ref.read(deviceStatesProvider.notifier).toggleFans(enabled);
               },
               onIntensityChanged: (intensity) {
-                ref.read(deviceStatesProvider.notifier).setFanIntensity(intensity);
+                ref
+                    .read(deviceStatesProvider.notifier)
+                    .setFanIntensity(intensity);
               },
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // LED grow lights
             DeviceCard(
               title: 'LED Grow Lights',
@@ -75,12 +74,14 @@ class DevicesPage extends ConsumerWidget {
                 ref.read(deviceStatesProvider.notifier).toggleLights(enabled);
               },
               onIntensityChanged: (intensity) {
-                ref.read(deviceStatesProvider.notifier).setLightIntensity(intensity);
+                ref
+                    .read(deviceStatesProvider.notifier)
+                    .setLightIntensity(intensity);
               },
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // Heater
             DeviceCard(
               title: 'Water Heater',
@@ -93,9 +94,9 @@ class DevicesPage extends ConsumerWidget {
                 ref.read(deviceStatesProvider.notifier).toggleHeater(enabled);
               },
             ),
-            
+
             const SizedBox(height: AppTheme.spaceLg),
-            
+
             // Emergency stop button
             Card(
               color: Colors.red.shade50,
@@ -103,11 +104,7 @@ class DevicesPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppTheme.spaceMd),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.emergency,
-                      color: Colors.red,
-                      size: 32,
-                    ),
+                    Icon(Icons.emergency, color: Colors.red, size: 32),
                     const SizedBox(height: AppTheme.spaceSm),
                     Text(
                       'Emergency Stop',
@@ -236,13 +233,15 @@ class DeviceStates {
 }
 
 /// Provider for device states with optimistic updates.
-final deviceStatesProvider = StateNotifierProvider<DeviceStatesNotifier, DeviceStates>((ref) {
-  return DeviceStatesNotifier();
-});
+final deviceStatesProvider =
+    StateNotifierProvider<DeviceStatesNotifier, DeviceStates>((ref) {
+      return DeviceStatesNotifier();
+    });
 
 class DeviceStatesNotifier extends StateNotifier<DeviceStates> {
   DeviceStatesNotifier()
-      : super(const DeviceStates(
+    : super(
+        const DeviceStates(
           pumpEnabled: false,
           pumpPending: false,
           fansEnabled: true,
@@ -254,7 +253,8 @@ class DeviceStatesNotifier extends StateNotifier<DeviceStates> {
           heaterEnabled: false,
           heaterPending: false,
           systemStatus: DeviceStatus.online,
-        ));
+        ),
+      );
 
   void togglePump(bool enabled) {
     state = state.copyWith(pumpEnabled: enabled, pumpPending: true);
@@ -309,7 +309,7 @@ class DeviceStatesNotifier extends StateNotifier<DeviceStates> {
       heaterEnabled: false,
       systemStatus: DeviceStatus.stopped,
     );
-    
+
     // Reset status after a delay
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {

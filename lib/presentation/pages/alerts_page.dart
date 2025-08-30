@@ -12,7 +12,7 @@ class AlertsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alertRules = ref.watch(alertRulesProvider);
     final incidents = ref.watch(incidentsProvider);
-    
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -35,7 +35,11 @@ class AlertsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildRulesTab(BuildContext context, WidgetRef ref, List<AlertRule> rules) {
+  Widget _buildRulesTab(
+    BuildContext context,
+    WidgetRef ref,
+    List<AlertRule> rules,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(AppTheme.spaceMd),
       child: Column(
@@ -51,9 +55,9 @@ class AlertsPage extends ConsumerWidget {
               label: const Text('Add New Rule'),
             ),
           ),
-          
+
           const SizedBox(height: AppTheme.spaceMd),
-          
+
           // Rules list
           Expanded(
             child: ListView.builder(
@@ -69,22 +73,32 @@ class AlertsPage extends ConsumerWidget {
                     ),
                     title: Text(rule.name),
                     subtitle: Text(rule.condition),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        StatusBadge(
-                          label: rule.severity.name.toUpperCase(),
-                          status: rule.isEnabled ? DeviceStatus.online : DeviceStatus.offline,
-                          showIcon: false,
-                        ),
-                        const SizedBox(width: AppTheme.spaceSm),
-                        Switch(
-                          value: rule.isEnabled,
-                          onChanged: (enabled) {
-                            ref.read(alertRulesProvider.notifier).toggleRule(rule.id, enabled);
-                          },
-                        ),
-                      ],
+                    trailing: SizedBox(
+                      width: 120, // Fixed width to prevent overflow
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: StatusBadge(
+                              label: rule.severity.name.toUpperCase(),
+                              status: rule.isEnabled
+                                  ? DeviceStatus.online
+                                  : DeviceStatus.offline,
+                              showIcon: false,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spaceSm),
+                          Switch(
+                            value: rule.isEnabled,
+                            onChanged: (enabled) {
+                              ref
+                                  .read(alertRulesProvider.notifier)
+                                  .toggleRule(rule.id, enabled);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                     onTap: () {
                       _showRuleDetails(context, ref, rule);
@@ -99,7 +113,11 @@ class AlertsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHistoryTab(BuildContext context, WidgetRef ref, List<AlertIncident> incidents) {
+  Widget _buildHistoryTab(
+    BuildContext context,
+    WidgetRef ref,
+    List<AlertIncident> incidents,
+  ) {
     if (incidents.isEmpty) {
       return Center(
         child: Column(
@@ -111,10 +129,7 @@ class AlertsPage extends ConsumerWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: AppTheme.spaceMd),
-            Text(
-              'No Incidents',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('No Incidents', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppTheme.spaceSm),
             Text(
               'All systems are running normally',
@@ -156,8 +171,8 @@ class AlertsPage extends ConsumerWidget {
               ),
               trailing: StatusBadge(
                 label: incident.status.name.toUpperCase(),
-                status: incident.status == IncidentStatus.resolved 
-                    ? DeviceStatus.online 
+                status: incident.status == IncidentStatus.resolved
+                    ? DeviceStatus.online
                     : DeviceStatus.error,
                 showIcon: false,
               ),
@@ -174,7 +189,9 @@ class AlertsPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add New Alert Rule'),
-        content: const Text('Alert rule configuration will be implemented here.'),
+        content: const Text(
+          'Alert rule configuration will be implemented here.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -183,16 +200,18 @@ class AlertsPage extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               // Add mock rule for demo
-              ref.read(alertRulesProvider.notifier).addRule(
-                AlertRule(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: 'New Alert Rule',
-                  condition: 'Temperature > 30°C',
-                  type: AlertType.temperature,
-                  severity: AlertSeverity.warning,
-                  isEnabled: true,
-                ),
-              );
+              ref
+                  .read(alertRulesProvider.notifier)
+                  .addRule(
+                    AlertRule(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      name: 'New Alert Rule',
+                      condition: 'Temperature > 30°C',
+                      type: AlertType.temperature,
+                      severity: AlertSeverity.warning,
+                      isEnabled: true,
+                    ),
+                  );
               Navigator.of(context).pop();
             },
             child: const Text('Add'),
@@ -328,29 +347,17 @@ class AlertIncident {
   final DateTime timestamp;
 }
 
-enum AlertType {
-  temperature,
-  humidity,
-  waterLevel,
-  pH,
-  system,
-}
+enum AlertType { temperature, humidity, waterLevel, pH, system }
 
-enum AlertSeverity {
-  info,
-  warning,
-  critical,
-}
+enum AlertSeverity { info, warning, critical }
 
-enum IncidentStatus {
-  active,
-  resolved,
-}
+enum IncidentStatus { active, resolved }
 
 /// Provider for alert rules.
-final alertRulesProvider = StateNotifierProvider<AlertRulesNotifier, List<AlertRule>>((ref) {
-  return AlertRulesNotifier();
-});
+final alertRulesProvider =
+    StateNotifierProvider<AlertRulesNotifier, List<AlertRule>>((ref) {
+      return AlertRulesNotifier();
+    });
 
 class AlertRulesNotifier extends StateNotifier<List<AlertRule>> {
   AlertRulesNotifier() : super(_getInitialRules());
@@ -403,9 +410,10 @@ class AlertRulesNotifier extends StateNotifier<List<AlertRule>> {
 }
 
 /// Provider for alert incidents.
-final incidentsProvider = StateNotifierProvider<IncidentsNotifier, List<AlertIncident>>((ref) {
-  return IncidentsNotifier();
-});
+final incidentsProvider =
+    StateNotifierProvider<IncidentsNotifier, List<AlertIncident>>((ref) {
+      return IncidentsNotifier();
+    });
 
 class IncidentsNotifier extends StateNotifier<List<AlertIncident>> {
   IncidentsNotifier() : super([]);

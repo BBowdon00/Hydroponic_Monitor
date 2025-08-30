@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
 /// Device status enumeration.
-enum DeviceStatus {
-  online,
-  offline,
-  pending,
-  error,
-  stopped,
-}
+enum DeviceStatus { online, offline, pending, error, stopped }
 
 /// A badge showing device or system status with appropriate color coding.
 class StatusBadge extends StatelessWidget {
@@ -27,7 +21,7 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final statusConfig = _getStatusConfig();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.spaceSm,
@@ -45,11 +39,7 @@ class StatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showIcon) ...[
-            Icon(
-              statusConfig.icon,
-              size: 14,
-              color: statusConfig.color,
-            ),
+            Icon(statusConfig.icon, size: 14, color: statusConfig.color),
             const SizedBox(width: AppTheme.spaceXs),
           ],
           Text(
@@ -67,39 +57,24 @@ class StatusBadge extends StatelessWidget {
   _StatusConfig _getStatusConfig() {
     switch (status) {
       case DeviceStatus.online:
-        return _StatusConfig(
-          color: Colors.green,
-          icon: Icons.check_circle,
-        );
+        return _StatusConfig(color: Colors.green, icon: Icons.check_circle);
       case DeviceStatus.offline:
         return _StatusConfig(
           color: Colors.grey,
           icon: Icons.radio_button_unchecked,
         );
       case DeviceStatus.pending:
-        return _StatusConfig(
-          color: Colors.orange,
-          icon: Icons.hourglass_empty,
-        );
+        return _StatusConfig(color: Colors.orange, icon: Icons.hourglass_empty);
       case DeviceStatus.error:
-        return _StatusConfig(
-          color: Colors.red,
-          icon: Icons.error,
-        );
+        return _StatusConfig(color: Colors.red, icon: Icons.error);
       case DeviceStatus.stopped:
-        return _StatusConfig(
-          color: Colors.red,
-          icon: Icons.stop_circle,
-        );
+        return _StatusConfig(color: Colors.red, icon: Icons.stop_circle);
     }
   }
 }
 
 class _StatusConfig {
-  const _StatusConfig({
-    required this.color,
-    required this.icon,
-  });
+  const _StatusConfig({required this.color, required this.icon});
 
   final Color color;
   final IconData icon;

@@ -12,14 +12,16 @@ class VideoPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final videoState = ref.watch(videoStateProvider);
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Feed'),
         actions: [
           StatusBadge(
             label: videoState.isConnected ? 'Connected' : 'Disconnected',
-            status: videoState.isConnected ? DeviceStatus.online : DeviceStatus.offline,
+            status: videoState.isConnected
+                ? DeviceStatus.online
+                : DeviceStatus.offline,
           ),
           const SizedBox(width: AppTheme.spaceMd),
         ],
@@ -59,20 +61,26 @@ class VideoPage extends ConsumerWidget {
                                 ? null
                                 : () {
                                     if (videoState.isConnected) {
-                                      ref.read(videoStateProvider.notifier).disconnect();
+                                      ref
+                                          .read(videoStateProvider.notifier)
+                                          .disconnect();
                                     } else {
-                                      ref.read(videoStateProvider.notifier).connect();
+                                      ref
+                                          .read(videoStateProvider.notifier)
+                                          .connect();
                                     }
                                   },
                             icon: Icon(
-                              videoState.isConnected ? Icons.videocam_off : Icons.videocam,
+                              videoState.isConnected
+                                  ? Icons.videocam_off
+                                  : Icons.videocam,
                             ),
                             label: Text(
                               videoState.isConnecting
                                   ? 'Connecting...'
                                   : videoState.isConnected
-                                      ? 'Disconnect'
-                                      : 'Connect',
+                                  ? 'Disconnect'
+                                  : 'Connect',
                             ),
                           ),
                         ),
@@ -92,9 +100,9 @@ class VideoPage extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: AppTheme.spaceMd),
-            
+
             // Video display area
             Expanded(
               child: Card(
@@ -107,10 +115,10 @@ class VideoPage extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             if (videoState.isConnected) ...[
               const SizedBox(height: AppTheme.spaceMd),
-              
+
               // Video controls
               Card(
                 child: Padding(
@@ -120,10 +128,7 @@ class VideoPage extends ConsumerWidget {
                     children: [
                       Column(
                         children: [
-                          Text(
-                            'Resolution',
-                            style: theme.textTheme.bodySmall,
-                          ),
+                          Text('Resolution', style: theme.textTheme.bodySmall),
                           Text(
                             '${videoState.resolution.width}×${videoState.resolution.height}',
                             style: theme.textTheme.titleSmall,
@@ -132,10 +137,7 @@ class VideoPage extends ConsumerWidget {
                       ),
                       Column(
                         children: [
-                          Text(
-                            'FPS',
-                            style: theme.textTheme.bodySmall,
-                          ),
+                          Text('FPS', style: theme.textTheme.bodySmall),
                           Text(
                             '${videoState.fps}',
                             style: theme.textTheme.titleSmall,
@@ -144,18 +146,15 @@ class VideoPage extends ConsumerWidget {
                       ),
                       Column(
                         children: [
-                          Text(
-                            'Latency',
-                            style: theme.textTheme.bodySmall,
-                          ),
+                          Text('Latency', style: theme.textTheme.bodySmall),
                           Text(
                             '${videoState.latency}ms',
                             style: theme.textTheme.titleSmall?.copyWith(
                               color: videoState.latency > 500
                                   ? Colors.red
                                   : videoState.latency > 200
-                                      ? Colors.orange
-                                      : Colors.green,
+                                  ? Colors.orange
+                                  : Colors.green,
                             ),
                           ),
                         ],
@@ -189,9 +188,9 @@ class VideoPage extends ConsumerWidget {
             const SizedBox(height: AppTheme.spaceMd),
             Text(
               'Live Video Stream',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: Colors.white),
             ),
             const SizedBox(height: AppTheme.spaceSm),
             Text(
@@ -273,20 +272,23 @@ class VideoState {
 }
 
 /// Provider for video state.
-final videoStateProvider = StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
-  return VideoStateNotifier();
-});
+final videoStateProvider =
+    StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
+      return VideoStateNotifier();
+    });
 
 class VideoStateNotifier extends StateNotifier<VideoState> {
   VideoStateNotifier()
-      : super(const VideoState(
+    : super(
+        const VideoState(
           streamUrl: 'http://192.168.1.100:8080/stream',
           isConnected: false,
           isConnecting: false,
           resolution: Size(640, 480),
           fps: 30,
           latency: 150,
-        ));
+        ),
+      );
 
   void setStreamUrl(String url) {
     state = state.copyWith(streamUrl: url);
@@ -294,7 +296,7 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
 
   void connect() {
     state = state.copyWith(isConnecting: true);
-    
+
     // Simulate connection process
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
@@ -310,16 +312,11 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
   }
 
   void disconnect() {
-    state = state.copyWith(
-      isConnected: false,
-      isConnecting: false,
-    );
+    state = state.copyWith(isConnected: false, isConnecting: false);
   }
 
   void refresh() {
     // Simulate refresh
-    state = state.copyWith(
-      latency: 100 + (DateTime.now().millisecond % 150),
-    );
+    state = state.copyWith(latency: 100 + (DateTime.now().millisecond % 150));
   }
 }

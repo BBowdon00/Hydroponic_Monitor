@@ -37,9 +37,6 @@ class Logger {
 
   static void _log(String level, String message, {String? tag}) {
     final tagStr = tag != null ? ':$tag' : '';
-    developer.log(
-      '[$level] $message',
-      name: '$_appName$tagStr',
-    );
+    developer.log('[$level] $message', name: '$_appName$tagStr');
   }
 }
