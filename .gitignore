@@ -1,0 +1,178 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# iOS/macOS
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Web related
+lib/generated_plugin_registrant.dart
+
+# Windows
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+
+# Linux
+**/linux/flutter/generated_plugin_registrant.cc
+**/linux/flutter/generated_plugin_registrant.h
+
+# Coverage
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.chopper.dart
+*.config.dart
+
+# Test files
+**/coverage/
+test/.test_coverage.dart
+flutter_*.png
+
+# IDE files
+.vscode/launch.json
+.vscode/settings.json
+
+# Firebase
+**/ios/Runner/GoogleService-Info.plist
+**/android/app/google-services.json
+**/lib/firebase_options.dart
+
+# Android keystore
+**/android/*.jks
+**/android/key.properties
+
+# iOS certificates
+**/ios/**/*.p8
+**/ios/**/*.p12
+**/ios/**/*.mobileprovision
+
+# Temporary files
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation build
+docs/_build/
+
+# Distribution
+dist/
+*.tar.gz
+*.zip
+
+# Dependency directories
+node_modules/
+
+# Python virtual environment
+venv/
+env/
+
+# Local configuration overrides
+config.local.yaml
+config.local.json
+
+# Editor backup files
+*~
+.#*
+#*#
+
+# Cache directories
+.cache/
+.tmp/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Network
+.netrwhist
+
+# Personal notes
+notes.md
+todo.md
+.notes/
