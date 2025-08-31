@@ -119,21 +119,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                         SensorTile(
                           title: 'EC Level',
-                          value:
-                              '${sensorData.electricalConductivity.toStringAsFixed(1)} mS/cm',
+                          value: 'N/A',
                           unit: 'mS/cm',
                           icon: Icons.electrical_services,
                           color: Colors.purple,
                           trend: sensorData.ecTrend,
                         ),
                         SensorTile(
-                          title: 'Light Level',
-                          value:
-                              '${sensorData.lightLevel.toStringAsFixed(0)} lux',
-                          unit: 'lux',
-                          icon: Icons.wb_sunny,
-                          color: Colors.amber,
-                          trend: sensorData.lightTrend,
+                          title: 'Power Usage',
+                          value: sensorData.powerUsage > 1000 
+                              ? '${(sensorData.powerUsage / 1000).toStringAsFixed(2)} kW'
+                              : '${sensorData.powerUsage.toStringAsFixed(1)} W',
+                          unit: sensorData.powerUsage > 1000 ? 'kW' : 'W',
+                          icon: Icons.bolt,
+                          color: Colors.yellow,
+                          trend: sensorData.powerTrend,
                         ),
                       ],
                     ),
@@ -289,13 +289,13 @@ class SensorData {
     required this.humidity,
     required this.pH,
     required this.electricalConductivity,
-    required this.lightLevel,
+    required this.powerUsage,
     required this.waterLevelTrend,
     required this.temperatureTrend,
     required this.humidityTrend,
     required this.pHTrend,
     required this.ecTrend,
-    required this.lightTrend,
+    required this.powerTrend,
   });
 
   final double waterLevel;
@@ -303,13 +303,13 @@ class SensorData {
   final double humidity;
   final double pH;
   final double electricalConductivity;
-  final double lightLevel;
+  final double powerUsage;
   final SensorTrend waterLevelTrend;
   final SensorTrend temperatureTrend;
   final SensorTrend humidityTrend;
   final SensorTrend pHTrend;
   final SensorTrend ecTrend;
-  final SensorTrend lightTrend;
+  final SensorTrend powerTrend;
 }
 
 /// Provider for mock sensor data with live updates.
@@ -330,7 +330,7 @@ class MockSensorDataNotifier extends StateNotifier<SensorData> {
       humidity: 65.0 + _random.nextDouble() * 10.0,
       pH: 6.0 + _random.nextDouble() * 2.0,
       electricalConductivity: 1.2 + _random.nextDouble() * 0.8,
-      lightLevel: 800.0 + _random.nextDouble() * 400.0,
+      powerUsage: 50.0 + _random.nextDouble() * 150.0, // 50-200 Watts
       waterLevelTrend:
           SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
       temperatureTrend:
@@ -339,7 +339,7 @@ class MockSensorDataNotifier extends StateNotifier<SensorData> {
           SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
       pHTrend: SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
       ecTrend: SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      lightTrend:
+      powerTrend:
           SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
     );
   }
@@ -357,13 +357,13 @@ class MockSensorDataNotifier extends StateNotifier<SensorData> {
         2.5,
         0.02,
       ),
-      lightLevel: _updateValue(state.lightLevel, 200.0, 1500.0, 10.0),
+      powerUsage: _updateValue(state.powerUsage, 30.0, 250.0, 5.0), // 30-250 Watts
       waterLevelTrend: _updateTrend(state.waterLevelTrend),
       temperatureTrend: _updateTrend(state.temperatureTrend),
       humidityTrend: _updateTrend(state.humidityTrend),
       pHTrend: _updateTrend(state.pHTrend),
       ecTrend: _updateTrend(state.ecTrend),
-      lightTrend: _updateTrend(state.lightTrend),
+      powerTrend: _updateTrend(state.powerTrend),
     );
   }
 
