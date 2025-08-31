@@ -46,6 +46,10 @@ jobs:
 
       - name: Commit formatted code
         if: steps.check-format.outputs.needs_format == 'true'
+        uses: actions/checkout@v4
+        with:
+            token: ${{ secrets.PAT_PUSH }}
+            ref: ${{ github.head_ref }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -54,6 +58,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "🔧 Auto-format code with dart format"
+            git remote set-url origin https://x-access-token:${{ secrets.WRITE_ACTION_SECRET }}@github.com/${{ github.repository }}
             git push
           fi
 
