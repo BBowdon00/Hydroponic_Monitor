@@ -1,4 +1,5 @@
 // No unused imports
+import 'dart:async';
 import 'dart:math';
 
 import 'package:influxdb_client/api.dart';
@@ -24,6 +25,10 @@ class InfluxDbService {
   InfluxDBClient? _client;
   WriteService? _writeApi;
   QueryService? _queryApi;
+  final StreamController<String> _connectionController = StreamController<String>.broadcast();
+
+  /// Stream of connection status changes.
+  Stream<String> get connectionStream => _connectionController.stream;
 
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
@@ -42,10 +47,12 @@ class InfluxDbService {
       _queryApi = _client!.getQueryService();
 
       Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
+      _connectionController.add('connected');
       return Success(null); // remove `const` unless Success has a const ctor
     } catch (e) {
       final error = 'Error initializing InfluxDB client: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _connectionController.add('disconnected');
       return Failure(InfluxError(error)); // remove `const` unless allowed
     }
   }
@@ -54,6 +61,7 @@ class InfluxDbService {
   Future<Result<void>> writeSensorData(SensorData data) async {
     try {
       if (_writeApi == null) {
+        _connectionController.add('disconnected');
         return Failure(InfluxError('InfluxDB client not initialized'));
       }
 
@@ -78,6 +86,7 @@ class InfluxDbService {
     } catch (e) {
       final error = 'Error writing sensor data to InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _connectionController.add('disconnected');
       return Failure(InfluxError(error));
     }
   }
@@ -258,7 +267,9 @@ class InfluxDbService {
   Future<void> close() async {
     try {
       Logger.info('Closing InfluxDB client', tag: 'InfluxDB');
+      _connectionController.add('disconnected');
       _client?.close();
+      await _connectionController.close();
     } catch (e) {
       Logger.error('Error closing InfluxDB client: $e', tag: 'InfluxDB', error: e);
     }
