@@ -28,10 +28,10 @@ class StatusBadge extends StatelessWidget {
         vertical: AppTheme.spaceXs,
       ),
       decoration: BoxDecoration(
-        color: statusConfig.color.withOpacity(0.1),
+        color: statusConfig.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(
-          color: statusConfig.color.withOpacity(0.3),
+          color: statusConfig.color.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -57,18 +57,18 @@ class StatusBadge extends StatelessWidget {
   _StatusConfig _getStatusConfig() {
     switch (status) {
       case DeviceStatus.online:
-        return _StatusConfig(color: Colors.green, icon: Icons.check_circle);
+        return const _StatusConfig(color: Colors.green, icon: Icons.check_circle);
       case DeviceStatus.offline:
-        return _StatusConfig(
+        return const _StatusConfig(
           color: Colors.grey,
           icon: Icons.radio_button_unchecked,
         );
       case DeviceStatus.pending:
-        return _StatusConfig(color: Colors.orange, icon: Icons.hourglass_empty);
+        return const _StatusConfig(color: Colors.orange, icon: Icons.hourglass_empty);
       case DeviceStatus.error:
-        return _StatusConfig(color: Colors.red, icon: Icons.error);
+        return const _StatusConfig(color: Colors.red, icon: Icons.error);
       case DeviceStatus.stopped:
-        return _StatusConfig(color: Colors.red, icon: Icons.stop_circle);
+        return const _StatusConfig(color: Colors.red, icon: Icons.stop_circle);
     }
   }
 }

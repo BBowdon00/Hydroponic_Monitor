@@ -190,10 +190,10 @@ class SettingsPage extends ConsumerWidget {
             context,
             title: 'System Information',
             children: [
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('App Version'),
-                subtitle: const Text('1.0.0+1'),
+              const ListTile(
+                leading: Icon(Icons.info),
+                title: Text('App Version'),
+                subtitle: Text('1.0.0+1'),
               ),
               ListTile(
                 leading: const Icon(Icons.update),
@@ -438,12 +438,14 @@ class SettingsPage extends ConsumerWidget {
 
     // Simulate connection test
     Future.delayed(const Duration(seconds: 2), () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('MQTT connection successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('MQTT connection successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     });
   }
 
@@ -454,12 +456,14 @@ class SettingsPage extends ConsumerWidget {
 
     // Simulate connection test
     Future.delayed(const Duration(seconds: 2), () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('InfluxDB connection successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('InfluxDB connection successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     });
   }
 }

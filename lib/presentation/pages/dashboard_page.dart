@@ -270,7 +270,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   Switch(
                     value: isEnabled,
                     onChanged: isPending ? null : onToggle,
-                    activeColor: color,
+                    activeThumbColor: color,
                   ),
               ],
             ),

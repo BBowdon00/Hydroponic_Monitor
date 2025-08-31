@@ -44,7 +44,7 @@ class DeviceCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(AppTheme.spaceSm),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Icon(icon, color: color, size: 24),
@@ -79,7 +79,7 @@ class DeviceCard extends StatelessWidget {
                   Switch(
                     value: isEnabled,
                     onChanged: isPending ? null : onToggle,
-                    activeColor: color,
+                    activeThumbColor: color,
                   ),
               ],
             ),
