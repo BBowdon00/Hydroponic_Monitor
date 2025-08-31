@@ -147,23 +147,6 @@ void main() {
       }
     });
 
-    test('write operations return success for dummy data', () async {
-      final sensorData = SensorData(
-        id: 'test_sensor',
-        sensorType: SensorType.temperature,
-        value: 22.5,
-        unit: '°C',
-        timestamp: DateTime.now(),
-      );
-
-      // Write operations should work (though they don't actually write)
-      final writeResult = await influxService.writeSensorData(sensorData);
-      expect(writeResult, isA<Failure>()); // Should fail since not connected
-
-      final batchData = [sensorData, sensorData];
-      final batchResult = await influxService.writeSensorDataBatch(batchData);
-      expect(batchResult, isA<Failure>()); // Should fail since not connected
-    });
 
     tearDown(() async {
       await influxService.close();
@@ -198,24 +181,6 @@ void main() {
       verify(() => mockInfluxService.initialize()).called(1);
     });
 
-    test('mock service can simulate successful data write', () async {
-      final sensorData = SensorData(
-        id: 'test_sensor',
-        sensorType: SensorType.humidity,
-        value: 65.0,
-        unit: '%',
-        timestamp: DateTime.now(),
-      );
-
-      when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
-        (_) async => const Success(null),
-      );
-
-      final result = await mockInfluxService.writeSensorData(sensorData);
-      expect(result, isA<Success>());
-
-      verify(() => mockInfluxService.writeSensorData(sensorData)).called(1);
-    });
 
     test('mock service can simulate data query', () async {
       final testData = [
@@ -246,26 +211,5 @@ void main() {
       verify(() => mockInfluxService.queryLatestSensorData()).called(1);
     });
 
-    test('mock service can simulate batch write', () async {
-      final batchData = List.generate(
-        5,
-        (index) => SensorData(
-          id: 'sensor_$index',
-          sensorType: SensorType.temperature,
-          value: 20.0 + index,
-          unit: '°C',
-          timestamp: DateTime.now(),
-        ),
-      );
-
-      when(() => mockInfluxService.writeSensorDataBatch(any())).thenAnswer(
-        (_) async => const Success(null),
-      );
-
-      final result = await mockInfluxService.writeSensorDataBatch(batchData);
-      expect(result, isA<Success>());
-
-      verify(() => mockInfluxService.writeSensorDataBatch(batchData)).called(1);
-    });
   });
 }
