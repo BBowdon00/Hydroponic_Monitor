@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:mqtt_client/mqtt_client.dart';
@@ -30,7 +29,7 @@ class MqttService {
   MqttServerClient? _client;
   final StreamController<SensorData> _sensorDataController = StreamController<SensorData>.broadcast();
   final StreamController<Device> _deviceStatusController = StreamController<Device>.broadcast();
-  final StreamController<MqttClientConnectionStatus> _connectionController = StreamController<MqttClientConnectionStatus>.broadcast();
+  final StreamController<String> _connectionController = StreamController<String>.broadcast();
 
   /// Stream of sensor data received via MQTT.
   Stream<SensorData> get sensorDataStream => _sensorDataController.stream;
@@ -39,10 +38,10 @@ class MqttService {
   Stream<Device> get deviceStatusStream => _deviceStatusController.stream;
 
   /// Stream of connection status changes.
-  Stream<MqttClientConnectionStatus> get connectionStream => _connectionController.stream;
+  Stream<String> get connectionStream => _connectionController.stream;
 
   /// Current connection status.
-  MqttClientConnectionStatus get connectionStatus => _client?.connectionStatus ?? MqttClientConnectionStatus.disconnected;
+  Object? get connectionStatus => _client?.connectionStatus;
 
   /// Initialize and connect to MQTT broker.
   Future<Result<void>> connect() async {
@@ -81,7 +80,7 @@ class MqttService {
 
       final status = await _client!.connect();
       
-      if (status == MqttClientConnectionStatus.connected) {
+      if (status?.toString() == 'connected') {
         Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');
         await _subscribeToTopics();
         return const Success(null);
@@ -113,7 +112,7 @@ class MqttService {
   /// Publish device control command.
   Future<Result<void>> publishDeviceCommand(String deviceId, String command, {Map<String, dynamic>? parameters}) async {
     try {
-      if (_client?.connectionStatus != MqttClientConnectionStatus.connected) {
+      if (_client?.connectionStatus?.toString() != 'connected') {
         return const Failure(MqttError('Not connected to MQTT broker'));
       }
 
@@ -141,7 +140,7 @@ class MqttService {
 
   /// Subscribe to relevant MQTT topics.
   Future<void> _subscribeToTopics() async {
-    if (_client?.connectionStatus != MqttClientConnectionStatus.connected) return;
+    if (_client?.connectionStatus?.toString() != 'connected') return;
 
     final topics = [
       'hydroponic/sensors/+/data',
@@ -262,12 +261,12 @@ class MqttService {
 
   void _onConnected() {
     Logger.info('MQTT client connected', tag: 'MQTT');
-    _connectionController.add(MqttClientConnectionStatus.connected);
+    _connectionController.add('connected');
   }
 
   void _onDisconnected() {
     Logger.warning('MQTT client disconnected', tag: 'MQTT');
-    _connectionController.add(MqttClientConnectionStatus.disconnected);
+    _connectionController.add('disconnected');
   }
 
   void _onSubscribed(String topic) {

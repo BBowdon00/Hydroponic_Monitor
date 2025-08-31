@@ -43,8 +43,8 @@ dependencies:
 
   # Network and API
   dio: ^5.7.0
-  mqtt_client: ^10.2.1
-  influxdb_client: ^2.4.3
+  mqtt_client: ^10.11.0
+  influxdb_client: ^2.11.0
 
   # Data serialization
   freezed: ^3.2.0

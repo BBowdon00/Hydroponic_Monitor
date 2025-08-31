@@ -336,22 +336,21 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Language'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('English (US)'),
-              value: 'en_US',
-              groupValue: 'en_US',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-            RadioListTile<String>(
-              title: const Text('Spanish'),
-              value: 'es',
-              groupValue: 'en_US',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-          ],
+        content: RadioGroup<String>(
+          onChanged: (value) => Navigator.of(context).pop(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const RadioListTile<String>(
+                title: Text('English (US)'),
+                value: 'en_US',
+              ),
+              const RadioListTile<String>(
+                title: Text('Spanish'),
+                value: 'es',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -362,22 +361,21 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Units'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('Metric (°C, cm, L)'),
-              value: 'metric',
-              groupValue: 'metric',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-            RadioListTile<String>(
-              title: const Text('Imperial (°F, in, gal)'),
-              value: 'imperial',
-              groupValue: 'metric',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-          ],
+        content: RadioGroup<String>(
+          onChanged: (value) => Navigator.of(context).pop(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const RadioListTile<String>(
+                title: Text('Metric (°C, cm, L)'),
+                value: 'metric',
+              ),
+              const RadioListTile<String>(
+                title: Text('Imperial (°F, in, gal)'),
+                value: 'imperial',
+              ),
+            ],
+          ),
         ),
       ),
     );
