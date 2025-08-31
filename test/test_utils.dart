@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
@@ -191,12 +192,23 @@ class TestMqttTopics {
   static String deviceCommandTopicFor(String deviceId) => 'hydroponic/devices/$deviceId/command';
 }
 
-/// Test configuration constants.
+/// Test configuration constants that can be overridden by environment variables.
 class TestConfig {
-  static const String testMqttHost = 'localhost';
-  static const int testMqttPort = 1883;
-  static const String testInfluxUrl = 'http://localhost:8086';
-  static const String testInfluxToken = 'test-token-for-integration-tests';
-  static const String testInfluxOrg = 'test-org';
-  static const String testInfluxBucket = 'test-bucket';
+  static String get testMqttHost => 
+    Platform.environment['MQTT_HOST'] ?? 'localhost';
+  
+  static int get testMqttPort => 
+    int.tryParse(Platform.environment['MQTT_PORT'] ?? '') ?? 1883;
+  
+  static String get testInfluxUrl => 
+    Platform.environment['INFLUX_URL'] ?? 'http://localhost:8086';
+  
+  static String get testInfluxToken => 
+    Platform.environment['INFLUX_TOKEN'] ?? 'test-token-for-integration-tests';
+  
+  static String get testInfluxOrg => 
+    Platform.environment['INFLUX_ORG'] ?? 'test-org';
+  
+  static String get testInfluxBucket => 
+    Platform.environment['INFLUX_BUCKET'] ?? 'test-bucket';
 }

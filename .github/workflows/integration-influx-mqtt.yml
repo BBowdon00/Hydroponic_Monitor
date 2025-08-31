@@ -1,0 +1,138 @@
+name: Integration Tests - InfluxDB + MQTT
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    env:
+      INFLUX_URL: http://localhost:8086
+      INFLUX_ORG: ci-org
+      INFLUX_BUCKET: ci-bucket
+      INFLUX_TOKEN: ci-token-123456            # For demo; use a secret in real projects
+      MQTT_HOST: localhost
+      MQTT_PORT: "1883"
+
+    services:
+      influxdb:
+        image: influxdb:2.7
+        ports: 
+          - "8086:8086"
+        env:
+          DOCKER_INFLUXDB_INIT_MODE: setup
+          DOCKER_INFLUXDB_INIT_USERNAME: ci-user
+          DOCKER_INFLUXDB_INIT_PASSWORD: ci-pass
+          DOCKER_INFLUXDB_INIT_ORG: ci-org
+          DOCKER_INFLUXDB_INIT_BUCKET: ci-bucket
+          DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ci-token-123456
+
+      mosquitto:
+        image: eclipse-mosquitto:2
+        ports: 
+          - "1883:1883"
+          - "9001:9001"
+        options: >-
+          -v ${{ github.workspace }}/.ci/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+      telegraf:  # Optional: enables end-to-end MQTT→Influx tests
+        image: telegraf:1.32
+        options: >-
+          -v ${{ github.workspace }}/.ci/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+        env:
+          INFLUX_TOKEN: ci-token-123456
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.9"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install mosquitto-clients (for health checks)
+        run: sudo apt-get update && sudo apt-get install -y mosquitto-clients curl
+
+      - name: Wait for InfluxDB
+        run: |
+          for i in {1..60}; do
+            if curl -sf "$INFLUX_URL/health"; then
+              echo "InfluxDB is healthy"
+              exit 0
+            fi
+            echo "Waiting for InfluxDB... (attempt $i/60)"
+            sleep 2
+          done
+          echo "InfluxDB not healthy in time" >&2
+          exit 1
+
+      - name: Wait for Mosquitto
+        run: |
+          for i in {1..60}; do
+            if mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -t ci/ready -m "1" 2>/dev/null; then
+              echo "Mosquitto is ready"
+              exit 0
+            fi
+            echo "Waiting for Mosquitto... (attempt $i/60)"
+            sleep 2
+          done
+          echo "Mosquitto not ready in time" >&2
+          exit 1
+
+      - name: Verify Telegraf (optional)
+        run: |
+          # Give Telegraf time to start and connect
+          sleep 10
+          echo "Telegraf should be running and processing MQTT messages"
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run integration tests
+        run: |
+          flutter test \
+            --tags integration \
+            --coverage \
+            --reporter=expanded \
+            --timeout=300s
+        env:
+          INFLUX_URL: ${{ env.INFLUX_URL }}
+          INFLUX_ORG: ${{ env.INFLUX_ORG }}
+          INFLUX_BUCKET: ${{ env.INFLUX_BUCKET }}
+          INFLUX_TOKEN: ${{ env.INFLUX_TOKEN }}
+          MQTT_HOST: ${{ env.MQTT_HOST }}
+          MQTT_PORT: ${{ env.MQTT_PORT }}
+
+      - name: Upload integration test coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: coverage/lcov.info
+          flags: integration-tests-github-services
+          name: integration-tests-github-services
+          fail_ci_if_error: false
+
+      - name: Service status on failure
+        if: failure()
+        run: |
+          echo "=== InfluxDB Health Check ==="
+          curl -v "$INFLUX_URL/health" || echo "InfluxDB health check failed"
+          
+          echo "=== MQTT Connection Test ==="
+          mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -t test/debug -m "debug message" || echo "MQTT connection failed"
+          
+          echo "=== Service Information ==="
+          docker ps
