@@ -183,7 +183,7 @@ class VideoPage extends ConsumerWidget {
             Icon(
               Icons.videocam,
               size: 64,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
             const SizedBox(height: AppTheme.spaceMd),
             Text(
@@ -196,7 +196,7 @@ class VideoPage extends ConsumerWidget {
             Text(
               'Connected to ${videoState.streamUrl}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
           ],

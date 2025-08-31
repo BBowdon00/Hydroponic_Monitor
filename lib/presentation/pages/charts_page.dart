@@ -57,7 +57,7 @@ class ChartsPage extends ConsumerWidget {
                                 }
                               },
                               selectedColor: theme.colorScheme.primary
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: 0.2),
                               checkmarkColor: theme.colorScheme.primary,
                             ),
                           );
@@ -131,10 +131,10 @@ class ChartsPage extends ConsumerWidget {
             width: double.infinity,
             height: 200,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.3),
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
                 style: BorderStyle.solid,
               ),
             ),
@@ -145,14 +145,14 @@ class ChartsPage extends ConsumerWidget {
                   Icon(
                     Icons.show_chart,
                     size: 32,
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: AppTheme.spaceSm),
                   Text(
                     'Chart Area',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(
-                        0.7,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.7,
                       ),
                     ),
                   ),

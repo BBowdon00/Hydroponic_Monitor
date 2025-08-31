@@ -104,7 +104,7 @@ class DevicesPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppTheme.spaceMd),
                 child: Column(
                   children: [
-                    Icon(Icons.emergency, color: Colors.red, size: 32),
+                    const Icon(Icons.emergency, color: Colors.red, size: 32),
                     const SizedBox(height: AppTheme.spaceSm),
                     Text(
                       'Emergency Stop',

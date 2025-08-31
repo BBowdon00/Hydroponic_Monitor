@@ -43,8 +43,8 @@ dependencies:
 
   # Network and API
   dio: ^5.7.0
-  mqtt_client: ^10.2.1
-  influxdb_client: ^2.4.3
+  mqtt_client: ^10.11.0
+  influxdb_client: ^2.11.0
 
   # Data serialization
   freezed: ^3.2.0
@@ -71,6 +71,9 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.7.0
   json_serializable: ^6.11.0
+
+  # Testing
+  mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

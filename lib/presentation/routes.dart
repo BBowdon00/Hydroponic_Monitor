@@ -6,7 +6,6 @@ import 'pages/dashboard_page.dart';
 import 'pages/devices_page.dart';
 import 'pages/video_page.dart';
 import 'pages/charts_page.dart';
-import 'pages/alerts_page.dart';
 import 'pages/settings_page.dart';
 
 /// Router configuration provider.
@@ -38,11 +37,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/charts',
             name: 'charts',
             builder: (context, state) => const ChartsPage(),
-          ),
-          GoRoute(
-            path: '/alerts',
-            name: 'alerts',
-            builder: (context, state) => const AlertsPage(),
           ),
           GoRoute(
             path: '/settings',
@@ -90,10 +84,6 @@ class MainBottomNavigation extends StatelessWidget {
         BottomNavigationBarItem(icon: Icon(Icons.devices), label: 'Devices'),
         BottomNavigationBarItem(icon: Icon(Icons.videocam), label: 'Video'),
         BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Charts'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications),
-          label: 'Alerts',
-        ),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
     );
@@ -109,10 +99,8 @@ class MainBottomNavigation extends StatelessWidget {
         return 2;
       case '/charts':
         return 3;
-      case '/alerts':
-        return 4;
       case '/settings':
-        return 5;
+        return 4;
       default:
         return 0;
     }
@@ -133,9 +121,6 @@ class MainBottomNavigation extends StatelessWidget {
         context.go('/charts');
         break;
       case 4:
-        context.go('/alerts');
-        break;
-      case 5:
         context.go('/settings');
         break;
     }

@@ -3,6 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../app.dart';
 import '../../core/theme.dart';
+import '../providers/data_providers.dart';
+import '../../core/logger.dart';
 
 /// Settings page for configuring MQTT, InfluxDB, units, and app preferences.
 class SettingsPage extends ConsumerWidget {
@@ -190,10 +192,10 @@ class SettingsPage extends ConsumerWidget {
             context,
             title: 'System Information',
             children: [
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('App Version'),
-                subtitle: const Text('1.0.0+1'),
+              const ListTile(
+                leading: Icon(Icons.info),
+                title: Text('App Version'),
+                subtitle: Text('1.0.0+1'),
               ),
               ListTile(
                 leading: const Icon(Icons.update),
@@ -334,22 +336,21 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Language'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('English (US)'),
-              value: 'en_US',
-              groupValue: 'en_US',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-            RadioListTile<String>(
-              title: const Text('Spanish'),
-              value: 'es',
-              groupValue: 'en_US',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-          ],
+        content: RadioGroup<String>(
+          onChanged: (value) => Navigator.of(context).pop(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const RadioListTile<String>(
+                title: Text('English (US)'),
+                value: 'en_US',
+              ),
+              const RadioListTile<String>(
+                title: Text('Spanish'),
+                value: 'es',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -360,22 +361,21 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Units'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('Metric (°C, cm, L)'),
-              value: 'metric',
-              groupValue: 'metric',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-            RadioListTile<String>(
-              title: const Text('Imperial (°F, in, gal)'),
-              value: 'imperial',
-              groupValue: 'metric',
-              onChanged: (value) => Navigator.of(context).pop(),
-            ),
-          ],
+        content: RadioGroup<String>(
+          onChanged: (value) => Navigator.of(context).pop(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const RadioListTile<String>(
+                title: Text('Metric (°C, cm, L)'),
+                value: 'metric',
+              ),
+              const RadioListTile<String>(
+                title: Text('Imperial (°F, in, gal)'),
+                value: 'imperial',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -436,14 +436,33 @@ class SettingsPage extends ConsumerWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('Testing MQTT connection...')));
 
-    // Simulate connection test
-    Future.delayed(const Duration(seconds: 2), () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('MQTT connection successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    // Test actual MQTT connection using the service
+    final container = ProviderScope.containerOf(context);
+    final mqttService = container.read(mqttServiceProvider);
+    
+    mqttService.connect().then((result) {
+      if (context.mounted) {
+        result.when(
+          success: (_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('MQTT connection successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Logger.info('MQTT connection test successful', tag: 'Settings');
+          },
+          failure: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('MQTT connection failed: ${error.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Logger.error('MQTT connection test failed: ${error.message}', tag: 'Settings');
+          },
+        );
+      }
     });
   }
 
@@ -452,14 +471,33 @@ class SettingsPage extends ConsumerWidget {
       const SnackBar(content: Text('Testing InfluxDB connection...')),
     );
 
-    // Simulate connection test
-    Future.delayed(const Duration(seconds: 2), () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('InfluxDB connection successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    // Test actual InfluxDB connection using the service
+    final container = ProviderScope.containerOf(context);
+    final influxService = container.read(influxServiceProvider);
+    
+    influxService.initialize().then((result) {
+      if (context.mounted) {
+        result.when(
+          success: (_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('InfluxDB connection successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Logger.info('InfluxDB connection test successful', tag: 'Settings');
+          },
+          failure: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('InfluxDB connection failed: ${error.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Logger.error('InfluxDB connection test failed: ${error.message}', tag: 'Settings');
+          },
+        );
+      }
     });
   }
 }

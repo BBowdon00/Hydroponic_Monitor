@@ -69,7 +69,7 @@ class SensorTile extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
                 child: Center(
@@ -78,14 +78,14 @@ class SensorTile extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.show_chart,
-                        color: color.withOpacity(0.5),
+                        color: color.withValues(alpha: 0.5),
                         size: 16,
                       ),
                       const SizedBox(width: AppTheme.spaceXs),
                       Text(
                         'Chart',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: color.withOpacity(0.7),
+                          color: color.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
