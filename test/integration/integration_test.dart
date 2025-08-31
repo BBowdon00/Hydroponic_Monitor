@@ -50,7 +50,7 @@ void main() {
       await influxService.close();
     });
 
-    test('End-to-end data flow: MQTT publish → Telegraf → InfluxDB storage', () async {
+    test('End-to-end data flow: MQTT publish → Telegraf → InfluxDB storage', tags: ['integration'], () async {
       // Generate test sensor data
       final testData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.temperature,
@@ -86,7 +86,7 @@ void main() {
       expect(stored, isTrue, reason: 'Sensor data should be stored in InfluxDB via Telegraf');
     }, timeout: testTimeout);
 
-    test('Multiple sensor types data flow', () async {
+    test('Multiple sensor types data flow', tags: ['integration'], () async {
       final testDataList = SensorType.values.map((type) => 
         TestDataGenerator.generateSensorData(
           sensorType: type,
@@ -129,7 +129,7 @@ void main() {
              reason: 'At least half of the sensor data should be stored successfully');
     }, timeout: testTimeout);
 
-    test('Device status integration', () async {
+    test('Device status integration', tags: ['integration'], () async {
       final testDevice = TestDataGenerator.generateDevice(
         id: 'integration_test_pump_001',
         type: DeviceType.pump,
