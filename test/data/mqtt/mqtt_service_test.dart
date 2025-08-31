@@ -5,10 +5,17 @@ import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
 import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/core/errors.dart';
+import '../../test_utils.dart';
 
 class MockMqttService extends Mock implements MqttService {}
 
 void main() {
+  setUpAll(() {
+    // Register fallback values for mocktail
+    registerFallbackValue(TestDataGenerator.createFallbackSensorData());
+    registerFallbackValue(TestDataGenerator.createFallbackDevice());
+  });
+
   group('MqttService', () {
     late MqttService mqttService;
 
@@ -41,7 +48,8 @@ void main() {
 
       // Test that the service can be created and has the expected properties
       expect(service.host, equals('localhost'));
-      expect(service.connectionStatus.toString(), contains('disconnected'));
+      // connectionStatus is null before connection is attempted
+      expect(service.connectionStatus, isNull);
     });
 
     test('streams are available and properly typed', () {
