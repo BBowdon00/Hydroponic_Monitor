@@ -74,6 +74,7 @@ dev_dependencies:
 
   # Testing
   mocktail: ^1.0.4
+  http: ^1.2.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

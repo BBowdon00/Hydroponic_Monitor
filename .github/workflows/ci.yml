@@ -59,13 +59,119 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Run unit tests
+        run: flutter test --coverage --exclude-tags=integration
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/lcov.info
+          flags: unittests
+          name: unit-tests
+          fail_ci_if_error: false
+
+  # Run integration tests
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: [analyze, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.9"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Start integration test services
+        run: |
+          cd test/integration
+          docker-compose up -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to be healthy..."
+          timeout=300
+          elapsed=0
+          interval=10
+          
+          cd test/integration
+          while [ $elapsed -lt $timeout ]; do
+            if docker-compose ps | grep -E "(healthy|running)"; then
+              healthy_count=$(docker-compose ps --format "table {{.State}}" | grep -c "healthy" || echo "0")
+              running_count=$(docker-compose ps --format "table {{.State}}" | grep -c "running" || echo "0")
+              total_services=3
+              
+              if [ "$healthy_count" -ge 2 ] || [ "$running_count" -eq "$total_services" ]; then
+                echo "Services are ready!"
+                docker-compose ps
+                break
+              fi
+            fi
+            
+            echo "Waiting for services... ($elapsed/$timeout seconds)"
+            sleep $interval
+            elapsed=$((elapsed + interval))
+          done
+          
+          if [ $elapsed -ge $timeout ]; then
+            echo "Services did not become ready in time"
+            docker-compose ps
+            docker-compose logs
+            exit 1
+          fi
+
+      - name: Run integration tests
+        run: |
+          flutter test test/integration/ \
+            --coverage \
+            --reporter=expanded \
+            --timeout=180s
+        continue-on-error: true
+
+      - name: Integration test logs
+        if: always()
+        run: |
+          echo "=== Service Status ==="
+          cd test/integration
+          docker-compose ps
+          
+          echo "=== InfluxDB Logs ==="
+          docker-compose logs influxdb | tail -50
+          
+          echo "=== Mosquitto Logs ==="
+          docker-compose logs mosquitto | tail -50
+          
+          echo "=== Telegraf Logs ==="
+          docker-compose logs telegraf | tail -50
+
+      - name: Stop integration test services
+        if: always()
+        run: |
+          cd test/integration
+          docker-compose down -v
+
+      - name: Upload integration test coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: coverage/lcov.info
+          flags: integration-tests
+          name: integration-tests
+          fail_ci_if_error: false
 
   # Build web version
   build-web:
     runs-on: ubuntu-latest
-    needs: [analyze, test]
+    needs: [analyze, test, integration-test]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -96,7 +202,7 @@ jobs:
   # Build Android debug APK
   build-android-debug:
     runs-on: ubuntu-latest
-    needs: [analyze, test]
+    needs: [analyze, test, integration-test]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
