@@ -7,6 +7,7 @@ import 'pages/devices_page.dart';
 import 'pages/video_page.dart';
 import 'pages/charts_page.dart';
 import 'pages/settings_page.dart';
+import 'widgets/connection_notification.dart';
 
 /// Router configuration provider.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -58,7 +59,12 @@ class MainScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          const ConnectionNotification(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: const MainBottomNavigation(),
     );
   }
