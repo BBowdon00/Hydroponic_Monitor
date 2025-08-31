@@ -3,6 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../app.dart';
 import '../../core/theme.dart';
+import '../providers/data_providers.dart';
+import '../../core/logger.dart';
 
 /// Settings page for configuring MQTT, InfluxDB, units, and app preferences.
 class SettingsPage extends ConsumerWidget {
@@ -436,14 +438,31 @@ class SettingsPage extends ConsumerWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('Testing MQTT connection...')));
 
-    // Simulate connection test
-    Future.delayed(const Duration(seconds: 2), () {
+    // Test actual MQTT connection using the service
+    final container = ProviderScope.containerOf(context);
+    final mqttService = container.read(mqttServiceProvider);
+    
+    mqttService.connect().then((result) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('MQTT connection successful!'),
-            backgroundColor: Colors.green,
-          ),
+        result.when(
+          success: (_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('MQTT connection successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Logger.info('MQTT connection test successful', tag: 'Settings');
+          },
+          failure: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('MQTT connection failed: ${error.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Logger.error('MQTT connection test failed: ${error.message}', tag: 'Settings');
+          },
         );
       }
     });
@@ -454,14 +473,31 @@ class SettingsPage extends ConsumerWidget {
       const SnackBar(content: Text('Testing InfluxDB connection...')),
     );
 
-    // Simulate connection test
-    Future.delayed(const Duration(seconds: 2), () {
+    // Test actual InfluxDB connection using the service
+    final container = ProviderScope.containerOf(context);
+    final influxService = container.read(influxServiceProvider);
+    
+    influxService.initialize().then((result) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('InfluxDB connection successful!'),
-            backgroundColor: Colors.green,
-          ),
+        result.when(
+          success: (_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('InfluxDB connection successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Logger.info('InfluxDB connection test successful', tag: 'Settings');
+          },
+          failure: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('InfluxDB connection failed: ${error.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Logger.error('InfluxDB connection test failed: ${error.message}', tag: 'Settings');
+          },
         );
       }
     });
