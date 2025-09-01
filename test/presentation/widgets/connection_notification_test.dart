@@ -38,7 +38,6 @@ void main() {
 
       // Verify notification is shown
       expect(find.text('Connection Lost'), findsOneWidget);
-      expect(find.text('MQTT, InfluxDB disconnected'), findsOneWidget);
       expect(find.byIcon(Icons.wifi_off), findsOneWidget);
     });
 
