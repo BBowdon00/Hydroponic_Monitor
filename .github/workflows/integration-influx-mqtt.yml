@@ -26,7 +26,7 @@ jobs:
         env:
           DOCKER_INFLUXDB_INIT_MODE: setup
           DOCKER_INFLUXDB_INIT_USERNAME: ci-user
-          DOCKER_INFLUXDB_INIT_PASSWORD: ci-pass
+          DOCKER_INFLUXDB_INIT_PASSWORD: ci-passstest-1
           DOCKER_INFLUXDB_INIT_ORG: ci-org
           DOCKER_INFLUXDB_INIT_BUCKET: ci-bucket
           DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ci-token-123456
