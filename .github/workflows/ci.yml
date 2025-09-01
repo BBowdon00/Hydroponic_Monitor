@@ -92,8 +92,16 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Analyze code
-        run: flutter analyze
+      - name: Analyze code (fail on error/warning)
+        run: |
+            flutter analyze | tee analyze.log
+            if grep -qE "error|warning" analyze.log; then
+              echo "❌ Errors or warnings found in analysis."
+              exit 1
+            else
+              echo "✅ No errors or warnings."
+            fi
+        
 
   # Run unit tests
   unit-tests:
