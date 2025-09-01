@@ -14,12 +14,13 @@ jobs:
   format:
     name: Code Formatting
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.WRITE_ACTION_SECRET }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Flutter
