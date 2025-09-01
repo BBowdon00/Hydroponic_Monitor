@@ -73,7 +73,10 @@ void main() {
       });
 
       test('handles command without parameters', () async {
-        final result = await mqttService.publishDeviceCommand('fan_001', 'turn_off');
+        final result = await mqttService.publishDeviceCommand(
+          'fan_001',
+          'turn_off',
+        );
 
         expect(result, isA<Failure>());
         expect((result as Failure).error, isA<MqttError>());
@@ -108,8 +111,12 @@ void main() {
     });
 
     test('mock service can simulate connection success', () async {
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.connectionStatus.toString()).thenReturn('connected');
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockMqttService.connectionStatus.toString(),
+      ).thenReturn('connected');
 
       final result = await mockMqttService.connect();
       expect(result, isA<Success>());
@@ -118,9 +125,9 @@ void main() {
     });
 
     test('mock service can simulate connection failure', () async {
-      when(() => mockMqttService.connect()).thenAnswer(
-        (_) async => const Failure(MqttError('Connection failed')),
-      );
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Failure(MqttError('Connection failed')));
 
       final result = await mockMqttService.connect();
       expect(result, isA<Failure>());
@@ -130,11 +137,13 @@ void main() {
     });
 
     test('mock service can simulate device command publishing', () async {
-      when(() => mockMqttService.publishDeviceCommand(
-            any(),
-            any(),
-            parameters: any(named: 'parameters'),
-          )).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockMqttService.publishDeviceCommand(
+          any(),
+          any(),
+          parameters: any(named: 'parameters'),
+        ),
+      ).thenAnswer((_) async => const Success(null));
 
       final result = await mockMqttService.publishDeviceCommand(
         'pump_001',
@@ -143,11 +152,13 @@ void main() {
       );
 
       expect(result, isA<Success>());
-      verify(() => mockMqttService.publishDeviceCommand(
-            'pump_001',
-            'turn_on',
-            parameters: {'flow_rate': 5.0},
-          )).called(1);
+      verify(
+        () => mockMqttService.publishDeviceCommand(
+          'pump_001',
+          'turn_on',
+          parameters: {'flow_rate': 5.0},
+        ),
+      ).called(1);
     });
 
     test('mock service provides sensor data stream', () {
@@ -159,9 +170,9 @@ void main() {
         timestamp: DateTime.now(),
       );
 
-      when(() => mockMqttService.sensorDataStream).thenAnswer(
-        (_) => Stream.value(sensorData),
-      );
+      when(
+        () => mockMqttService.sensorDataStream,
+      ).thenAnswer((_) => Stream.value(sensorData));
 
       expect(mockMqttService.sensorDataStream, emits(sensorData));
     });
@@ -175,9 +186,9 @@ void main() {
         isEnabled: true,
       );
 
-      when(() => mockMqttService.deviceStatusStream).thenAnswer(
-        (_) => Stream.value(device),
-      );
+      when(
+        () => mockMqttService.deviceStatusStream,
+      ).thenAnswer((_) => Stream.value(device));
 
       expect(mockMqttService.deviceStatusStream, emits(device));
     });

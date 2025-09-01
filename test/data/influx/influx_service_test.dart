@@ -31,45 +31,59 @@ void main() {
       // The service needs to be initialized first, but this will fail without a real InfluxDB
       // So we test that the uninitialized service returns an appropriate error
       final result = await influxService.queryLatestSensorData();
-      
+
       expect(result, isA<Failure<List<SensorData>>>());
       final failure = result as Failure<List<SensorData>>;
       expect(failure.error, isA<InfluxError>());
-      expect(failure.error.toString(), contains('InfluxDB client not initialized'));
+      expect(
+        failure.error.toString(),
+        contains('InfluxDB client not initialized'),
+      );
     });
 
     test('generates historical data with time progression', () async {
       final start = DateTime.now().subtract(const Duration(hours: 2));
       final end = DateTime.now();
-      
+
       final result = await influxService.querySensorData(
         sensorType: SensorType.temperature,
         start: start,
         end: end,
         limit: 10,
       );
-      
+
       expect(result, isA<Success<List<SensorData>>>());
-      
+
       final data = (result as Success<List<SensorData>>).data;
       expect(data.length, equals(10));
-      
+
       // Check that timestamps are in chronological order
       for (int i = 1; i < data.length; i++) {
         expect(data[i].timestamp.isAfter(data[i - 1].timestamp), isTrue);
       }
-      
+
       // Check that first timestamp is close to start time
-      expect(data.first.timestamp.isAfter(start.subtract(const Duration(minutes: 5))), isTrue);
-      expect(data.first.timestamp.isBefore(start.add(const Duration(minutes: 30))), isTrue);
+      expect(
+        data.first.timestamp.isAfter(
+          start.subtract(const Duration(minutes: 5)),
+        ),
+        isTrue,
+      );
+      expect(
+        data.first.timestamp.isBefore(start.add(const Duration(minutes: 30))),
+        isTrue,
+      );
     });
 
     test('handles day/night cycle for light intensity', () async {
-      // Test light intensity values at different times of day
+      // Test light intensity values at different times of day - variables used for documentation
+      // ignore: unused_local_variable
       final dawnTime = DateTime(2024, 1, 1, 6, 0); // 6 AM
+      // ignore: unused_local_variable
       final noonTime = DateTime(2024, 1, 1, 12, 0); // 12 PM
+      // ignore: unused_local_variable
       final nightTime = DateTime(2024, 1, 1, 22, 0); // 10 PM
-      
+
       final service = InfluxDbService(
         url: 'http://localhost:8086',
         token: 'test-token',
@@ -87,17 +101,16 @@ void main() {
 
       expect(result, isA<Success<List<SensorData>>>());
       final data = (result as Success<List<SensorData>>).data;
-      
+
       // Should have data points throughout the day
       expect(data.length, equals(24));
-      
+
       // All should be light intensity data
       for (final point in data) {
         expect(point.sensorType, equals(SensorType.lightIntensity));
         expect(point.unit, equals('lux'));
       }
     });
-
 
     tearDown(() async {
       await influxService.close();
@@ -112,7 +125,9 @@ void main() {
     });
 
     test('mock service can simulate initialization success', () async {
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockInfluxService.initialize(),
+      ).thenAnswer((_) async => const Success(null));
 
       final result = await mockInfluxService.initialize();
       expect(result, isA<Success>());
@@ -132,7 +147,6 @@ void main() {
       verify(() => mockInfluxService.initialize()).called(1);
     });
 
-
     test('mock service can simulate data query', () async {
       final testData = [
         SensorData(
@@ -151,9 +165,9 @@ void main() {
         ),
       ];
 
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer(
-        (_) async => Success(testData),
-      );
+      when(
+        () => mockInfluxService.queryLatestSensorData(),
+      ).thenAnswer((_) async => Success(testData));
 
       final result = await mockInfluxService.queryLatestSensorData();
       expect(result, isA<Success>());
@@ -161,6 +175,5 @@ void main() {
 
       verify(() => mockInfluxService.queryLatestSensorData()).called(1);
     });
-
   });
 }

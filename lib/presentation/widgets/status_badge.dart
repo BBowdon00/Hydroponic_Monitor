@@ -57,14 +57,20 @@ class StatusBadge extends StatelessWidget {
   _StatusConfig _getStatusConfig() {
     switch (status) {
       case DeviceStatus.online:
-        return const _StatusConfig(color: Colors.green, icon: Icons.check_circle);
+        return const _StatusConfig(
+          color: Colors.green,
+          icon: Icons.check_circle,
+        );
       case DeviceStatus.offline:
         return const _StatusConfig(
           color: Colors.grey,
           icon: Icons.radio_button_unchecked,
         );
       case DeviceStatus.pending:
-        return const _StatusConfig(color: Colors.orange, icon: Icons.hourglass_empty);
+        return const _StatusConfig(
+          color: Colors.orange,
+          icon: Icons.hourglass_empty,
+        );
       case DeviceStatus.error:
         return const _StatusConfig(color: Colors.red, icon: Icons.error);
       case DeviceStatus.stopped:

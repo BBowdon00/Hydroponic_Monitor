@@ -19,7 +19,7 @@ class TestDataGenerator {
     final type = sensorType ?? _randomSensorType();
     final id = sensorId ?? 'sensor_${type.name}_${_random.nextInt(1000)}';
     final time = timestamp ?? DateTime.now();
-    
+
     return SensorData(
       id: id,
       sensorType: type,
@@ -39,12 +39,15 @@ class TestDataGenerator {
     DateTime? startTime,
   }) {
     final intervalDuration = interval ?? const Duration(minutes: 5);
-    final start = startTime ?? DateTime.now().subtract(Duration(minutes: count * 5));
-    
+    final start =
+        startTime ?? DateTime.now().subtract(Duration(minutes: count * 5));
+
     return List.generate(count, (index) {
       return generateSensorData(
         sensorType: sensorType,
-        timestamp: start.add(Duration(milliseconds: intervalDuration.inMilliseconds * index)),
+        timestamp: start.add(
+          Duration(milliseconds: intervalDuration.inMilliseconds * index),
+        ),
       );
     });
   }
@@ -59,21 +62,23 @@ class TestDataGenerator {
   }) {
     final data = <SensorData>[];
     final id = sensorId ?? 'sensor_${sensorType.name}_001';
-    
+
     DateTime current = start;
     while (current.isBefore(end)) {
-      data.add(SensorData(
-        id: id,
-        sensorType: sensorType,
-        value: _generateRealisticValue(sensorType, current),
-        unit: sensorType.defaultUnit,
-        timestamp: current,
-        deviceId: 'device_001',
-        location: 'greenhouse_zone_1',
-      ));
+      data.add(
+        SensorData(
+          id: id,
+          sensorType: sensorType,
+          value: _generateRealisticValue(sensorType, current),
+          unit: sensorType.defaultUnit,
+          timestamp: current,
+          deviceId: 'device_001',
+          location: 'greenhouse_zone_1',
+        ),
+      );
       current = current.add(interval);
     }
-    
+
     return data;
   }
 
@@ -87,8 +92,10 @@ class TestDataGenerator {
     bool? isEnabled,
   }) {
     final deviceType = type ?? _randomDeviceType();
-    final deviceId = id ?? '${deviceType.name}_${_random.nextInt(1000).toString().padLeft(3, '0')}';
-    
+    final deviceId =
+        id ??
+        '${deviceType.name}_${_random.nextInt(1000).toString().padLeft(3, '0')}';
+
     return Device(
       id: deviceId,
       name: name ?? '${deviceType.displayName} ${deviceId.split('_').last}',
@@ -96,7 +103,9 @@ class TestDataGenerator {
       status: status ?? _randomDeviceStatus(),
       location: location ?? _randomLocation(),
       isEnabled: isEnabled ?? _random.nextBool(),
-      lastUpdate: DateTime.now().subtract(Duration(minutes: _random.nextInt(60))),
+      lastUpdate: DateTime.now().subtract(
+        Duration(minutes: _random.nextInt(60)),
+      ),
     );
   }
 
@@ -104,41 +113,42 @@ class TestDataGenerator {
   static double _generateRealisticValue(SensorType type, DateTime timestamp) {
     final hourOfDay = timestamp.hour;
     final baseRandom = _random.nextDouble();
-    
+
     switch (type) {
       case SensorType.temperature:
         // Temperature varies with time of day: 18-22°C at night, 22-28°C during day
         final baseTemp = 20.0 + (4.0 * sin((hourOfDay - 6) * pi / 12));
         return baseTemp + (baseRandom * 4.0 - 2.0); // ±2°C variation
-      
+
       case SensorType.humidity:
         // Humidity is inversely related to temperature: 60-80% generally
         final baseHumidity = 70.0 - (hourOfDay - 12).abs() * 0.8;
         return (baseHumidity + (baseRandom * 20.0 - 10.0)).clamp(40.0, 90.0);
-      
+
       case SensorType.waterLevel:
         // Water level decreases slowly during day, refilled periodically
         final baseLevel = 25.0 - (hourOfDay * 0.5);
         return (baseLevel + (baseRandom * 5.0 - 2.5)).clamp(5.0, 30.0);
-      
+
       case SensorType.pH:
         // pH stays relatively stable: 5.8-6.5 for hydroponics
         return 6.1 + (baseRandom * 0.8 - 0.4);
-      
+
       case SensorType.electricalConductivity:
         // EC varies with nutrient concentration: 800-1500 µS/cm
         return 1100.0 + (baseRandom * 400.0 - 200.0);
-      
+
       case SensorType.lightIntensity:
         // Light follows day/night cycle: 0 at night, up to 50000 lux during day
         if (hourOfDay < 6 || hourOfDay > 20) return baseRandom * 100; // Night
         final dayProgress = (hourOfDay - 6) / 14.0; // 6 AM to 8 PM
         final lightCurve = sin(dayProgress * pi);
         return lightCurve * 45000 + (baseRandom * 5000);
-      
+
       case SensorType.airQuality:
         // Air quality: lower ppm is better, varies during day
-        final basePPM = 400.0 + (hourOfDay > 12 ? 50.0 : 0.0); // Worse in afternoon
+        final basePPM =
+            400.0 + (hourOfDay > 12 ? 50.0 : 0.0); // Worse in afternoon
         return basePPM + (baseRandom * 100.0 - 50.0);
     }
   }
@@ -156,7 +166,12 @@ class TestDataGenerator {
   }
 
   static String _randomLocation() {
-    final zones = ['greenhouse_zone_1', 'greenhouse_zone_2', 'nursery', 'propagation_area'];
+    final zones = [
+      'greenhouse_zone_1',
+      'greenhouse_zone_2',
+      'nursery',
+      'propagation_area',
+    ];
     return zones[_random.nextInt(zones.length)];
   }
 
@@ -186,29 +201,33 @@ class TestMqttTopics {
   static const String sensorDataTopic = 'hydroponic/sensors/+/data';
   static const String deviceStatusTopic = 'hydroponic/devices/+/status';
   static const String deviceCommandTopic = 'hydroponic/devices/+/command';
-  
-  static String sensorDataTopicFor(String sensorId) => 'hydroponic/sensors/$sensorId/data';
-  static String deviceStatusTopicFor(String deviceId) => 'hydroponic/devices/$deviceId/status';
-  static String deviceCommandTopicFor(String deviceId) => 'hydroponic/devices/$deviceId/command';
+
+  static String sensorDataTopicFor(String sensorId) =>
+      'hydroponic/sensors/$sensorId/data';
+  static String deviceStatusTopicFor(String deviceId) =>
+      'hydroponic/devices/$deviceId/status';
+  static String deviceCommandTopicFor(String deviceId) =>
+      'hydroponic/devices/$deviceId/command';
 }
 
 /// Test configuration constants that can be overridden by environment variables.
 class TestConfig {
-  static String get testMqttHost => 
-    Platform.environment['MQTT_HOST'] ?? 'localhost';
-  
-  static int get testMqttPort => 
-    int.tryParse(Platform.environment['MQTT_PORT'] ?? '') ?? 1883;
-  
-  static String get testInfluxUrl => 
-    Platform.environment['INFLUX_URL'] ?? 'http://localhost:8086';
-  
-  static String get testInfluxToken => 
-    Platform.environment['INFLUX_TOKEN'] ?? 'test-token-for-integration-tests';
-  
-  static String get testInfluxOrg => 
-    Platform.environment['INFLUX_ORG'] ?? 'test-org';
-  
-  static String get testInfluxBucket => 
-    Platform.environment['INFLUX_BUCKET'] ?? 'test-bucket';
+  static String get testMqttHost =>
+      Platform.environment['MQTT_HOST'] ?? 'localhost';
+
+  static int get testMqttPort =>
+      int.tryParse(Platform.environment['MQTT_PORT'] ?? '') ?? 1883;
+
+  static String get testInfluxUrl =>
+      Platform.environment['INFLUX_URL'] ?? 'http://localhost:8086';
+
+  static String get testInfluxToken =>
+      Platform.environment['INFLUX_TOKEN'] ??
+      'test-token-for-integration-tests';
+
+  static String get testInfluxOrg =>
+      Platform.environment['INFLUX_ORG'] ?? 'test-org';
+
+  static String get testInfluxBucket =>
+      Platform.environment['INFLUX_BUCKET'] ?? 'test-bucket';
 }

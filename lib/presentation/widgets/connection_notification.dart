@@ -10,12 +10,16 @@ class ConnectionNotification extends ConsumerStatefulWidget {
   const ConnectionNotification({super.key});
 
   @override
-  ConsumerState<ConnectionNotification> createState() => _ConnectionNotificationState();
+  ConsumerState<ConnectionNotification> createState() =>
+      _ConnectionNotificationState();
 }
 
-class _ConnectionNotificationState extends ConsumerState<ConnectionNotification> {
+class _ConnectionNotificationState
+    extends ConsumerState<ConnectionNotification> {
   Timer? _timer;
-  Duration _currentUpdateInterval = const Duration(seconds: 1); // Start with 1 second
+  Duration _currentUpdateInterval = const Duration(
+    seconds: 1,
+  ); // Start with 1 second
   DateTime? _lastDisconnectionTime;
 
   @override
@@ -50,7 +54,7 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
     connectionStatusAsync.when(
       data: (status) {
         final currentDisconnectionTime = status.earliestDisconnection;
-        
+
         // Reset interval if disconnection time changed (new disconnection)
         if (_lastDisconnectionTime != currentDisconnectionTime) {
           _lastDisconnectionTime = currentDisconnectionTime;
@@ -61,8 +65,10 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
 
         // If still disconnected, apply exponential backoff
         if (currentDisconnectionTime != null) {
-          final disconnectedDuration = DateTime.now().difference(currentDisconnectionTime);
-          
+          final disconnectedDuration = DateTime.now().difference(
+            currentDisconnectionTime,
+          );
+
           Duration newInterval;
           // Exponential backoff: 5s → 10s → 30s → 60s (max)
           if (disconnectedDuration.inSeconds < 30) {
@@ -74,7 +80,7 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
           } else {
             newInterval = const Duration(minutes: 1);
           }
-          
+
           // Restart timer with new interval if it changed
           if (_currentUpdateInterval != newInterval) {
             _currentUpdateInterval = newInterval;
@@ -93,9 +99,9 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
   String _formatDurationForStatus(ConnectionStatus status) {
     final disconnectionTime = status.earliestDisconnection;
     if (disconnectionTime == null) return '';
-    
+
     final duration = DateTime.now().difference(disconnectionTime);
-    
+
     if (duration.inHours > 0) {
       return '${duration.inHours}h ${duration.inMinutes % 60}m ${duration.inSeconds % 60}s';
     } else if (duration.inMinutes > 0) {
@@ -116,17 +122,18 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
           return const SizedBox.shrink();
         }
 
-    // Build list of disconnected services
-    final disconnectedServices = <String>[];
-    if (!status.mqttConnected) disconnectedServices.add('MQTT');
-    if (!status.influxConnected) disconnectedServices.add('InfluxDB');
-    // TODO: add CameraServer status when available
-    
-    // Check if all services are disconnected
-    final allServicesDisconnected = !status.mqttConnected && !status.influxConnected;
-    final messageText = allServicesDisconnected
-      ? '' // No message when all services are disconnected
-      : '${disconnectedServices.join(', ')} disconnected';
+        // Build list of disconnected services
+        final disconnectedServices = <String>[];
+        if (!status.mqttConnected) disconnectedServices.add('MQTT');
+        if (!status.influxConnected) disconnectedServices.add('InfluxDB');
+        // TODO: add CameraServer status when available
+
+        // Check if all services are disconnected
+        final allServicesDisconnected =
+            !status.mqttConnected && !status.influxConnected;
+        final messageText = allServicesDisconnected
+            ? '' // No message when all services are disconnected
+            : '${disconnectedServices.join(', ')} disconnected';
 
         return Container(
           width: double.infinity,
@@ -140,7 +147,8 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
             child: Row(
               children: [
                 SizedBox(
-                  width: 80, // Fixed width to match timer area for perfect centering
+                  width:
+                      80, // Fixed width to match timer area for perfect centering
                   child: Row(
                     children: [
                       Icon(
@@ -157,10 +165,11 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
                       ? Center(
                           child: Text(
                             'Connection Lost',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Colors.red.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         )
                       : Column(
@@ -169,16 +178,16 @@ class _ConnectionNotificationState extends ConsumerState<ConnectionNotification>
                           children: [
                             Text(
                               'Connection Lost',
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                             Text(
                               messageText,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.red.shade600,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.red.shade600),
                             ),
                             // Here I would like to keep a timer of how long the services have been disconnected
                           ],

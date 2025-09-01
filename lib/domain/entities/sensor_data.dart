@@ -42,7 +42,8 @@ class SensorData {
       location.hashCode;
 
   @override
-  String toString() => 'SensorData(id: $id, type: $sensorType, value: $value$unit, timestamp: $timestamp)';
+  String toString() =>
+      'SensorData(id: $id, type: $sensorType, value: $value$unit, timestamp: $timestamp)';
 }
 
 /// Types of sensors supported by the system.

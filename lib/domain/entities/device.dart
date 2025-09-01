@@ -68,27 +68,15 @@ class Device {
       lastUpdate.hashCode;
 
   @override
-  String toString() => 'Device(id: $id, name: $name, type: $type, status: $status, enabled: $isEnabled)';
+  String toString() =>
+      'Device(id: $id, name: $name, type: $type, status: $status, enabled: $isEnabled)';
 }
 
 /// Types of devices in the hydroponic system.
-enum DeviceType {
-  pump,
-  fan,
-  heater,
-  light,
-  sensor,
-  controller,
-}
+enum DeviceType { pump, fan, heater, light, sensor, controller }
 
 /// Status of devices in the system.
-enum DeviceStatus {
-  online,
-  offline,
-  pending,
-  error,
-  stopped,
-}
+enum DeviceStatus { online, offline, pending, error, stopped }
 
 extension DeviceTypeExtension on DeviceType {
   String get displayName {

@@ -25,7 +25,8 @@ class InfluxDbService {
   InfluxDBClient? _client;
   WriteService? _writeApi;
   QueryService? _queryApi;
-  final StreamController<String> _connectionController = StreamController<String>.broadcast();
+  final StreamController<String> _connectionController =
+      StreamController<String>.broadcast();
 
   /// Stream of connection status changes.
   Stream<String> get connectionStream => _connectionController.stream;
@@ -80,7 +81,10 @@ class InfluxDbService {
       }
 
       await _writeApi!.write(point);
-      Logger.debug('Written sensor data to InfluxDB: ${data.id}', tag: 'InfluxDB');
+      Logger.debug(
+        'Written sensor data to InfluxDB: ${data.id}',
+        tag: 'InfluxDB',
+      );
 
       return Success(null);
     } catch (e) {
@@ -116,7 +120,10 @@ class InfluxDbService {
       }).toList();
 
       await _writeApi!.write(points); // list write supported
-      Logger.info('Written ${dataList.length} sensor data points to InfluxDB', tag: 'InfluxDB');
+      Logger.info(
+        'Written ${dataList.length} sensor data points to InfluxDB',
+        tag: 'InfluxDB',
+      );
 
       return Success(null);
     } catch (e) {
@@ -137,7 +144,10 @@ class InfluxDbService {
   }) async {
     try {
       // TODO: Replace dummy with Flux query via _queryApi
-      Logger.info('Querying sensor data from InfluxDB (returning dummy data)', tag: 'InfluxDB');
+      Logger.info(
+        'Querying sensor data from InfluxDB (returning dummy data)',
+        tag: 'InfluxDB',
+      );
       final dummyData = _generateDummySensorData(
         sensorType: sensorType,
         sensorId: sensorId,
@@ -160,7 +170,10 @@ class InfluxDbService {
       if (_queryApi == null) {
         return Failure(InfluxError('InfluxDB client not initialized'));
       }
-      Logger.info('Querying latest sensor data from InfluxDB (returning dummy data)', tag: 'InfluxDB');
+      Logger.info(
+        'Querying latest sensor data from InfluxDB (returning dummy data)',
+        tag: 'InfluxDB',
+      );
       final dummyData = SensorType.values.map((type) {
         return _generateSingleSensorData(
           type: type,
@@ -193,15 +206,19 @@ class InfluxDbService {
 
     for (int i = 0; i < limit; i++) {
       final timestamp = start.add(interval * i);
-      final type = sensorType ?? SensorType.values[random.nextInt(SensorType.values.length)];
+      final type =
+          sensorType ??
+          SensorType.values[random.nextInt(SensorType.values.length)];
       final id = sensorId ?? 'sensor_${type.name}_${random.nextInt(10)}';
 
-      data.add(_generateSingleSensorData(
-        type: type,
-        sensorId: id,
-        deviceId: deviceId,
-        timestamp: timestamp,
-      ));
+      data.add(
+        _generateSingleSensorData(
+          type: type,
+          sensorId: id,
+          deviceId: deviceId,
+          timestamp: timestamp,
+        ),
+      );
     }
 
     return data;
@@ -225,7 +242,10 @@ class InfluxDbService {
         value = baseTemp + variation + (random.nextDouble() - 0.5) * 2;
         break;
       case SensorType.humidity:
-        value = 60.0 + random.nextDouble() * 20 + sin(timestamp.hour * pi / 12) * 10;
+        value =
+            60.0 +
+            random.nextDouble() * 20 +
+            sin(timestamp.hour * pi / 12) * 10;
         value = value.clamp(30.0, 90.0).toDouble(); // <- cast to double
         break;
       case SensorType.pH:
@@ -233,7 +253,8 @@ class InfluxDbService {
         value = value.clamp(5.5, 7.5).toDouble(); // <- cast to double
         break;
       case SensorType.waterLevel:
-        value = 15.0 + random.nextDouble() * 10 + sin(timestamp.hour * pi / 6) * 3;
+        value =
+            15.0 + random.nextDouble() * 10 + sin(timestamp.hour * pi / 6) * 3;
         value = value.clamp(5.0, 30.0).toDouble(); // <- cast to double
         break;
       case SensorType.electricalConductivity:
@@ -271,7 +292,11 @@ class InfluxDbService {
       _client?.close();
       await _connectionController.close();
     } catch (e) {
-      Logger.error('Error closing InfluxDB client: $e', tag: 'InfluxDB', error: e);
+      Logger.error(
+        'Error closing InfluxDB client: $e',
+        tag: 'InfluxDB',
+        error: e,
+      );
     }
   }
 }

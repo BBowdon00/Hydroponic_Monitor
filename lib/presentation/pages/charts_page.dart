@@ -131,7 +131,9 @@ class ChartsPage extends ConsumerWidget {
             width: double.infinity,
             height: 200,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
+              ),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               border: Border.all(
                 color: theme.colorScheme.outline.withValues(alpha: 0.3),
@@ -145,7 +147,9 @@ class ChartsPage extends ConsumerWidget {
                   Icon(
                     Icons.show_chart,
                     size: 32,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.5,
+                    ),
                   ),
                   const SizedBox(height: AppTheme.spaceSm),
                   Text(

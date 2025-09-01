@@ -9,6 +9,7 @@ import 'package:hydroponic_monitor/core/errors.dart';
 import '../../test_utils.dart';
 
 class MockMqttService extends Mock implements MqttService {}
+
 class MockInfluxDbService extends Mock implements InfluxDbService {}
 
 void main() {
@@ -34,9 +35,15 @@ void main() {
 
     group('initialization', () {
       test('successful initialization of both services', () async {
-        when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-        when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-        when(() => mockMqttService.sensorDataStream).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockMqttService.connect(),
+        ).thenAnswer((_) async => const Success(null));
+        when(
+          () => mockInfluxService.initialize(),
+        ).thenAnswer((_) async => const Success(null));
+        when(
+          () => mockMqttService.sensorDataStream,
+        ).thenAnswer((_) => const Stream.empty());
 
         final result = await repository.initialize();
 
@@ -59,9 +66,12 @@ void main() {
       });
 
       test('fails when InfluxDB initialization fails', () async {
-        when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+        when(
+          () => mockMqttService.connect(),
+        ).thenAnswer((_) async => const Success(null));
         when(() => mockInfluxService.initialize()).thenAnswer(
-          (_) async => const Failure(InfluxError('InfluxDB initialization failed')),
+          (_) async =>
+              const Failure(InfluxError('InfluxDB initialization failed')),
         );
 
         final result = await repository.initialize();
@@ -80,17 +90,17 @@ void main() {
           sensorId: 'temp_001',
         );
 
-        when(() => mockMqttService.sensorDataStream).thenAnswer(
-          (_) => Stream.value(testData),
-        );
+        when(
+          () => mockMqttService.sensorDataStream,
+        ).thenAnswer((_) => Stream.value(testData));
 
         expect(repository.realTimeSensorData, emits(testData));
       });
 
       test('handles MQTT stream errors gracefully', () {
-        when(() => mockMqttService.sensorDataStream).thenAnswer(
-          (_) => Stream.error('MQTT stream error'),
-        );
+        when(
+          () => mockMqttService.sensorDataStream,
+        ).thenAnswer((_) => Stream.error('MQTT stream error'));
 
         expect(repository.realTimeSensorData, emitsError('MQTT stream error'));
       });
@@ -109,9 +119,9 @@ void main() {
           ),
         ];
 
-        when(() => mockInfluxService.queryLatestSensorData()).thenAnswer(
-          (_) async => Success(testData),
-        );
+        when(
+          () => mockInfluxService.queryLatestSensorData(),
+        ).thenAnswer((_) async => Success(testData));
 
         final result = await repository.getLatestReadings();
 
@@ -133,14 +143,16 @@ void main() {
           ),
         ];
 
-        when(() => mockInfluxService.querySensorData(
-              sensorType: any(named: 'sensorType'),
-              sensorId: any(named: 'sensorId'),
-              deviceId: any(named: 'deviceId'),
-              start: any(named: 'start'),
-              end: any(named: 'end'),
-              limit: any(named: 'limit'),
-            )).thenAnswer((_) async => Success(testData));
+        when(
+          () => mockInfluxService.querySensorData(
+            sensorType: any(named: 'sensorType'),
+            sensorId: any(named: 'sensorId'),
+            deviceId: any(named: 'deviceId'),
+            start: any(named: 'start'),
+            end: any(named: 'end'),
+            limit: any(named: 'limit'),
+          ),
+        ).thenAnswer((_) async => Success(testData));
 
         final result = await repository.getHistoricalData(
           sensorType: SensorType.temperature,
@@ -152,15 +164,17 @@ void main() {
 
         expect(result, isA<Success>());
         expect((result as Success).data, equals(testData));
-        
-        verify(() => mockInfluxService.querySensorData(
-              sensorType: SensorType.temperature,
-              sensorId: 'temp_001',
-              deviceId: null,
-              start: start,
-              end: end,
-              limit: 100,
-            )).called(1);
+
+        verify(
+          () => mockInfluxService.querySensorData(
+            sensorType: SensorType.temperature,
+            sensorId: 'temp_001',
+            deviceId: null,
+            start: start,
+            end: end,
+            limit: 100,
+          ),
+        ).called(1);
       });
 
       test('gets sensor type history', () async {
@@ -174,12 +188,14 @@ void main() {
           sensorId: 'temp_001',
         );
 
-        when(() => mockInfluxService.querySensorData(
-              sensorType: any(named: 'sensorType'),
-              start: any(named: 'start'),
-              end: any(named: 'end'),
-              limit: any(named: 'limit'),
-            )).thenAnswer((_) async => Success(testData));
+        when(
+          () => mockInfluxService.querySensorData(
+            sensorType: any(named: 'sensorType'),
+            start: any(named: 'start'),
+            end: any(named: 'end'),
+            limit: any(named: 'limit'),
+          ),
+        ).thenAnswer((_) async => Success(testData));
 
         final result = await repository.getSensorTypeHistory(
           SensorType.temperature,
@@ -203,9 +219,9 @@ void main() {
           timestamp: DateTime.now(),
         );
 
-        when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
-          (_) async => const Success(null),
-        );
+        when(
+          () => mockInfluxService.writeSensorData(any()),
+        ).thenAnswer((_) async => const Success(null));
 
         final result = await repository.storeSensorData(sensorData);
 
@@ -219,14 +235,16 @@ void main() {
           sensorType: SensorType.waterLevel,
         );
 
-        when(() => mockInfluxService.writeSensorDataBatch(any())).thenAnswer(
-          (_) async => const Success(null),
-        );
+        when(
+          () => mockInfluxService.writeSensorDataBatch(any()),
+        ).thenAnswer((_) async => const Success(null));
 
         final result = await repository.storeSensorDataBatch(batchData);
 
         expect(result, isA<Success>());
-        verify(() => mockInfluxService.writeSensorDataBatch(batchData)).called(1);
+        verify(
+          () => mockInfluxService.writeSensorDataBatch(batchData),
+        ).called(1);
       });
 
       test('handles storage errors', () async {
@@ -238,9 +256,9 @@ void main() {
           timestamp: DateTime.now(),
         );
 
-        when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
-          (_) async => const Failure(InfluxError('Storage failed')),
-        );
+        when(
+          () => mockInfluxService.writeSensorData(any()),
+        ).thenAnswer((_) async => const Failure(InfluxError('Storage failed')));
 
         final result = await repository.storeSensorData(sensorData);
 
@@ -250,38 +268,45 @@ void main() {
     });
 
     group('MQTT to InfluxDB data flow', () {
-      test('automatically stores MQTT data to InfluxDB on initialization', () async {
-        final testData = SensorData(
-          id: 'stream_sensor',
-          sensorType: SensorType.temperature,
-          value: 25.0,
-          unit: '°C',
-          timestamp: DateTime.now(),
-        );
+      test(
+        'automatically stores MQTT data to InfluxDB on initialization',
+        () async {
+          final testData = SensorData(
+            id: 'stream_sensor',
+            sensorType: SensorType.temperature,
+            value: 25.0,
+            unit: '°C',
+            timestamp: DateTime.now(),
+          );
 
-        // Set up successful initialization
-        when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-        when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-        
-        // Set up MQTT stream that emits test data
-        when(() => mockMqttService.sensorDataStream).thenAnswer(
-          (_) => Stream.value(testData),
-        );
-        
-        // Set up successful InfluxDB write
-        when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
-          (_) async => const Success(null),
-        );
+          // Set up successful initialization
+          when(
+            () => mockMqttService.connect(),
+          ).thenAnswer((_) async => const Success(null));
+          when(
+            () => mockInfluxService.initialize(),
+          ).thenAnswer((_) async => const Success(null));
 
-        // Initialize repository
-        await repository.initialize();
+          // Set up MQTT stream that emits test data
+          when(
+            () => mockMqttService.sensorDataStream,
+          ).thenAnswer((_) => Stream.value(testData));
 
-        // Wait for stream to be processed
-        await Future.delayed(const Duration(milliseconds: 100));
+          // Set up successful InfluxDB write
+          when(
+            () => mockInfluxService.writeSensorData(any()),
+          ).thenAnswer((_) async => const Success(null));
 
-        // Verify that MQTT data was written to InfluxDB
-        verify(() => mockInfluxService.writeSensorData(testData)).called(1);
-      });
+          // Initialize repository
+          await repository.initialize();
+
+          // Wait for stream to be processed
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // Verify that MQTT data was written to InfluxDB
+          verify(() => mockInfluxService.writeSensorData(testData)).called(1);
+        },
+      );
     });
 
     group('disposal', () {
@@ -296,7 +321,9 @@ void main() {
       });
 
       test('handles disposal errors gracefully', () async {
-        when(() => mockMqttService.disconnect()).thenThrow('MQTT disconnect error');
+        when(
+          () => mockMqttService.disconnect(),
+        ).thenThrow('MQTT disconnect error');
         when(() => mockInfluxService.close()).thenAnswer((_) async {});
 
         // Should not throw despite MQTT error
