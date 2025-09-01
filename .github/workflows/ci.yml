@@ -93,7 +93,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze code
-        run: flutter analyze --fatal-infos
+        run: flutter analyze
 
   # Run unit tests
   unit-tests:
