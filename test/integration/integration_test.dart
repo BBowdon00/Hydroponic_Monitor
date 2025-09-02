@@ -13,10 +13,10 @@ import '../test_utils.dart';
 
 /// Integration tests for the full MQTT → Telegraf → InfluxDB pipeline.
 ///
-/// These tests require the services to be running via docker-compose:
+/// These tests require the services to be running via Docker Compose:
 /// ```bash
 /// cd test/integration
-/// docker-compose up -d
+/// docker compose up -d
 /// ```
 void main() {
   group('MQTT → Telegraf → InfluxDB Integration', () {

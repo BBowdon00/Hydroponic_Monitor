@@ -63,7 +63,7 @@ jobs:
           git add .
           if ! git diff --staged --quiet; then
             git commit -m "🔧 Auto-format code with dart format [skip ci]"
-            git push
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
             echo "Code has been automatically formatted and committed"
           else
             echo "No formatting changes to commit"
