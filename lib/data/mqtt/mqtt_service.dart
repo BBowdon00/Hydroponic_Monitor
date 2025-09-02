@@ -190,9 +190,11 @@ class MqttService {
       try {
         if (topic.startsWith('grow/tent/') && topic.contains('/sensor/')) {
           _handleSensorData(topic, payload);
-        } else if (topic.startsWith('grow/tent/') && topic.contains('/actuator/')) {
+        } else if (topic.startsWith('grow/tent/') &&
+            topic.contains('/actuator/')) {
           _handleDeviceStatus(topic, payload);
-        } else if (topic.startsWith('grow/tent/') && topic.endsWith('/status')) {
+        } else if (topic.startsWith('grow/tent/') &&
+            topic.endsWith('/status')) {
           _handleNodeStatus(topic, payload);
         }
       } catch (e) {
@@ -212,9 +214,9 @@ class MqttService {
       // Topic format: grow/tent/node/sensor/type/id/state
       final parts = topic.split('/');
       if (parts.length >= 6) {
-        final node = parts[2];  // rpi, etc.
-        final type = parts[4];  // temperature, humidity, etc.
-        final id = parts[5];    // sensor id
+        final node = parts[2]; // rpi, etc.
+        final type = parts[4]; // temperature, humidity, etc.
+        final id = parts[5]; // sensor id
         final sensorId = '${node}_${type}_$id';
 
         // Generate dummy data for now since we're still using mock data
@@ -233,9 +235,9 @@ class MqttService {
       // Topic format: grow/tent/node/actuator/type/id/state
       final parts = topic.split('/');
       if (parts.length >= 6) {
-        final node = parts[2];  // rpi, pdu, etc.
-        final type = parts[4];  // pump, fan, light, etc.
-        final id = parts[5];    // device id
+        final node = parts[2]; // rpi, pdu, etc.
+        final type = parts[4]; // pump, fan, light, etc.
+        final id = parts[5]; // device id
         final deviceId = '${node}_${type}_$id';
 
         // Generate dummy device data for now
@@ -253,8 +255,8 @@ class MqttService {
       // Topic format: grow/tent/node/status
       final parts = topic.split('/');
       if (parts.length >= 4) {
-        final node = parts[2];  // rpi, pdu, etc.
-        
+        final node = parts[2]; // rpi, pdu, etc.
+
         Logger.info('Node $node status: $payload', tag: 'MQTT');
         // Could emit node status updates here if needed
       }

@@ -73,7 +73,11 @@ void main() {
         );
 
         // Publish sensor data to MQTT
-        final topic = TestMqttTopics.sensorDataTopicFor('rpi', 'temperature', '01');
+        final topic = TestMqttTopics.sensorDataTopicFor(
+          'rpi',
+          'temperature',
+          '01',
+        );
         final messageJson = _sensorDataToJson(testData);
 
         final builder = MqttClientPayloadBuilder();
@@ -118,7 +122,11 @@ void main() {
       // Publish all sensor types
       for (int i = 0; i < testDataList.length; i++) {
         final data = testDataList[i];
-        final topic = TestMqttTopics.sensorDataTopicFor('rpi', 'sensor', '${i + 1}');
+        final topic = TestMqttTopics.sensorDataTopicFor(
+          'rpi',
+          'sensor',
+          '${i + 1}',
+        );
         final messageJson = _sensorDataToJson(data);
 
         final builder = MqttClientPayloadBuilder();
@@ -173,25 +181,25 @@ void main() {
               'deviceId': testDevice.id,
               'timestamp': DateTime.now().toUtc().toIso8601String(),
               'level': 'high',
-            }
+            },
           },
           {
-            'topic': TestMqttTopics.deviceCommandTopicFor('rpi', 'light', '01'), 
+            'topic': TestMqttTopics.deviceCommandTopicFor('rpi', 'light', '01'),
             'command': {
               'command': 'set_brightness',
               'deviceId': 'integration_test_light_001',
               'timestamp': DateTime.now().toUtc().toIso8601String(),
               'brightness': 75,
-            }
+            },
           },
           {
             'topic': TestMqttTopics.deviceCommandTopicFor('rpi', 'fan', '01'),
             'command': {
               'command': 'set_speed',
-              'deviceId': 'integration_test_fan_001', 
+              'deviceId': 'integration_test_fan_001',
               'timestamp': DateTime.now().toUtc().toIso8601String(),
               'speed': 'medium',
-            }
+            },
           },
         ];
 
@@ -227,113 +235,103 @@ void main() {
       timeout: testTimeout,
     );
 
-    test(
-      'Actuator state reporting',
-      tags: ['integration'],
-      () async {
-        await mqttClient.connect();
+    test('Actuator state reporting', tags: ['integration'], () async {
+      await mqttClient.connect();
 
-        // Test actuator state messages for different device types
-        final actuatorStates = [
-          {
-            'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'pump', '01'),
-            'state': {
-              'ts': DateTime.now().toUtc().toIso8601String(),
-              'state': 1, // On
-              'power_W': 45.5,
-              'request_id': 'test_request_001',
-            }
+      // Test actuator state messages for different device types
+      final actuatorStates = [
+        {
+          'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'pump', '01'),
+          'state': {
+            'ts': DateTime.now().toUtc().toIso8601String(),
+            'state': 1, // On
+            'power_W': 45.5,
+            'request_id': 'test_request_001',
           },
-          {
-            'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'light', '01'),
-            'state': {
-              'ts': DateTime.now().toUtc().toIso8601String(),
-              'state': 1, // On
-              'level': 'bright',
-              'power_W': 120.0,
-            }
+        },
+        {
+          'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'light', '01'),
+          'state': {
+            'ts': DateTime.now().toUtc().toIso8601String(),
+            'state': 1, // On
+            'level': 'bright',
+            'power_W': 120.0,
           },
-          {
-            'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'fan', '01'),
-            'state': {
-              'ts': DateTime.now().toUtc().toIso8601String(),
-              'state': 0, // Off
-              'level': 'stopped',
-              'power_W': 0.0,
-            }
+        },
+        {
+          'topic': TestMqttTopics.deviceStatusTopicFor('rpi', 'fan', '01'),
+          'state': {
+            'ts': DateTime.now().toUtc().toIso8601String(),
+            'state': 0, // Off
+            'level': 'stopped',
+            'power_W': 0.0,
           },
-        ];
+        },
+      ];
 
-        // Publish all actuator states
-        for (final state in actuatorStates) {
-          final stateJson = json.encode(state['state']);
-          final builder = MqttClientPayloadBuilder();
-          builder.addString(stateJson);
+      // Publish all actuator states
+      for (final state in actuatorStates) {
+        final stateJson = json.encode(state['state']);
+        final builder = MqttClientPayloadBuilder();
+        builder.addString(stateJson);
 
-          mqttClient.publishMessage(
-            state['topic'] as String,
-            MqttQos.atLeastOnce,
-            builder.payload!,
-          );
-
-          print('Published actuator state to topic: ${state['topic']}');
-          print('State: $stateJson');
-
-          // Small delay between publishes
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-
-        // Wait for Telegraf to process and store in InfluxDB
-        await Future.delayed(const Duration(seconds: 30));
-
-        // Verify at least some actuator state data was stored
-        // This checks that the actuator input pipeline is working
-        final stored = await _queryInfluxForActuatorStates();
-        expect(
-          stored,
-          isTrue,
-          reason: 'Actuator state data should be stored in InfluxDB via Telegraf',
+        mqttClient.publishMessage(
+          state['topic'] as String,
+          MqttQos.atLeastOnce,
+          builder.payload!,
         );
-      },
-      timeout: testTimeout,
-    );
 
-    test(
-      'Node status reporting',
-      tags: ['integration'],
-      () async {
-        await mqttClient.connect();
+        print('Published actuator state to topic: ${state['topic']}');
+        print('State: $stateJson');
 
-        // Test node status messages
-        final statusMessages = ['ONLINE', 'OFFLINE', 'ONLINE'];
-        
-        for (final status in statusMessages) {
-          final topic = TestMqttTopics.nodeStatusTopicFor('rpi');
-          final builder = MqttClientPayloadBuilder();
-          builder.addString(status);
+        // Small delay between publishes
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
 
-          mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+      // Wait for Telegraf to process and store in InfluxDB
+      await Future.delayed(const Duration(seconds: 30));
 
-          print('Published node status to topic: $topic');
-          print('Status: $status');
+      // Verify at least some actuator state data was stored
+      // This checks that the actuator input pipeline is working
+      final stored = await _queryInfluxForActuatorStates();
+      expect(
+        stored,
+        isTrue,
+        reason: 'Actuator state data should be stored in InfluxDB via Telegraf',
+      );
+    }, timeout: testTimeout);
 
-          // Delay between status updates
-          await Future.delayed(const Duration(seconds: 5));
-        }
+    test('Node status reporting', tags: ['integration'], () async {
+      await mqttClient.connect();
 
-        // Wait for Telegraf to process
-        await Future.delayed(const Duration(seconds: 30));
+      // Test node status messages
+      final statusMessages = ['ONLINE', 'OFFLINE', 'ONLINE'];
 
-        // Verify node status data was stored
-        final stored = await _queryInfluxForNodeStatus();
-        expect(
-          stored,
-          isTrue,
-          reason: 'Node status data should be stored in InfluxDB via Telegraf',
-        );
-      },
-      timeout: testTimeout,
-    );
+      for (final status in statusMessages) {
+        final topic = TestMqttTopics.nodeStatusTopicFor('rpi');
+        final builder = MqttClientPayloadBuilder();
+        builder.addString(status);
+
+        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+
+        print('Published node status to topic: $topic');
+        print('Status: $status');
+
+        // Delay between status updates
+        await Future.delayed(const Duration(seconds: 5));
+      }
+
+      // Wait for Telegraf to process
+      await Future.delayed(const Duration(seconds: 30));
+
+      // Verify node status data was stored
+      final stored = await _queryInfluxForNodeStatus();
+      expect(
+        stored,
+        isTrue,
+        reason: 'Node status data should be stored in InfluxDB via Telegraf',
+      );
+    }, timeout: testTimeout);
 
     test(
       'Comprehensive sensor type coverage',
@@ -343,22 +341,26 @@ void main() {
 
         // Test all available sensor types with realistic data
         final comprehensiveTestData = <SensorData>[];
-        
+
         for (final sensorType in SensorType.values) {
           // Generate multiple readings per sensor type
           for (int i = 1; i <= 3; i++) {
             comprehensiveTestData.add(
               TestDataGenerator.generateSensorData(
                 sensorType: sensorType,
-                sensorId: 'comprehensive_${sensorType.name}_${i.toString().padLeft(2, '0')}',
-                deviceId: 'comprehensive_device_${i.toString().padLeft(2, '0')}',
+                sensorId:
+                    'comprehensive_${sensorType.name}_${i.toString().padLeft(2, '0')}',
+                deviceId:
+                    'comprehensive_device_${i.toString().padLeft(2, '0')}',
                 location: 'comprehensive_test_zone',
               ),
             );
           }
         }
 
-        print('Publishing ${comprehensiveTestData.length} comprehensive sensor readings...');
+        print(
+          'Publishing ${comprehensiveTestData.length} comprehensive sensor readings...',
+        );
 
         // Publish all sensor data
         for (int i = 0; i < comprehensiveTestData.length; i++) {
@@ -373,7 +375,11 @@ void main() {
           final builder = MqttClientPayloadBuilder();
           builder.addString(messageJson);
 
-          mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+          mqttClient.publishMessage(
+            topic,
+            MqttQos.atLeastOnce,
+            builder.payload!,
+          );
 
           // Small delay between publishes to avoid overwhelming the system
           await Future.delayed(const Duration(milliseconds: 200));
@@ -395,15 +401,20 @@ void main() {
         }
 
         final successRate = storedCount / comprehensiveTestData.length;
-        print('Stored $storedCount/${comprehensiveTestData.length} sensor readings (${(successRate * 100).toStringAsFixed(1)}%)');
+        print(
+          'Stored $storedCount/${comprehensiveTestData.length} sensor readings (${(successRate * 100).toStringAsFixed(1)}%)',
+        );
 
         expect(
           successRate,
           greaterThanOrEqualTo(0.7), // At least 70% success rate
-          reason: 'At least 70% of comprehensive sensor data should be stored successfully',
+          reason:
+              'At least 70% of comprehensive sensor data should be stored successfully',
         );
       },
-      timeout: Timeout(Duration(minutes: 5)), // Longer timeout for comprehensive test
+      timeout: Timeout(
+        Duration(minutes: 5),
+      ), // Longer timeout for comprehensive test
     );
   });
 }
@@ -546,7 +557,9 @@ from(bucket: "${TestConfig.testInfluxBucket}")
       // Check if we have any actuator state records
       return csvData.contains('_value') && !csvData.contains(',0,');
     } else {
-      print('InfluxDB actuator query failed with status: ${response.statusCode}');
+      print(
+        'InfluxDB actuator query failed with status: ${response.statusCode}',
+      );
       print('Response body: ${response.body}');
       return false;
     }
@@ -587,7 +600,9 @@ from(bucket: "${TestConfig.testInfluxBucket}")
       // Check if we have any node status records
       return csvData.contains('_value') && !csvData.contains(',0,');
     } else {
-      print('InfluxDB node status query failed with status: ${response.statusCode}');
+      print(
+        'InfluxDB node status query failed with status: ${response.statusCode}',
+      );
       print('Response body: ${response.body}');
       return false;
     }

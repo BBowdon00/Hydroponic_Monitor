@@ -11,7 +11,11 @@ import '../test_utils.dart';
 void main() {
   group('MQTT Topic Structure', () {
     test('should generate correct sensor topic paths', () {
-      final topic = TestMqttTopics.sensorDataTopicFor('rpi', 'temperature', '01');
+      final topic = TestMqttTopics.sensorDataTopicFor(
+        'rpi',
+        'temperature',
+        '01',
+      );
       expect(topic, equals('grow/tent/rpi/sensor/temperature/01/state'));
     });
 
@@ -31,7 +35,11 @@ void main() {
     });
 
     test('should handle special characters in node names', () {
-      final topic = TestMqttTopics.sensorDataTopicFor('rpi-node_01', 'ph', '01');
+      final topic = TestMqttTopics.sensorDataTopicFor(
+        'rpi-node_01',
+        'ph',
+        '01',
+      );
       expect(topic, equals('grow/tent/rpi-node_01/sensor/ph/01/state'));
     });
   });
@@ -78,7 +86,7 @@ void main() {
         sensorType: SensorType.lightIntensity,
         timestamp: DateTime(2025, 1, 15, 14, 0), // 2 PM
       );
-      
+
       // Test nighttime reading
       final nightData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.lightIntensity,
@@ -103,7 +111,7 @@ void main() {
       );
 
       expect(data.length, equals(12)); // 12 hours worth of data
-      
+
       // Check intervals
       for (int i = 1; i < data.length; i++) {
         final timeDiff = data[i].timestamp.difference(data[i - 1].timestamp);
@@ -126,20 +134,20 @@ void main() {
         id: 'pump_001',
         type: DeviceType.pump,
       );
-      
+
       expect(device.name, contains('001'));
       expect(device.id, equals('pump_001'));
     });
 
     test('should handle all device statuses', () {
       final statuses = <DeviceStatus>{};
-      
+
       // Generate many devices to test randomness
       for (int i = 0; i < 100; i++) {
         final device = TestDataGenerator.generateDevice();
         statuses.add(device.status);
       }
-      
+
       // Should see multiple different statuses
       expect(statuses.length, greaterThan(1));
     });
@@ -165,7 +173,7 @@ void main() {
       expect(parsed['value'], isA<double>());
       expect(parsed['unit'], equals(sensorData.unit));
       expect(parsed['accuracy'], equals(0.1));
-      
+
       // Verify timestamp format
       final timestamp = DateTime.parse(parsed['ts']);
       expect(timestamp.isUtc, isTrue);
@@ -209,7 +217,7 @@ void main() {
       final tempData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.temperature,
       );
-      
+
       // Temperature should be in reasonable range for hydroponics
       expect(tempData.value, greaterThanOrEqualTo(10.0));
       expect(tempData.value, lessThanOrEqualTo(40.0));
@@ -219,7 +227,7 @@ void main() {
       final phData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.pH,
       );
-      
+
       // pH should be in hydroponic range
       expect(phData.value, greaterThanOrEqualTo(5.0));
       expect(phData.value, lessThanOrEqualTo(7.5));
@@ -229,7 +237,7 @@ void main() {
       final ecData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.electricalConductivity,
       );
-      
+
       // EC should be in reasonable range for nutrient solutions
       expect(ecData.value, greaterThanOrEqualTo(500.0));
       expect(ecData.value, lessThanOrEqualTo(2000.0));
@@ -239,7 +247,7 @@ void main() {
       final waterData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.waterLevel,
       );
-      
+
       // Water level should be percentage-like
       expect(waterData.value, greaterThanOrEqualTo(0.0));
       expect(waterData.value, lessThanOrEqualTo(100.0));
@@ -255,12 +263,12 @@ void main() {
       );
 
       expect(batch.length, equals(10));
-      
+
       // All should be humidity sensors
       for (final data in batch) {
         expect(data.sensorType, equals(SensorType.humidity));
       }
-      
+
       // Check time intervals
       for (int i = 1; i < batch.length; i++) {
         final timeDiff = batch[i].timestamp.difference(batch[i - 1].timestamp);
@@ -270,7 +278,7 @@ void main() {
 
     test('should generate diverse sensor types when not specified', () {
       final batch = TestDataGenerator.generateSensorDataBatch(count: 20);
-      
+
       final sensorTypes = batch.map((data) => data.sensorType).toSet();
       expect(sensorTypes.length, greaterThan(1)); // Should have variety
     });
@@ -281,7 +289,7 @@ void main() {
       final futureData = TestDataGenerator.generateSensorData(
         timestamp: DateTime(2030, 12, 31, 23, 59, 59),
       );
-      
+
       final pastData = TestDataGenerator.generateSensorData(
         timestamp: DateTime(2020, 1, 1, 0, 0, 0),
       );
@@ -310,29 +318,35 @@ void main() {
   group('Performance Tests', () {
     test('should generate large batches efficiently', () {
       final stopwatch = Stopwatch()..start();
-      
+
       final largeBatch = TestDataGenerator.generateSensorDataBatch(count: 1000);
-      
+
       stopwatch.stop();
-      
+
       expect(largeBatch.length, equals(1000));
       expect(stopwatch.elapsedMilliseconds, lessThan(1000)); // Should be fast
     });
 
     test('should generate historical data efficiently', () {
       final stopwatch = Stopwatch()..start();
-      
+
       final historicalData = TestDataGenerator.generateHistoricalData(
         sensorType: SensorType.temperature,
         start: DateTime.now().subtract(Duration(days: 7)),
         end: DateTime.now(),
         interval: Duration(minutes: 15),
       );
-      
+
       stopwatch.stop();
-      
-      expect(historicalData.length, greaterThan(500)); // Week of 15-min intervals
-      expect(stopwatch.elapsedMilliseconds, lessThan(2000)); // Should be reasonably fast
+
+      expect(
+        historicalData.length,
+        greaterThan(500),
+      ); // Week of 15-min intervals
+      expect(
+        stopwatch.elapsedMilliseconds,
+        lessThan(2000),
+      ); // Should be reasonably fast
     });
   });
 }

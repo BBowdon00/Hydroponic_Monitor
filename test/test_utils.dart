@@ -209,8 +209,7 @@ class TestMqttTopics {
       'grow/tent/$node/actuator/$type/$id/state';
   static String deviceCommandTopicFor(String node, String type, String id) =>
       'grow/tent/$node/actuator/$type/$id/set';
-  static String nodeStatusTopicFor(String node) =>
-      'grow/tent/$node/status';
+  static String nodeStatusTopicFor(String node) => 'grow/tent/$node/status';
 }
 
 /// Test configuration constants that can be overridden by environment variables.
