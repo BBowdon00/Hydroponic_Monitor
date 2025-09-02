@@ -1,0 +1,38 @@
+# --- MQTT -> Node Status (ONLINE/OFFLINE -> 1/0 -> node_status) ---
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://mosquitto:1883"]
+  # Support both authenticated and anonymous access for test environments
+  username = "${MQTT_PASS:+telegraf}"  # Only set username if MQTT_PASS is not empty
+  password = "$MQTT_PASS"
+  topics  = ["grow/tent/+/status"]
+  qos = 1
+  client_id = "telegraf-grow-status"
+  data_format = "value"
+  data_type   = "string"
+
+  [[inputs.mqtt_consumer.topic_parsing]]
+    topic = "grow/!scope/!node/status"
+    tags  = ["scope","node"]
+
+# Map to numeric
+[[processors.enum]]
+  namepass = ["mqtt_consumer"]
+  [[processors.enum.mapping]]
+    field = "value"
+    dest  = "online"
+    default = 0
+    [processors.enum.mapping.value_mappings]
+      ONLINE  = 1
+      OFFLINE = 0
+
+# Rename measurement for clarity
+[[processors.rename]]
+  namepass = ["mqtt_consumer"]
+  [[processors.rename.replace]]
+    measurement = "node_status"
+
+# Coerce online to integer (optional; enum already emits int)
+[[processors.converter]]
+  namepass = ["node_status"]
+  [processors.converter.fields]
+    integer = ["online"]

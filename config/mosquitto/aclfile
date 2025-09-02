@@ -1,0 +1,16 @@
+# Telegraf (read-only all telemetry/state/status)
+user telegraf
+topic read grow/tent/#
+
+# Example device nodes: each device authenticates as its own username (recommended)
+# If you want per-device isolation, add `user rpi`, `user pdu-01`, etc. with patterns:
+# pattern write grow/tent/%u/sensor/+/+/state
+# pattern write grow/tent/%u/actuator/+/+/state
+# pattern write grow/tent/%u/status
+# pattern read  grow/tent/%u/actuator/+/+/set
+
+# Controller user can issue commands and read states (create in passwords file)
+user controller
+topic read  grow/tent/+/actuator/+/+/state
+topic read  grow/tent/+/status
+topic write grow/tent/+/actuator/+/+/set

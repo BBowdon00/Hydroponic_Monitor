@@ -198,16 +198,19 @@ class TestDataGenerator {
 
 /// MQTT topic patterns for testing.
 class TestMqttTopics {
-  static const String sensorDataTopic = 'hydroponic/sensors/+/data';
-  static const String deviceStatusTopic = 'hydroponic/devices/+/status';
-  static const String deviceCommandTopic = 'hydroponic/devices/+/command';
+  static const String sensorDataTopic = 'grow/tent/+/sensor/+/+/state';
+  static const String deviceStatusTopic = 'grow/tent/+/actuator/+/+/state';
+  static const String deviceCommandTopic = 'grow/tent/+/actuator/+/+/set';
+  static const String nodeStatusTopic = 'grow/tent/+/status';
 
-  static String sensorDataTopicFor(String sensorId) =>
-      'hydroponic/sensors/$sensorId/data';
-  static String deviceStatusTopicFor(String deviceId) =>
-      'hydroponic/devices/$deviceId/status';
-  static String deviceCommandTopicFor(String deviceId) =>
-      'hydroponic/devices/$deviceId/command';
+  static String sensorDataTopicFor(String node, String type, String id) =>
+      'grow/tent/$node/sensor/$type/$id/state';
+  static String deviceStatusTopicFor(String node, String type, String id) =>
+      'grow/tent/$node/actuator/$type/$id/state';
+  static String deviceCommandTopicFor(String node, String type, String id) =>
+      'grow/tent/$node/actuator/$type/$id/set';
+  static String nodeStatusTopicFor(String node) =>
+      'grow/tent/$node/status';
 }
 
 /// Test configuration constants that can be overridden by environment variables.

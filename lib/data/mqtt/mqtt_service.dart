@@ -68,15 +68,15 @@ class MqttService {
         _client!.connectionMessage = MqttConnectMessage()
             .withClientIdentifier(clientId)
             .authenticateAs(username!, password!)
-            .withWillTopic('hydroponic/status/$clientId')
-            .withWillMessage('offline')
+            .withWillTopic('grow/tent/app/status')
+            .withWillMessage('OFFLINE')
             .startClean()
             .withWillQos(MqttQos.atLeastOnce);
       } else {
         _client!.connectionMessage = MqttConnectMessage()
             .withClientIdentifier(clientId)
-            .withWillTopic('hydroponic/status/$clientId')
-            .withWillMessage('offline')
+            .withWillTopic('grow/tent/app/status')
+            .withWillMessage('OFFLINE')
             .startClean()
             .withWillQos(MqttQos.atLeastOnce);
       }
@@ -121,13 +121,22 @@ class MqttService {
     String deviceId,
     String command, {
     Map<String, dynamic>? parameters,
+    String scope = 'tent',
+    String deviceType = 'actuator',
   }) async {
     try {
       if (_client?.connectionStatus?.toString() != 'connected') {
         return const Failure(MqttError('Not connected to MQTT broker'));
       }
 
-      final topic = 'hydroponic/devices/$deviceId/command';
+      // Extract device components for new topic structure
+      // deviceId format: node_type_id (e.g., "rpi_pump_01")
+      final parts = deviceId.split('_');
+      final node = parts.isNotEmpty ? parts[0] : 'unknown';
+      final type = parts.length > 1 ? parts[1] : 'device';
+      final id = parts.length > 2 ? parts[2] : '01';
+
+      final topic = 'grow/$scope/$node/$deviceType/$type/$id/set';
       final payload = {
         'command': command,
         'timestamp': DateTime.now().toIso8601String(),
@@ -140,7 +149,7 @@ class MqttService {
 
       _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
       Logger.info(
-        'Published command to device $deviceId: $command',
+        'Published command to device $deviceId on topic $topic: $command',
         tag: 'MQTT',
       );
 
@@ -157,9 +166,9 @@ class MqttService {
     if (_client?.connectionStatus?.toString() != 'connected') return;
 
     final topics = [
-      'hydroponic/sensors/+/data',
-      'hydroponic/devices/+/status',
-      'hydroponic/system/status',
+      'grow/tent/+/sensor/+/+/state',
+      'grow/tent/+/actuator/+/+/state',
+      'grow/tent/+/status',
     ];
 
     for (final topic in topics) {
@@ -179,10 +188,12 @@ class MqttService {
       Logger.debug('Received message on topic $topic: $payload', tag: 'MQTT');
 
       try {
-        if (topic.startsWith('hydroponic/sensors/')) {
+        if (topic.startsWith('grow/tent/') && topic.contains('/sensor/')) {
           _handleSensorData(topic, payload);
-        } else if (topic.startsWith('hydroponic/devices/')) {
+        } else if (topic.startsWith('grow/tent/') && topic.contains('/actuator/')) {
           _handleDeviceStatus(topic, payload);
+        } else if (topic.startsWith('grow/tent/') && topic.endsWith('/status')) {
+          _handleNodeStatus(topic, payload);
         }
       } catch (e) {
         Logger.error(
@@ -198,11 +209,18 @@ class MqttService {
   void _handleSensorData(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      final sensorId = topic.split('/')[2]; // Extract sensor ID from topic
+      // Topic format: grow/tent/node/sensor/type/id/state
+      final parts = topic.split('/');
+      if (parts.length >= 6) {
+        final node = parts[2];  // rpi, etc.
+        final type = parts[4];  // temperature, humidity, etc.
+        final id = parts[5];    // sensor id
+        final sensorId = '${node}_${type}_$id';
 
-      // Generate dummy data for now since we're still using mock data
-      final sensorData = _generateDummySensorData(sensorId, data);
-      _sensorDataController.add(sensorData);
+        // Generate dummy data for now since we're still using mock data
+        final sensorData = _generateDummySensorData(sensorId, data);
+        _sensorDataController.add(sensorData);
+      }
     } catch (e) {
       Logger.error('Error parsing sensor data: $e', tag: 'MQTT', error: e);
     }
@@ -212,13 +230,36 @@ class MqttService {
   void _handleDeviceStatus(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      final deviceId = topic.split('/')[2]; // Extract device ID from topic
+      // Topic format: grow/tent/node/actuator/type/id/state
+      final parts = topic.split('/');
+      if (parts.length >= 6) {
+        final node = parts[2];  // rpi, pdu, etc.
+        final type = parts[4];  // pump, fan, light, etc.
+        final id = parts[5];    // device id
+        final deviceId = '${node}_${type}_$id';
 
-      // Generate dummy device data for now
-      final device = _generateDummyDevice(deviceId, data);
-      _deviceStatusController.add(device);
+        // Generate dummy device data for now
+        final device = _generateDummyDevice(deviceId, data);
+        _deviceStatusController.add(device);
+      }
     } catch (e) {
       Logger.error('Error parsing device status: $e', tag: 'MQTT', error: e);
+    }
+  }
+
+  /// Handle node status messages.
+  void _handleNodeStatus(String topic, String payload) {
+    try {
+      // Topic format: grow/tent/node/status
+      final parts = topic.split('/');
+      if (parts.length >= 4) {
+        final node = parts[2];  // rpi, pdu, etc.
+        
+        Logger.info('Node $node status: $payload', tag: 'MQTT');
+        // Could emit node status updates here if needed
+      }
+    } catch (e) {
+      Logger.error('Error parsing node status: $e', tag: 'MQTT', error: e);
     }
   }
 
