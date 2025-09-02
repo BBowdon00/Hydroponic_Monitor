@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Wait until InfluxDB is up
-until curl -sf http://localhost:8086/health >/dev/null; do
+until curl -sf http://localhost:9999/health >/dev/null; do
   echo "Waiting for InfluxDB..."
   sleep 2
 done
