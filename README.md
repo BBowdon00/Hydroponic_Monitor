@@ -1,3 +1,4 @@
+[![CI/CD Pipeline](https://github.com/BBowdon00/Hydroponic_Monitor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BBowdon00/Hydroponic_Monitor/actions/workflows/ci.yml)
 # hydroponic_monitor
 
 A new Flutter project.
