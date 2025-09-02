@@ -73,7 +73,7 @@ void main() {
         );
 
         // Publish sensor data to MQTT
-        final topic = TestMqttTopics.sensorDataTopicFor(testData.id);
+        final topic = TestMqttTopics.sensorDataTopicFor('rpi', 'temperature', '01');
         final messageJson = _sensorDataToJson(testData);
 
         final builder = MqttClientPayloadBuilder();
@@ -116,8 +116,9 @@ void main() {
       await mqttClient.connect();
 
       // Publish all sensor types
-      for (final data in testDataList) {
-        final topic = TestMqttTopics.sensorDataTopicFor(data.id);
+      for (int i = 0; i < testDataList.length; i++) {
+        final data = testDataList[i];
+        final topic = TestMqttTopics.sensorDataTopicFor('rpi', 'sensor', '${i + 1}');
         final messageJson = _sensorDataToJson(data);
 
         final builder = MqttClientPayloadBuilder();
@@ -164,7 +165,7 @@ void main() {
         await mqttClient.connect();
 
         // Publish device command (devices only receive commands, don't publish status)
-        final topic = TestMqttTopics.deviceCommandTopicFor(testDevice.id);
+        final topic = TestMqttTopics.deviceCommandTopicFor('rpi', 'pump', '01');
         final commandJson = json.encode({
           'command': 'turn_on',
           'deviceId': testDevice.id,

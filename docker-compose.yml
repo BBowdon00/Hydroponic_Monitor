@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # InfluxDB for time-series data storage
+  influxdb:
+    image: influxdb:2.7
+    container_name: hydroponic_influxdb
+    ports:
+      - "${INFLUX_PORT:-8086}:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUX_ADMIN_USER:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_ADMIN_PASSWORD:-password123}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG:-hydroponic-org}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUX_BUCKET:-grow_raw}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_ADMIN_TOKEN:-hydroponic-admin-token}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+      - ./config/influxdb/init-buckets.sh:/docker-entrypoint-initdb.d/init-buckets.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # MQTT broker (Mosquitto) with authentication
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: hydroponic_mosquitto
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+      - "${MQTT_WS_PORT:-9001}:9001"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+      - ./config/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./config/mosquitto/passwords:/mosquitto/config/passwords:ro
+      - ./config/mosquitto/aclfile:/mosquitto/config/aclfile:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-p", "1883", "-u", "controller", "-P", "${MQTT_CONTROLLER_PASSWORD:-controller123}", "-t", "health", "-m", "check"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Telegraf for data collection and forwarding
+  telegraf:
+    image: telegraf:1.30-alpine
+    container_name: hydroponic_telegraf
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    volumes:
+      - ./config/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./config/telegraf/telegraf.d:/etc/telegraf/telegraf.d:ro
+    environment:
+      - INFLUX_TOKEN=${INFLUX_ADMIN_TOKEN:-hydroponic-admin-token}
+      - INFLUX_ORG=${INFLUX_ORG:-hydroponic-org}
+      - INFLUX_URL=http://influxdb:8086
+      - MQTT_PASS=${MQTT_TELEGRAF_PASSWORD:-telegraf123}
+    healthcheck:
+      test: ["CMD", "telegraf", "--config", "/etc/telegraf/telegraf.conf", "--test"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  influxdb_data:
+    driver: local
+  influxdb_config:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
+    driver: local
+
+networks:
+  default:
+    name: hydroponic_network

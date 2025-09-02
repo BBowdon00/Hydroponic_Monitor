@@ -14,13 +14,15 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=test-token-for-integration-tests
     volumes:
       - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+      - ../../config/influxdb/init-buckets.sh:/docker-entrypoint-initdb.d/init-buckets.sh:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # MQTT broker (Mosquitto)
+  # MQTT broker (Mosquitto) - Test mode with anonymous access for backward compatibility
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: hydroponic_test_mosquitto
@@ -28,8 +30,10 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./mosquitto_passwd:/mosquitto/config/mosquitto_passwd
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto_passwd:/mosquitto/config/mosquitto_passwd:ro
     healthcheck:
       test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "health", "-m", "check"]
       interval: 30s
@@ -63,3 +67,10 @@ services:
 
 volumes:
   influxdb_data:
+    driver: local
+  influxdb_config:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
+    driver: local

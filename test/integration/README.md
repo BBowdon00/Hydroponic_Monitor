@@ -65,31 +65,52 @@ The integration tests cover:
 
 ## Test Data Format
 
-### Sensor Data (MQTT Topic: `hydroponic/sensors/{sensor_id}/data`)
+### Sensor Data (MQTT Topic: `grow/tent/{node}/sensor/{type}/{id}/state`)
 ```json
 {
-  "id": "sensor_temp_001",
-  "sensorType": "temperature",
+  "ts": "2024-01-01T12:00:00Z",
   "value": 25.5,
   "unit": "°C",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "deviceId": "device_001",
-  "location": "greenhouse_zone_1"
+  "accuracy": 0.1
 }
 ```
 
-### Device Status (MQTT Topic: `hydroponic/devices/{device_id}/status`)
+Topic example: `grow/tent/rpi/sensor/temperature/01/state`
+
+### Actuator State (MQTT Topic: `grow/tent/{node}/actuator/{type}/{id}/state`)
 ```json
 {
-  "id": "pump_001",
-  "name": "Main Water Pump",
-  "type": "pump",
-  "status": "online",
-  "isEnabled": true,
-  "location": "pump_house",
-  "lastUpdate": "2024-01-01T12:00:00Z"
+  "ts": "2024-01-01T12:00:00Z",
+  "state": 1,
+  "level": "high",
+  "power_W": 50.0,
+  "request_id": "req_001"
 }
 ```
+
+Topic example: `grow/tent/rpi/actuator/pump/01/state`
+
+### Device Commands (MQTT Topic: `grow/tent/{node}/actuator/{type}/{id}/set`)
+```json
+{
+  "command": "turn_on",
+  "level": "medium",
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+```
+
+Topic example: `grow/tent/rpi/actuator/pump/01/set`
+
+### Node Status (MQTT Topic: `grow/tent/{node}/status`)
+```
+ONLINE
+```
+or
+```
+OFFLINE
+```
+
+Topic example: `grow/tent/rpi/status`
 
 ## Configuration
 

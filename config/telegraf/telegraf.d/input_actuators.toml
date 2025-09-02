@@ -1,0 +1,27 @@
+# --- MQTT -> Actuator State (numeric 1/0) ---
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://mosquitto:1883"]
+  username = "telegraf"
+  password = "$MQTT_PASS"
+  topics  = ["grow/tent/+/actuator/+/+/state"]
+  qos = 1
+  persistent_session = true
+  client_id = "telegraf-grow-actuators"
+  data_format = "json_v2"
+
+  [[inputs.mqtt_consumer.json_v2]]
+    measurement_name = "actuator_state"
+    [[inputs.mqtt_consumer.json_v2.object]]
+      path = ""
+      timestamp_path   = "ts"
+      timestamp_format = "2006-01-02T15:04:05Z07:00"
+      fields = [
+        { path = "state",       type = "int"    },  # 1/0 numeric
+        { path = "level",       type = "string", optional = true },
+        { path = "power_W",     type = "float",  optional = true },
+        { path = "request_id",  type = "string", optional = true }
+      ]
+
+  [[inputs.mqtt_consumer.topic_parsing]]
+    topic = "grow/!scope/!node/actuator/!type/!id/state"
+    tags  = ["scope","node","type","id"]
