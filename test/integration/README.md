@@ -39,9 +39,9 @@ The integration tests spin up the following services using Docker Compose:
 ```bash
 # Start services
 cd test/integration
-docker-compose up -d
+docker compose up -d
 
-# Wait for services to be healthy (check with docker-compose ps)
+# Wait for services to be healthy (check with docker compose ps)
 # Services typically take 30-60 seconds to be ready
 
 # Run tests from project root
@@ -50,7 +50,7 @@ flutter test test/integration/
 
 # Clean up
 cd test/integration
-docker-compose down
+docker compose down
 ```
 
 ## Test Coverage
@@ -110,11 +110,11 @@ The integration tests cover:
 ```bash
 # Check service logs
 cd test/integration
-docker-compose logs
+docker compose logs
 
 # Restart services
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ### Port conflicts
@@ -126,12 +126,12 @@ Stop the conflicting services or modify the ports in `docker-compose.yml`.
 
 ### Tests timing out
 Integration tests have a 3-minute timeout per test. If tests are timing out:
-1. Check that all services are healthy: `docker-compose ps`
-2. Verify network connectivity: `docker-compose logs telegraf`
-3. Check InfluxDB is accepting data: `docker-compose logs influxdb`
+1. Check that all services are healthy: `docker compose ps`
+2. Verify network connectivity: `docker compose logs telegraf`
+3. Check InfluxDB is accepting data: `docker compose logs influxdb`
 
 ### Data not appearing in InfluxDB
-1. Check Telegraf logs: `docker-compose logs telegraf`
+1. Check Telegraf logs: `docker compose logs telegraf`
 2. Verify MQTT messages are being published (check Mosquitto logs)
 3. Ensure InfluxDB bucket and token are correct
 
@@ -155,7 +155,7 @@ The integration tests are designed to run in CI/CD environments. See `.github/wo
 
 ### Debugging failed tests
 1. Enable verbose logging in service configurations
-2. Use `docker-compose logs -f` to watch logs in real-time
+2. Use `docker compose logs -f` to watch logs in real-time
 3. Connect to services manually to verify they're working:
    ```bash
    # Test MQTT
