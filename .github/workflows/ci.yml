@@ -78,7 +78,6 @@ jobs:
     name: Code Analysis
     runs-on: ubuntu-latest
     needs: format
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -94,21 +93,20 @@ jobs:
 
       - name: Analyze code (fail on error/warning)
         run: |
-            flutter analyze | tee analyze.log
-            if grep -qE "error|warning" analyze.log; then
-              echo "❌ Errors or warnings found in analysis."
-              exit 1
-            else
-              echo "✅ No errors or warnings."
-            fi
-        
+          set -o pipefail
+          flutter analyze | tee analyze.log
+          if grep -qiE "error|warning" analyze.log; then
+            echo "❌ Errors or warnings found in analysis."
+            exit 1
+          else
+            echo "✅ No errors or warnings."
+          fi
 
   # Run unit tests
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: analyze
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -143,7 +141,6 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: unit-tests
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -157,50 +154,69 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Show Docker & Compose versions
+        run: |
+          docker --version
+          docker compose version
+
       - name: Start integration test services
         working-directory: test/integration
+        shell: bash
         run: |
           echo "Starting Docker Compose services..."
-          docker-compose up -d
+          docker compose up -d
           echo "Services started, waiting for readiness..."
 
       - name: Wait for services to be ready
         working-directory: test/integration
+        shell: bash
         run: |
-          echo "Checking service health..."
+          set -euo pipefail
           timeout=300
+          interval=10
           elapsed=0
-          interval=15
-          
+          # Adjust names to match your docker-compose.yml
+          services=(influxdb mosquitto telegraf)
+
+          echo "Waiting for services (up to ${timeout}s)..."
           while [ $elapsed -lt $timeout ]; do
-            # Check if all services are healthy or running
-            services_status=$(docker-compose ps --format "table {{.Name}}\t{{.State}}")
-            echo "Service status:"
-            echo "$services_status"
-            
-            healthy_count=$(echo "$services_status" | grep -c "healthy" || echo "0")
-            running_count=$(echo "$services_status" | grep -c "running" || echo "0")
-            
-            if [ "$healthy_count" -ge 2 ] || [ "$running_count" -eq 3 ]; then
-              echo "✅ Services are ready! (Healthy: $healthy_count, Running: $running_count)"
+            ready=0
+            for s in "${services[@]}"; do
+              cid="$(docker compose ps -q "$s" || true)"
+              if [ -z "$cid" ]; then
+                echo "Service '$s' not found yet"
+                continue
+              fi
+              state="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || echo 'unknown')"
+              health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid" 2>/dev/null || echo '')"
+              printf "%-10s state=%-8s health=%s\n" "$s" "$state" "${health:-n/a}"
+              if [ "$health" = "healthy" ] || [ "$state" = "running" ]; then
+                ready=$((ready+1))
+              fi
+            done
+
+            # Consider ready if at least 2 services are healthy or all listed are running
+            if [ $ready -ge 2 ] || [ $ready -eq ${#services[@]} ]; then
+              echo "✅ Services are ready (ready count: $ready/${#services[@]})."
               break
             fi
-            
-            echo "⏳ Waiting for services... ($elapsed/$timeout seconds)"
-            sleep $interval
+
             elapsed=$((elapsed + interval))
+            echo "⏳ Waiting... (${elapsed}/${timeout}s)"
+            sleep $interval
           done
-          
+
           if [ $elapsed -ge $timeout ]; then
             echo "❌ Services did not become ready in time"
-            echo "Final service status:"
-            docker-compose ps
-            echo "Service logs:"
-            docker-compose logs --tail=50
+            echo "=== docker compose ps ==="
+            docker compose ps
+            echo "=== Recent logs ==="
+            docker compose logs --tail=100 || true
             exit 1
           fi
 
       - name: Run integration tests
+        shell: bash
         run: |
           flutter test test/integration/ \
             --coverage \
@@ -210,25 +226,27 @@ jobs:
       - name: Show service logs on failure
         if: failure()
         working-directory: test/integration
+        shell: bash
         run: |
           echo "=== Docker Compose Service Status ==="
-          docker-compose ps
-          
+          docker compose ps || true
+
           echo "=== InfluxDB Logs ==="
-          docker-compose logs influxdb | tail -100
-          
+          docker compose logs influxdb --tail=200 || true
+
           echo "=== Mosquitto Logs ==="
-          docker-compose logs mosquitto | tail -100
-          
+          docker compose logs mosquitto --tail=200 || true
+
           echo "=== Telegraf Logs ==="
-          docker-compose logs telegraf | tail -100
+          docker compose logs telegraf --tail=200 || true
 
       - name: Stop integration test services
         if: always()
         working-directory: test/integration
+        shell: bash
         run: |
           echo "Stopping Docker Compose services..."
-          docker-compose down -v
+          docker compose down -v --remove-orphans
           echo "Services stopped and volumes removed"
 
       - name: Upload integration test coverage
@@ -249,7 +267,6 @@ jobs:
     strategy:
       matrix:
         target: [web, android-debug]
-        
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -294,3 +311,54 @@ jobs:
           name: android-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
+
+  # Create an issue if ANY job fails
+  report-failure:
+    name: Create Issue on Failure
+    runs-on: ubuntu-latest
+    needs: [format, analyze, unit-tests, integration-tests, build]
+    if: failure()
+    permissions:
+      contents: read
+      issues: write
+    env:
+      NEEDS_JSON: ${{ toJson(needs) }}
+    steps:
+      - name: Open issue for failed workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const needs = JSON.parse(process.env.NEEDS_JSON);
+            const failed = Object.entries(needs)
+              .filter(([name, data]) => data.result !== 'success')
+              .map(([name, data]) => `- **${name}** → \`${data.result}\``)
+              .join('\n');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = context.runId;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const prInfo = context.payload.pull_request
+              ? `\nPR: #${context.payload.pull_request.number}`
+              : '';
+
+            const title = `🚨 CI failure in workflow run ${runId}`;
+            const body = [
+              'One or more jobs failed in the CI workflow.',
+              '',
+              `**Run:** ${runUrl}`,
+              prInfo,
+              '',
+              '**Failed jobs:**',
+              failed || '- (none detected)',
+              '',
+              'Please inspect logs and address the failures.'
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['ci-failure']
+            });
