@@ -93,14 +93,13 @@ jobs:
 
       - name: Analyze code (fail on error/warning)
         run: |
-          set -o pipefail
-          flutter analyze | tee analyze.log
-          if grep -qiE "error|warning" analyze.log; then
-            echo "❌ Errors or warnings found in analysis."
-            exit 1
-          else
-            echo "✅ No errors or warnings."
-          fi
+            flutter analyze | tee analyze.log
+            if grep -qE "error|warning" analyze.log; then
+              echo "❌ Errors or warnings found in analysis."
+              exit 1
+            else
+              echo "✅ No errors or warnings."
+            fi
 
   # Run unit tests
   unit-tests:
