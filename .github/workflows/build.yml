@@ -1,0 +1,72 @@
+# filepath: .github/workflows/build.yml
+name: Build Debug Artifacts
+
+on:
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    FLUTTER_VERSION: '3.35.2'
+
+jobs:
+    build:
+        name: Build Debug Artifacts
+        runs-on: ubuntu-latest
+        timeout-minutes: 120
+        strategy:
+            matrix:
+                target: [web, android-debug]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  fetch-depth: 0
+
+            - name: Set up Java (Android only)
+              if: matrix.target == 'android-debug'
+              uses: actions/setup-java@v4
+              with:
+                  distribution: 'zulu'
+                  java-version: '17'
+
+            - name: Set up Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  channel: stable
+                  flutter-version: ${{ env.FLUTTER_VERSION }}
+                  cache: true
+                  cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+                  pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
+
+            - name: Get dependencies
+              run: flutter pub get
+              
+            - name: Build web
+              if: matrix.target == 'web'
+              run: flutter build web --no-tree-shake-icons
+
+            - name: Build Android debug APK
+              if: matrix.target == 'android-debug'
+              run: flutter build apk --debug
+              continue-on-error: true
+
+            - name: Upload web build artifacts
+              if: matrix.target == 'web'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-build
+                  path: build/web/
+                  retention-days: 30
+
+            - name: Upload Android debug APK
+              if: matrix.target == 'android-debug' && success()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: android-debug-apk
+                  path: build/app/outputs/flutter-apk/app-debug.apk
+                  retention-days: 30
