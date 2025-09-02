@@ -38,11 +38,13 @@ services:
 
   # Telegraf for data collection and forwarding
   telegraf:
-    image: telegraf:1.28
+    image: telegraf:1.30-alpine
     container_name: hydroponic_test_telegraf
     depends_on:
-      - influxdb
-      - mosquitto
+      influxdb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
@@ -57,6 +59,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
 
 volumes:
   influxdb_data:

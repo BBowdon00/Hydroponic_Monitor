@@ -150,38 +150,47 @@ void main() {
       );
     }, timeout: testTimeout);
 
-    test('Device status integration', tags: ['integration'], () async {
-      final testDevice = TestDataGenerator.generateDevice(
-        id: 'integration_test_pump_001',
-        type: DeviceType.pump,
-        status: DeviceStatus.online,
-        location: 'integration_test_zone',
-      );
+    test(
+      'Device control commands (send only - no status reporting)',
+      tags: ['integration'],
+      () async {
+        final testDevice = TestDataGenerator.generateDevice(
+          id: 'integration_test_pump_001',
+          type: DeviceType.pump,
+          status: DeviceStatus.online,
+          location: 'integration_test_zone',
+        );
 
-      await mqttClient.connect();
+        await mqttClient.connect();
 
-      // Publish device status
-      final topic = TestMqttTopics.deviceStatusTopicFor(testDevice.id);
-      final messageJson = _deviceToJson(testDevice);
+        // Publish device command (devices only receive commands, don't publish status)
+        final topic = TestMqttTopics.deviceCommandTopicFor(testDevice.id);
+        final commandJson = json.encode({
+          'command': 'turn_on',
+          'deviceId': testDevice.id,
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
+        });
 
-      final builder = MqttClientPayloadBuilder();
-      builder.addString(messageJson);
+        final builder = MqttClientPayloadBuilder();
+        builder.addString(commandJson);
 
-      mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
-      print('Published device status to topic: $topic');
-      print('Message: $messageJson');
+        print('Published device command to topic: $topic');
+        print('Command: $commandJson');
 
-      // Wait for processing
-      await Future.delayed(const Duration(seconds: 20));
+        // Wait for processing
+        await Future.delayed(const Duration(seconds: 5));
 
-      // For device status, we just verify the pipeline doesn't break
-      // The exact verification would depend on how device status is stored
-      expect(
-        mqttClient.connectionStatus!.state,
-        equals(MqttConnectionState.connected),
-      );
-    }, timeout: testTimeout);
+        // Device commands don't go through Telegraf to InfluxDB - they go directly to devices
+        // So we just verify MQTT connectivity remains stable
+        expect(
+          mqttClient.connectionStatus!.state,
+          equals(MqttConnectionState.connected),
+        );
+      },
+      timeout: testTimeout,
+    );
   });
 }
 
@@ -252,19 +261,6 @@ String _sensorDataToJson(SensorData data) {
   });
 }
 
-/// Convert device to JSON for MQTT publishing.
-String _deviceToJson(Device data) {
-  return json.encode({
-    'id': data.id,
-    'name': data.name,
-    'type': data.type.name,
-    'status': data.status.name,
-    'isEnabled': data.isEnabled,
-    'location': data.location,
-    'lastUpdate': data.lastUpdate?.toUtc().toIso8601String(),
-  });
-}
-
 /// Query InfluxDB directly to verify data was stored.
 /// This bypasses our service layer to test the actual integration.
 Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
@@ -274,7 +270,8 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
 from(bucket: "${TestConfig.testInfluxBucket}")
   |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "mqtt_consumer")
-  |> filter(fn: (r) => r.id == "${expectedData.id}")
+  |> filter(fn: (r) => r._field == "id")
+  |> filter(fn: (r) => r._value == "${expectedData.id}")
   |> last()
 ''';
 
