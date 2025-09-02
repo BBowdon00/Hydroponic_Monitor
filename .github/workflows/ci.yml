@@ -1,11 +1,16 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+  
 env:
   FLUTTER_VERSION: '3.35.2'
 
@@ -310,6 +315,7 @@ jobs:
 
 # Comment on failure
   report-failure:
+    runs-on: ubuntu-latest
     name: Comment on PR with Failure Summary
     needs: [format, analyze, unit-tests, integration-tests, build]
     if: failure() && github.event_name == 'pull_request'
