@@ -20,7 +20,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_SECRET_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Flutter
@@ -28,6 +28,9 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
@@ -87,14 +90,17 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
 
       - name: Analyze code (fail on error/warning)
         run: |
-            flutter analyze | tee analyze.log
-            if grep -qE "error|warning" analyze.log; then
+            flutter analyze --fatal-infos | tee analyze.log
+            if grep -qE "error •|warning •" analyze.log; then
               echo "❌ Errors or warnings found in analysis."
               exit 1
             else
@@ -115,6 +121,9 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
@@ -149,6 +158,9 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
@@ -282,6 +294,9 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get

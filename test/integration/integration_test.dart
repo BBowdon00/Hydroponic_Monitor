@@ -246,7 +246,7 @@ String _sensorDataToJson(SensorData data) {
     'sensorType': data.sensorType.name,
     'value': data.value,
     'unit': data.unit,
-    'timestamp': data.timestamp.toIso8601String(),
+    'timestamp': data.timestamp.toUtc().toIso8601String(),
     'deviceId': data.deviceId,
     'location': data.location,
   });
@@ -261,7 +261,7 @@ String _deviceToJson(Device data) {
     'status': data.status.name,
     'isEnabled': data.isEnabled,
     'location': data.location,
-    'lastUpdate': data.lastUpdate?.toIso8601String(),
+    'lastUpdate': data.lastUpdate?.toUtc().toIso8601String(),
   });
 }
 

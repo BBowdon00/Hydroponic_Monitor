@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # InfluxDB for time-series data storage
   influxdb:
