@@ -51,7 +51,6 @@ services:
         condition: service_healthy
     volumes:
       - ../../config/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ../../config/telegraf/telegraf.d:/etc/telegraf/telegraf.d:ro
     environment:
       - INFLUX_TOKEN=test-token-for-integration-tests
       - INFLUX_ORG=test-org
