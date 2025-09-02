@@ -227,4 +227,46 @@ cd ../..
 flutter test test/integration/
 ```
 
-This uses a separate test configuration with anonymous MQTT access.
+This uses a separate test configuration with:
+- Anonymous MQTT access for test compatibility
+- Single bucket (`test-bucket`) for all test data  
+- Simplified configuration without authentication
+- Same telegraf configuration but with test-specific routing
+
+### Directory Structure
+
+The project uses the following configuration structure:
+
+```
+config/
+├── influxdb/
+│   └── init-buckets.sh         # InfluxDB bucket initialization
+├── mosquitto/
+│   ├── mosquitto.conf          # MQTT broker configuration
+│   ├── passwords               # User password hashes
+│   └── aclfile                 # Access control rules
+└── telegraf/
+    ├── telegraf.conf           # Main Telegraf configuration
+    └── telegraf.d/             # Input plugin configurations
+        ├── input_sensors.toml  # Sensor data processing
+        ├── input_actuators.toml # Actuator state processing
+        └── input_status.toml   # Node status processing
+```
+
+### Docker Volumes
+
+The system creates persistent volumes for data storage:
+
+- **influxdb_data**: InfluxDB time-series data
+- **influxdb_config**: InfluxDB configuration
+- **mosquitto_data**: MQTT broker persistence
+- **mosquitto_logs**: MQTT broker logs
+
+### Reset Data
+
+To start fresh with clean data:
+
+```bash
+docker compose down -v           # Stop and remove volumes
+docker compose up -d             # Restart with fresh data
+```

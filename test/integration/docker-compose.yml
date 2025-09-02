@@ -50,19 +50,19 @@ services:
       mosquitto:
         condition: service_healthy
     volumes:
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ../../config/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ../../config/telegraf/telegraf.d:/etc/telegraf/telegraf.d:ro
     environment:
       - INFLUX_TOKEN=test-token-for-integration-tests
       - INFLUX_ORG=test-org
-      - INFLUX_BUCKET=test-bucket
       - INFLUX_URL=http://influxdb:8086
-      - MQTT_HOST=mosquitto
-      - MQTT_PORT=1883
+      - MQTT_PASS=
+      - TELEGRAF_ENV=integration_test
     healthcheck:
-      test: ["CMD", "telegraf", "--test"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "telegraf", "--config", "/etc/telegraf/telegraf.conf", "--test"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
     restart: unless-stopped
 
 volumes:

@@ -1,7 +1,8 @@
 # --- MQTT -> Sensors (per-sensor JSON) ---
 [[inputs.mqtt_consumer]]
   servers = ["tcp://mosquitto:1883"]
-  username = "telegraf"
+  # Support both authenticated and anonymous access for test environments
+  username = "${MQTT_PASS:+telegraf}"  # Only set username if MQTT_PASS is not empty
   password = "$MQTT_PASS"
   topics  = ["grow/tent/+/sensor/+/+/state"]
   qos = 0
