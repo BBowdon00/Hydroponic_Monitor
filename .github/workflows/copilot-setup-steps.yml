@@ -1,10 +1,13 @@
-name: Copilot setup (install Dart/Flutter)
+name: Copilot setup (install Flutter)
 
 on:
   # Copilot coding agent looks for this file by name and reuses its steps
   workflow_call:
   workflow_dispatch:
 
+env:
+  FLUTTER_VERSION: '3.35.2'
+  
 jobs:
   copilot-setup-steps:   # 👈 MUST be named exactly this
     runs-on: ubuntu-latest
@@ -12,18 +15,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Install Dart SDK and add `dart` to PATH for the runner
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.9"   # >=3.9 required for `dart mcp-server`
-
       # OPTIONAL — install Flutter if your agent needs `flutter` commands
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          # flutter-version: "3.27.x"   # (optional) pin version
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+      
+      - name: Get dependencies
+        run: flutter pub get
 
       # Sanity checks so you can see versions in logs
       - name: Show tool versions
