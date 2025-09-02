@@ -135,15 +135,6 @@ jobs:
             --reporter=expanded \
             --exclude-tags=integration
 
-      - name: Upload unit test coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: coverage/lcov.info
-          flags: unit-tests
-          name: unit-tests
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-
   # Run integration tests with Docker Compose
   integration-tests:
     name: Integration Tests
@@ -260,15 +251,6 @@ jobs:
           docker compose down -v --remove-orphans
           echo "Services stopped and volumes removed"
 
-      - name: Upload integration test coverage
-        if: always()
-        uses: codecov/codecov-action@v4
-        with:
-          file: coverage/lcov.info
-          flags: integration-tests
-          name: integration-tests
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   # Build artifacts
   build:
@@ -326,53 +308,42 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
 
-  # Create an issue if ANY job fails
+# Comment on failure
   report-failure:
-    name: Create Issue on Failure
-    runs-on: ubuntu-latest
+    name: Comment on PR with Failure Summary
     needs: [format, analyze, unit-tests, integration-tests, build]
-    if: failure()
+    if: failure() && github.event_name == 'pull_request'
     permissions:
+      pull-requests: write
       contents: read
-      issues: write
     env:
       NEEDS_JSON: ${{ toJson(needs) }}
     steps:
-      - name: Open issue for failed workflow
+      - name: Post failure comment
         uses: actions/github-script@v7
         with:
           script: |
             const needs = JSON.parse(process.env.NEEDS_JSON);
             const failed = Object.entries(needs)
-              .filter(([name, data]) => data.result !== 'success')
-              .map(([name, data]) => `- **${name}** → \`${data.result}\``)
-              .join('\n');
+              .filter(([_, d]) => d.result !== 'success')
+              .map(([n, d]) => `- **${n}** → \`${d.result}\``)
+              .join('\n') || '- (none detected)';
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const runId = context.runId;
-            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
-            const prInfo = context.payload.pull_request
-              ? `\nPR: #${context.payload.pull_request.number}`
-              : '';
+            const number = context.issue.number;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const sha = context.payload.pull_request?.head?.sha?.slice(0,7) || 'unknown';
 
-            const title = `🚨 CI failure in workflow run ${runId}`;
-            const body = [
-              'One or more jobs failed in the CI workflow.',
-              '',
-              `**Run:** ${runUrl}`,
-              prInfo,
-              '',
-              '**Failed jobs:**',
-              failed || '- (none detected)',
-              '',
-              'Please inspect logs and address the failures.'
-            ].join('\n');
+            const body = `
+            ### 🚨 CI failed for commit ${sha}
+            **Run:** ${runUrl}
 
-            await github.rest.issues.create({
-              owner,
-              repo,
-              title,
-              body,
-              labels: ['ci-failure']
+            **Failed jobs**
+            ${failed}
+            @copilot investigate and fix the workflow failures above.
+            `.trim();
+            
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: number, body
             });
