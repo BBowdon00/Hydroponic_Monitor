@@ -262,6 +262,7 @@ String _deviceToJson(Device data) {
     'isEnabled': data.isEnabled,
     'location': data.location,
     'lastUpdate': data.lastUpdate?.toUtc().toIso8601String(),
+    'timestamp': data.lastUpdate?.toUtc().toIso8601String(), // Add timestamp field for Telegraf
   });
 }
 
