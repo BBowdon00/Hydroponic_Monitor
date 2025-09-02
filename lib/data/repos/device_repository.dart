@@ -7,14 +7,13 @@ import '../mqtt/mqtt_service.dart';
 
 /// Repository for managing device control and status via MQTT.
 class DeviceRepository {
-  DeviceRepository({
-    required this.mqttService,
-  });
+  DeviceRepository({required this.mqttService});
 
   final MqttService mqttService;
 
   StreamSubscription<Device>? _mqttSubscription;
-  final StreamController<Device> _deviceStatusController = StreamController<Device>.broadcast();
+  final StreamController<Device> _deviceStatusController =
+      StreamController<Device>.broadcast();
 
   /// Initialize the repository and start listening to device status updates.
   Future<Result<void>> initialize() async {
@@ -24,15 +23,24 @@ class DeviceRepository {
       // Start listening to device status updates from MQTT
       _mqttSubscription = mqttService.deviceStatusStream.listen(
         (device) {
-          Logger.debug('Received device status update: ${device.id}', tag: 'DeviceRepository');
+          Logger.debug(
+            'Received device status update: ${device.id}',
+            tag: 'DeviceRepository',
+          );
           _deviceStatusController.add(device);
         },
         onError: (error) {
-          Logger.error('Error in MQTT device status stream: $error', tag: 'DeviceRepository');
+          Logger.error(
+            'Error in MQTT device status stream: $error',
+            tag: 'DeviceRepository',
+          );
         },
       );
 
-      Logger.info('Device repository initialized successfully', tag: 'DeviceRepository');
+      Logger.info(
+        'Device repository initialized successfully',
+        tag: 'DeviceRepository',
+      );
       return const Success(null);
     } catch (e) {
       final error = 'Error initializing device repository: $e';
@@ -45,9 +53,20 @@ class DeviceRepository {
   Stream<Device> get deviceStatusUpdates => _deviceStatusController.stream;
 
   /// Send a command to control a device.
-  Future<Result<void>> controlDevice(String deviceId, String command, {Map<String, dynamic>? parameters}) async {
-    Logger.info('Sending command to device $deviceId: $command', tag: 'DeviceRepository');
-    return mqttService.publishDeviceCommand(deviceId, command, parameters: parameters);
+  Future<Result<void>> controlDevice(
+    String deviceId,
+    String command, {
+    Map<String, dynamic>? parameters,
+  }) async {
+    Logger.info(
+      'Sending command to device $deviceId: $command',
+      tag: 'DeviceRepository',
+    );
+    return mqttService.publishDeviceCommand(
+      deviceId,
+      command,
+      parameters: parameters,
+    );
   }
 
   /// Turn a device on.
@@ -61,18 +80,36 @@ class DeviceRepository {
   }
 
   /// Set device power level (for devices that support variable power).
-  Future<Result<void>> setDevicePower(String deviceId, double powerLevel) async {
-    return controlDevice(deviceId, 'set_power', parameters: {'power_level': powerLevel});
+  Future<Result<void>> setDevicePower(
+    String deviceId,
+    double powerLevel,
+  ) async {
+    return controlDevice(
+      deviceId,
+      'set_power',
+      parameters: {'power_level': powerLevel},
+    );
   }
 
   /// Set temperature for heating devices.
-  Future<Result<void>> setTemperature(String deviceId, double temperature) async {
-    return controlDevice(deviceId, 'set_temperature', parameters: {'target_temperature': temperature});
+  Future<Result<void>> setTemperature(
+    String deviceId,
+    double temperature,
+  ) async {
+    return controlDevice(
+      deviceId,
+      'set_temperature',
+      parameters: {'target_temperature': temperature},
+    );
   }
 
   /// Set fan speed for ventilation devices.
   Future<Result<void>> setFanSpeed(String deviceId, double speed) async {
-    return controlDevice(deviceId, 'set_fan_speed', parameters: {'speed': speed});
+    return controlDevice(
+      deviceId,
+      'set_fan_speed',
+      parameters: {'speed': speed},
+    );
   }
 
   /// Start a pump with specified flow rate.
@@ -98,12 +135,19 @@ class DeviceRepository {
     if (color != null) parameters['color'] = color;
     if (enabled != null) parameters['enabled'] = enabled;
 
-    return controlDevice(deviceId, 'set_light', parameters: parameters.isNotEmpty ? parameters : null);
+    return controlDevice(
+      deviceId,
+      'set_light',
+      parameters: parameters.isNotEmpty ? parameters : null,
+    );
   }
 
   /// Emergency stop all devices.
   Future<Result<void>> emergencyStopAll() async {
-    Logger.warning('Emergency stop all devices initiated', tag: 'DeviceRepository');
+    Logger.warning(
+      'Emergency stop all devices initiated',
+      tag: 'DeviceRepository',
+    );
     return controlDevice('*', 'emergency_stop');
   }
 
@@ -124,7 +168,11 @@ class DeviceRepository {
       await _mqttSubscription?.cancel();
       await _deviceStatusController.close();
     } catch (e) {
-      Logger.error('Error disposing device repository: $e', tag: 'DeviceRepository', error: e);
+      Logger.error(
+        'Error disposing device repository: $e',
+        tag: 'DeviceRepository',
+        error: e,
+      );
     }
   }
 }

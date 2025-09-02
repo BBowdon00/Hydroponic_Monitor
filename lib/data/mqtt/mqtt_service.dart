@@ -27,9 +27,12 @@ class MqttService {
   final String? password;
 
   MqttServerClient? _client;
-  final StreamController<SensorData> _sensorDataController = StreamController<SensorData>.broadcast();
-  final StreamController<Device> _deviceStatusController = StreamController<Device>.broadcast();
-  final StreamController<String> _connectionController = StreamController<String>.broadcast();
+  final StreamController<SensorData> _sensorDataController =
+      StreamController<SensorData>.broadcast();
+  final StreamController<Device> _deviceStatusController =
+      StreamController<Device>.broadcast();
+  final StreamController<String> _connectionController =
+      StreamController<String>.broadcast();
 
   /// Stream of sensor data received via MQTT.
   Stream<SensorData> get sensorDataStream => _sensorDataController.stream;
@@ -47,7 +50,7 @@ class MqttService {
   Future<Result<void>> connect() async {
     try {
       Logger.info('Connecting to MQTT broker at $host:$port', tag: 'MQTT');
-      
+
       _client = MqttServerClient.withPort(host, clientId, port);
       _client!.logging(on: true);
       _client!.keepAlivePeriod = 60;
@@ -79,7 +82,7 @@ class MqttService {
       }
 
       final status = await _client!.connect();
-      
+
       if (status?.toString() == 'connected') {
         Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');
         await _subscribeToTopics();
@@ -105,12 +108,20 @@ class MqttService {
       await _deviceStatusController.close();
       await _connectionController.close();
     } catch (e) {
-      Logger.error('Error disconnecting from MQTT broker: $e', tag: 'MQTT', error: e);
+      Logger.error(
+        'Error disconnecting from MQTT broker: $e',
+        tag: 'MQTT',
+        error: e,
+      );
     }
   }
 
   /// Publish device control command.
-  Future<Result<void>> publishDeviceCommand(String deviceId, String command, {Map<String, dynamic>? parameters}) async {
+  Future<Result<void>> publishDeviceCommand(
+    String deviceId,
+    String command, {
+    Map<String, dynamic>? parameters,
+  }) async {
     try {
       if (_client?.connectionStatus?.toString() != 'connected') {
         return const Failure(MqttError('Not connected to MQTT broker'));
@@ -128,8 +139,11 @@ class MqttService {
       builder.addString(jsonEncode(payload));
 
       _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
-      Logger.info('Published command to device $deviceId: $command', tag: 'MQTT');
-      
+      Logger.info(
+        'Published command to device $deviceId: $command',
+        tag: 'MQTT',
+      );
+
       return const Success(null);
     } catch (e) {
       final error = 'Error publishing device command: $e';
@@ -171,7 +185,11 @@ class MqttService {
           _handleDeviceStatus(topic, payload);
         }
       } catch (e) {
-        Logger.error('Error processing MQTT message: $e', tag: 'MQTT', error: e);
+        Logger.error(
+          'Error processing MQTT message: $e',
+          tag: 'MQTT',
+          error: e,
+        );
       }
     }
   }
@@ -181,7 +199,7 @@ class MqttService {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       final sensorId = topic.split('/')[2]; // Extract sensor ID from topic
-      
+
       // Generate dummy data for now since we're still using mock data
       final sensorData = _generateDummySensorData(sensorId, data);
       _sensorDataController.add(sensorData);
@@ -195,7 +213,7 @@ class MqttService {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       final deviceId = topic.split('/')[2]; // Extract device ID from topic
-      
+
       // Generate dummy device data for now
       final device = _generateDummyDevice(deviceId, data);
       _deviceStatusController.add(device);
@@ -205,11 +223,14 @@ class MqttService {
   }
 
   /// Generate dummy sensor data for testing.
-  SensorData _generateDummySensorData(String sensorId, Map<String, dynamic> mqttData) {
+  SensorData _generateDummySensorData(
+    String sensorId,
+    Map<String, dynamic> mqttData,
+  ) {
     final random = Random();
     final sensorTypes = SensorType.values;
     final sensorType = sensorTypes[random.nextInt(sensorTypes.length)];
-    
+
     double value;
     switch (sensorType) {
       case SensorType.temperature:
@@ -249,7 +270,8 @@ class MqttService {
 
     return Device(
       id: deviceId,
-      name: mqttData['name'] as String? ?? '${deviceType.displayName} $deviceId',
+      name:
+          mqttData['name'] as String? ?? '${deviceType.displayName} $deviceId',
       type: deviceType,
       status: status,
       isEnabled: mqttData['enabled'] as bool? ?? random.nextBool(),

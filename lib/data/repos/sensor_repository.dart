@@ -8,10 +8,7 @@ import '../influx/influx_service.dart';
 
 /// Repository for managing sensor data from MQTT and InfluxDB.
 class SensorRepository {
-  SensorRepository({
-    required this.mqttService,
-    required this.influxService,
-  });
+  SensorRepository({required this.mqttService, required this.influxService});
 
   final MqttService mqttService;
   final InfluxDbService influxService;
@@ -39,15 +36,24 @@ class SensorRepository {
         (sensorData) async {
           final result = await influxService.writeSensorData(sensorData);
           if (result is Failure) {
-            Logger.error('Failed to store sensor data in InfluxDB: ${result.error}', tag: 'SensorRepository');
+            Logger.error(
+              'Failed to store sensor data in InfluxDB: ${result.error}',
+              tag: 'SensorRepository',
+            );
           }
         },
         onError: (error) {
-          Logger.error('Error in MQTT sensor data stream: $error', tag: 'SensorRepository');
+          Logger.error(
+            'Error in MQTT sensor data stream: $error',
+            tag: 'SensorRepository',
+          );
         },
       );
 
-      Logger.info('Sensor repository initialized successfully', tag: 'SensorRepository');
+      Logger.info(
+        'Sensor repository initialized successfully',
+        tag: 'SensorRepository',
+      );
       return const Success(null);
     } catch (e) {
       final error = 'Error initializing sensor repository: $e';
@@ -116,7 +122,11 @@ class SensorRepository {
       await mqttService.disconnect();
       await influxService.close();
     } catch (e) {
-      Logger.error('Error disposing sensor repository: $e', tag: 'SensorRepository', error: e);
+      Logger.error(
+        'Error disposing sensor repository: $e',
+        tag: 'SensorRepository',
+        error: e,
+      );
     }
   }
 }

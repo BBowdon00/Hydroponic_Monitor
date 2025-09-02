@@ -99,7 +99,10 @@ void main() {
       expect(SensorType.humidity.displayName, equals('Humidity'));
       expect(SensorType.waterLevel.displayName, equals('Water Level'));
       expect(SensorType.pH.displayName, equals('pH Level'));
-      expect(SensorType.electricalConductivity.displayName, equals('Electrical Conductivity'));
+      expect(
+        SensorType.electricalConductivity.displayName,
+        equals('Electrical Conductivity'),
+      );
       expect(SensorType.lightIntensity.displayName, equals('Light Intensity'));
       expect(SensorType.airQuality.displayName, equals('Air Quality'));
     });

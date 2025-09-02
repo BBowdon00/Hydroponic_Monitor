@@ -127,7 +127,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                         SensorTile(
                           title: 'Power Usage',
-                          value: sensorData.powerUsage > 1000 
+                          value: sensorData.powerUsage > 1000
                               ? '${(sensorData.powerUsage / 1000).toStringAsFixed(2)} kW'
                               : '${sensorData.powerUsage.toStringAsFixed(1)} W',
                           unit: sensorData.powerUsage > 1000 ? 'kW' : 'W',
@@ -357,7 +357,12 @@ class MockSensorDataNotifier extends StateNotifier<SensorData> {
         2.5,
         0.02,
       ),
-      powerUsage: _updateValue(state.powerUsage, 30.0, 250.0, 5.0), // 30-250 Watts
+      powerUsage: _updateValue(
+        state.powerUsage,
+        30.0,
+        250.0,
+        5.0,
+      ), // 30-250 Watts
       waterLevelTrend: _updateTrend(state.waterLevelTrend),
       temperatureTrend: _updateTrend(state.temperatureTrend),
       humidityTrend: _updateTrend(state.humidityTrend),

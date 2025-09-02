@@ -34,7 +34,7 @@ final influxServiceProvider = Provider<InfluxDbService>((ref) {
 final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
   final mqttService = ref.read(mqttServiceProvider);
   final influxService = ref.read(influxServiceProvider);
-  
+
   return SensorRepository(
     mqttService: mqttService,
     influxService: influxService,
@@ -44,36 +44,44 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
 /// Provider for device repository.
 final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
   final mqttService = ref.read(mqttServiceProvider);
-  
-  return DeviceRepository(
-    mqttService: mqttService,
-  );
+
+  return DeviceRepository(mqttService: mqttService);
 });
 
 /// Provider for initializing the data layer services.
 final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
   try {
     Logger.info('Initializing data services', tag: 'DataProviders');
-    
+
     final sensorRepository = ref.read(sensorRepositoryProvider);
     final deviceRepository = ref.read(deviceRepositoryProvider);
-    
+
     // Initialize repositories
     final sensorResult = await sensorRepository.initialize();
     if (sensorResult is Failure) {
-      Logger.error('Failed to initialize sensor repository: ${sensorResult.error}', tag: 'DataProviders');
+      Logger.error(
+        'Failed to initialize sensor repository: ${sensorResult.error}',
+        tag: 'DataProviders',
+      );
       throw Exception('Sensor repository initialization failed');
     }
-    
+
     final deviceResult = await deviceRepository.initialize();
     if (deviceResult is Failure) {
-      Logger.error('Failed to initialize device repository: ${deviceResult.error}', tag: 'DataProviders');
+      Logger.error(
+        'Failed to initialize device repository: ${deviceResult.error}',
+        tag: 'DataProviders',
+      );
       throw Exception('Device repository initialization failed');
     }
-    
+
     Logger.info('Data services initialized successfully', tag: 'DataProviders');
   } catch (e) {
-    Logger.error('Error initializing data services: $e', tag: 'DataProviders', error: e);
+    Logger.error(
+      'Error initializing data services: $e',
+      tag: 'DataProviders',
+      error: e,
+    );
     rethrow;
   }
 });
@@ -103,36 +111,48 @@ final influxConnectionStatusProvider = StreamProvider<String>((ref) {
 });
 
 /// Provider for latest sensor readings.
-final latestSensorReadingsProvider = FutureProvider<List<SensorData>>((ref) async {
+final latestSensorReadingsProvider = FutureProvider<List<SensorData>>((
+  ref,
+) async {
   final sensorRepository = ref.read(sensorRepositoryProvider);
   final result = await sensorRepository.getLatestReadings();
-  
+
   return result.when(
     success: (data) => data,
     failure: (error) {
-      Logger.error('Failed to get latest sensor readings: $error', tag: 'DataProviders');
+      Logger.error(
+        'Failed to get latest sensor readings: $error',
+        tag: 'DataProviders',
+      );
       throw Exception('Failed to load sensor data');
     },
   );
 });
 
 /// Provider for historical sensor data for a specific type.
-final sensorTypeHistoryProvider = FutureProvider.family<List<SensorData>, SensorType>((ref, sensorType) async {
-  final sensorRepository = ref.read(sensorRepositoryProvider);
-  final result = await sensorRepository.getSensorTypeHistory(
-    sensorType,
-    start: DateTime.now().subtract(const Duration(hours: 24)),
-    limit: 100,
-  );
-  
-  return result.when(
-    success: (data) => data,
-    failure: (error) {
-      Logger.error('Failed to get sensor type history: $error', tag: 'DataProviders');
-      throw Exception('Failed to load historical data');
-    },
-  );
-});
+final sensorTypeHistoryProvider =
+    FutureProvider.family<List<SensorData>, SensorType>((
+      ref,
+      sensorType,
+    ) async {
+      final sensorRepository = ref.read(sensorRepositoryProvider);
+      final result = await sensorRepository.getSensorTypeHistory(
+        sensorType,
+        start: DateTime.now().subtract(const Duration(hours: 24)),
+        limit: 100,
+      );
+
+      return result.when(
+        success: (data) => data,
+        failure: (error) {
+          Logger.error(
+            'Failed to get sensor type history: $error',
+            tag: 'DataProviders',
+          );
+          throw Exception('Failed to load historical data');
+        },
+      );
+    });
 
 /// Extension to handle Result types more easily.
 extension ResultExtension<T> on Result<T> {

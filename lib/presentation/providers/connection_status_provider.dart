@@ -26,18 +26,18 @@ class ConnectionStatus {
   /// Get the earliest disconnection time, or null if all connected.
   DateTime? get earliestDisconnection {
     if (allConnected) return null;
-    
+
     if (!mqttConnected && !influxConnected) {
       if (mqttDisconnectedSince == null) return influxDisconnectedSince;
       if (influxDisconnectedSince == null) return mqttDisconnectedSince;
-      return mqttDisconnectedSince!.isBefore(influxDisconnectedSince!) 
-          ? mqttDisconnectedSince 
+      return mqttDisconnectedSince!.isBefore(influxDisconnectedSince!)
+          ? mqttDisconnectedSince
           : influxDisconnectedSince;
     }
-    
+
     if (!mqttConnected) return mqttDisconnectedSince;
     if (!influxConnected) return influxDisconnectedSince;
-    
+
     return null;
   }
 
@@ -50,8 +50,10 @@ class ConnectionStatus {
     return ConnectionStatus(
       mqttConnected: mqttConnected ?? this.mqttConnected,
       influxConnected: influxConnected ?? this.influxConnected,
-      mqttDisconnectedSince: mqttDisconnectedSince ?? this.mqttDisconnectedSince,
-      influxDisconnectedSince: influxDisconnectedSince ?? this.influxDisconnectedSince,
+      mqttDisconnectedSince:
+          mqttDisconnectedSince ?? this.mqttDisconnectedSince,
+      influxDisconnectedSince:
+          influxDisconnectedSince ?? this.influxDisconnectedSince,
     );
   }
 }
@@ -79,12 +81,13 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
   void updateMqttStatus(String status) {
     final isConnected = status == 'connected';
     final now = DateTime.now();
-    
+
     currentStatus = currentStatus.copyWith(
       mqttConnected: isConnected,
-      mqttDisconnectedSince: isConnected 
-          ? null 
-          : (currentStatus.mqttDisconnectedSince ?? now), // Only set if not already set
+      mqttDisconnectedSince: isConnected
+          ? null
+          : (currentStatus.mqttDisconnectedSince ??
+                now), // Only set if not already set
     );
     controller.add(currentStatus);
   }
@@ -92,12 +95,13 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
   void updateInfluxStatus(String status) {
     final isConnected = status == 'connected';
     final now = DateTime.now();
-    
+
     currentStatus = currentStatus.copyWith(
       influxConnected: isConnected,
-      influxDisconnectedSince: isConnected 
-          ? null 
-          : (currentStatus.influxDisconnectedSince ?? now), // Only set if not already set
+      influxDisconnectedSince: isConnected
+          ? null
+          : (currentStatus.influxDisconnectedSince ??
+                now), // Only set if not already set
     );
     controller.add(currentStatus);
   }

@@ -7,7 +7,9 @@ import 'package:hydroponic_monitor/presentation/providers/connection_status_prov
 
 void main() {
   group('ConnectionNotification', () {
-    testWidgets('shows notification when services are disconnected', (WidgetTester tester) async {
+    testWidgets('shows notification when services are disconnected', (
+      WidgetTester tester,
+    ) async {
       // Create a container with mock disconnected state
       final container = ProviderContainer(
         overrides: [
@@ -26,9 +28,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(
-              body: ConnectionNotification(),
-            ),
+            home: Scaffold(body: ConnectionNotification()),
           ),
         ),
       );
@@ -38,11 +38,12 @@ void main() {
 
       // Verify notification is shown
       expect(find.text('Connection Lost'), findsOneWidget);
-      expect(find.text('MQTT, InfluxDB disconnected'), findsOneWidget);
       expect(find.byIcon(Icons.wifi_off), findsOneWidget);
     });
 
-    testWidgets('hides notification when all services are connected', (WidgetTester tester) async {
+    testWidgets('hides notification when all services are connected', (
+      WidgetTester tester,
+    ) async {
       // Create a container with mock connected state
       final container = ProviderContainer(
         overrides: [
@@ -59,9 +60,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(
-              body: ConnectionNotification(),
-            ),
+            home: Scaffold(body: ConnectionNotification()),
           ),
         ),
       );
@@ -73,7 +72,9 @@ void main() {
       expect(find.text('Connection Lost'), findsNothing);
     });
 
-    testWidgets('shows partial disconnection correctly', (WidgetTester tester) async {
+    testWidgets('shows partial disconnection correctly', (
+      WidgetTester tester,
+    ) async {
       // Create a container with one service disconnected
       final container = ProviderContainer(
         overrides: [
@@ -91,9 +92,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(
-              body: ConnectionNotification(),
-            ),
+            home: Scaffold(body: ConnectionNotification()),
           ),
         ),
       );

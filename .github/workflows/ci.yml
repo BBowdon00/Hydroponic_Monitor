@@ -6,40 +6,44 @@ on:
   pull_request:
     branches: [ main ]
 
-jobs:
-  # Reuse the setup from existing copilot workflow
-  setup:
-    uses: ./.github/workflows/copilot-setup-steps.yml
+env:
+  FLUTTER_VERSION: '3.35.2'
 
-  # Code quality checks
-  analyze:
+jobs:
+  # Format code and auto-commit changes
+  format:
+    name: Code Formatting
     runs-on: ubuntu-latest
-    needs: setup
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
         with:
-          sdk: "3.9"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
 
-            - name: Check if formatting is needed
+      - name: Check if formatting is needed
         id: check-format
         run: |
-          # Check if any files need formatting
           if ! dart format --output none --set-exit-if-changed .; then
             echo "needs_format=true" >> $GITHUB_OUTPUT
+            echo "Code formatting changes needed"
           else
             echo "needs_format=false" >> $GITHUB_OUTPUT
+            echo "Code is already properly formatted"
           fi
 
       - name: Format code
@@ -50,121 +54,325 @@ jobs:
         if: steps.check-format.outputs.needs_format == 'true'
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "🔧 Auto-format code with dart format"
-            git remote set-url origin https://x-access-token:${{ secrets.WRITE_ACTION_SECRET }}@github.com/${{ github.repository }}
+          git config --local user.name "GitHub Action Bot"
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "🔧 Auto-format code with dart format [skip ci]"
             git push
+            echo "Code has been automatically formatted and committed"
+          else
+            echo "No formatting changes to commit"
           fi
 
-      - name: Comment on PR
-        if: steps.check-format.outputs.needs_format == 'true'
+      - name: Comment on PR about formatting
+        if: steps.check-format.outputs.needs_format == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🔧 Code has been automatically formatted with `dart format .`'
+              body: '🔧 Code has been automatically formatted with `dart format` and committed.'
             })
 
-      - name: Analyze code
-        run: flutter analyze
-
-  # Run tests
-  test:
+  # Analyze code quality
+  analyze:
+    name: Code Analysis
     runs-on: ubuntu-latest
-    needs: setup
+    needs: format
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.9"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Analyze code (fail on error/warning)
+        run: |
+            flutter analyze | tee analyze.log
+            if grep -qE "error|warning" analyze.log; then
+              echo "❌ Errors or warnings found in analysis."
+              exit 1
+            else
+              echo "✅ No errors or warnings."
+            fi
 
-  # Build web version
-  build-web:
+  # Run unit tests
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [analyze, test]
+    needs: analyze
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.9"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run unit tests
+        run: |
+          flutter test \
+            --coverage \
+            --reporter=expanded \
+            --exclude-tags=integration
+
+      - name: Upload unit test coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+          flags: unit-tests
+          name: unit-tests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Run integration tests with Docker Compose
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Show Docker & Compose versions
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Start integration test services
+        working-directory: test/integration
+        shell: bash
+        run: |
+          echo "Starting Docker Compose services..."
+          docker compose up -d
+          echo "Services started, waiting for readiness..."
+
+      - name: Wait for services to be ready
+        working-directory: test/integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout=300
+          interval=10
+          elapsed=0
+          # Adjust names to match your docker-compose.yml
+          services=(influxdb mosquitto telegraf)
+
+          echo "Waiting for services (up to ${timeout}s)..."
+          while [ $elapsed -lt $timeout ]; do
+            ready=0
+            for s in "${services[@]}"; do
+              cid="$(docker compose ps -q "$s" || true)"
+              if [ -z "$cid" ]; then
+                echo "Service '$s' not found yet"
+                continue
+              fi
+              state="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || echo 'unknown')"
+              health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid" 2>/dev/null || echo '')"
+              printf "%-10s state=%-8s health=%s\n" "$s" "$state" "${health:-n/a}"
+              if [ "$health" = "healthy" ] || [ "$state" = "running" ]; then
+                ready=$((ready+1))
+              fi
+            done
+
+            # Consider ready if at least 2 services are healthy or all listed are running
+            if [ $ready -ge 2 ] || [ $ready -eq ${#services[@]} ]; then
+              echo "✅ Services are ready (ready count: $ready/${#services[@]})."
+              break
+            fi
+
+            elapsed=$((elapsed + interval))
+            echo "⏳ Waiting... (${elapsed}/${timeout}s)"
+            sleep $interval
+          done
+
+          if [ $elapsed -ge $timeout ]; then
+            echo "❌ Services did not become ready in time"
+            echo "=== docker compose ps ==="
+            docker compose ps
+            echo "=== Recent logs ==="
+            docker compose logs --tail=100 || true
+            exit 1
+          fi
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          flutter test test/integration/ \
+            --coverage \
+            --reporter=expanded \
+            --timeout=240s
+
+      - name: Show service logs on failure
+        if: failure()
+        working-directory: test/integration
+        shell: bash
+        run: |
+          echo "=== Docker Compose Service Status ==="
+          docker compose ps || true
+
+          echo "=== InfluxDB Logs ==="
+          docker compose logs influxdb --tail=200 || true
+
+          echo "=== Mosquitto Logs ==="
+          docker compose logs mosquitto --tail=200 || true
+
+          echo "=== Telegraf Logs ==="
+          docker compose logs telegraf --tail=200 || true
+
+      - name: Stop integration test services
+        if: always()
+        working-directory: test/integration
+        shell: bash
+        run: |
+          echo "Stopping Docker Compose services..."
+          docker compose down -v --remove-orphans
+          echo "Services stopped and volumes removed"
+
+      - name: Upload integration test coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+          flags: integration-tests
+          name: integration-tests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Build artifacts
+  build:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    strategy:
+      matrix:
+        target: [web, android-debug]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java (Android only)
+        if: matrix.target == 'android-debug'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:"
+          pub-cache-key: "pub-:os:-:channel:-:version:-:arch:-:${{ hashFiles('**/pubspec.lock') }}"
 
       - name: Get dependencies
         run: flutter pub get
 
       - name: Build web
+        if: matrix.target == 'web'
         run: flutter build web --no-tree-shake-icons
 
+      - name: Build Android debug APK
+        if: matrix.target == 'android-debug'
+        run: flutter build apk --debug
+        continue-on-error: true  # May fail in CI environments
+
       - name: Upload web build artifacts
+        if: matrix.target == 'web'
         uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: build/web/
           retention-days: 30
 
-  # Build Android debug APK
-  build-android-debug:
-    runs-on: ubuntu-latest
-    needs: [analyze, test]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.9"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build debug APK
-        run: flutter build apk --debug
-        continue-on-error: true  # May fail in CI due to Gradle issues
-
-      - name: Upload debug APK artifact
+      - name: Upload Android debug APK
+        if: matrix.target == 'android-debug' && success()
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: android-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
+
+  # Create an issue if ANY job fails
+  report-failure:
+    name: Create Issue on Failure
+    runs-on: ubuntu-latest
+    needs: [format, analyze, unit-tests, integration-tests, build]
+    if: failure()
+    permissions:
+      contents: read
+      issues: write
+    env:
+      NEEDS_JSON: ${{ toJson(needs) }}
+    steps:
+      - name: Open issue for failed workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const needs = JSON.parse(process.env.NEEDS_JSON);
+            const failed = Object.entries(needs)
+              .filter(([name, data]) => data.result !== 'success')
+              .map(([name, data]) => `- **${name}** → \`${data.result}\``)
+              .join('\n');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = context.runId;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const prInfo = context.payload.pull_request
+              ? `\nPR: #${context.payload.pull_request.number}`
+              : '';
+
+            const title = `🚨 CI failure in workflow run ${runId}`;
+            const body = [
+              'One or more jobs failed in the CI workflow.',
+              '',
+              `**Run:** ${runUrl}`,
+              prInfo,
+              '',
+              '**Failed jobs:**',
+              failed || '- (none detected)',
+              '',
+              'Please inspect logs and address the failures.'
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['ci-failure']
+            });

@@ -345,10 +345,7 @@ class SettingsPage extends ConsumerWidget {
                 title: Text('English (US)'),
                 value: 'en_US',
               ),
-              const RadioListTile<String>(
-                title: Text('Spanish'),
-                value: 'es',
-              ),
+              const RadioListTile<String>(title: Text('Spanish'), value: 'es'),
             ],
           ),
         ),
@@ -439,7 +436,7 @@ class SettingsPage extends ConsumerWidget {
     // Test actual MQTT connection using the service
     final container = ProviderScope.containerOf(context);
     final mqttService = container.read(mqttServiceProvider);
-    
+
     mqttService.connect().then((result) {
       if (context.mounted) {
         result.when(
@@ -459,7 +456,10 @@ class SettingsPage extends ConsumerWidget {
                 backgroundColor: Colors.red,
               ),
             );
-            Logger.error('MQTT connection test failed: ${error.message}', tag: 'Settings');
+            Logger.error(
+              'MQTT connection test failed: ${error.message}',
+              tag: 'Settings',
+            );
           },
         );
       }
@@ -474,7 +474,7 @@ class SettingsPage extends ConsumerWidget {
     // Test actual InfluxDB connection using the service
     final container = ProviderScope.containerOf(context);
     final influxService = container.read(influxServiceProvider);
-    
+
     influxService.initialize().then((result) {
       if (context.mounted) {
         result.when(
@@ -494,7 +494,10 @@ class SettingsPage extends ConsumerWidget {
                 backgroundColor: Colors.red,
               ),
             );
-            Logger.error('InfluxDB connection test failed: ${error.message}', tag: 'Settings');
+            Logger.error(
+              'InfluxDB connection test failed: ${error.message}',
+              tag: 'Settings',
+            );
           },
         );
       }
