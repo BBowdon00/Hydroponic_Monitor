@@ -20,7 +20,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT_SECRET_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Flutter
@@ -99,8 +99,8 @@ jobs:
 
       - name: Analyze code (fail on error/warning)
         run: |
-            flutter analyze --fatal-infos | tee analyze.log
-            if grep -qE "error •|warning •" analyze.log; then
+            flutter analyze | tee analyze.log
+            if grep -qE "error|warning" analyze.log; then
               echo "❌ Errors or warnings found in analysis."
               exit 1
             else
