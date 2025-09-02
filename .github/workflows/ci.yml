@@ -317,7 +317,7 @@ jobs:
   report-failure:
     runs-on: ubuntu-latest
     name: Comment on PR with Failure Summary
-    needs: [format, analyze, unit-tests, integration-tests, build]
+    needs: [analyze, unit-tests, integration-tests, build]
     if: failure() && github.event_name == 'pull_request'
     permissions:
       pull-requests: write
