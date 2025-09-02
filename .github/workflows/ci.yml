@@ -60,6 +60,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
+          git fetch origin ${{ github.head_ref || github.ref_name }}
+          git rebase origin/${{ github.head_ref || github.ref_name }}
           git add .
           if ! git diff --staged --quiet; then
             git commit -m "🔧 Auto-format code with dart format [skip ci]"
