@@ -494,7 +494,7 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
       expectedData.sensorType.name,
       '01',
     );
-    
+
     final query =
         '''
 from(bucket: "${TestConfig.testInfluxBucket}")
