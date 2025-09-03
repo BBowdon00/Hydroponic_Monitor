@@ -32,8 +32,7 @@ services:
     volumes:
       - mosquitto_data:/mosquitto/data
       - mosquitto_logs:/mosquitto/log
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./mosquitto_passwd:/mosquitto/config/mosquitto_passwd:ro
+      - ../../config/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     healthcheck:
       test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "health", "-m", "check"]
       interval: 30s
