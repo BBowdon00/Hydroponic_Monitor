@@ -124,8 +124,8 @@ void main() {
         final data = testDataList[i];
         final topic = TestMqttTopics.sensorDataTopicFor(
           'rpi',
-          'sensor',
-          '${i + 1}',
+          data.sensorType.name,
+          '${(i + 1).toString().padLeft(2, '0')}',
         );
         final messageJson = _sensorDataToJson(data);
 

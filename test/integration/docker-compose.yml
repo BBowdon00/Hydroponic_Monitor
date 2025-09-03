@@ -55,6 +55,7 @@ services:
       - INFLUX_TOKEN=test-token-for-integration-tests
       - INFLUX_ORG=test-org
       - INFLUX_URL=http://influxdb:8086
+      - MQTT_USER=
       - MQTT_PASS=
       - TELEGRAF_ENV=integration_test
     healthcheck:
