@@ -12,9 +12,6 @@ ORG="${DOCKER_INFLUXDB_INIT_ORG}"
 TOKEN="${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}"
 
 # Create additional buckets with retention
-influx bucket create --org "$ORG" --token "$TOKEN" --name grow_state --retention 365d
-influx bucket create --org "$ORG" --token "$TOKEN" --name grow_meta  --retention 0
-influx bucket create --org "$ORG" --token "$TOKEN" --name grow_1m    --retention 730d
-influx bucket create --org "$ORG" --token "$TOKEN" --name grow_15m   --retention 1825d
+influx bucket create --org "$ORG" --token "$TOKEN" --name grow_data --retention 365d
 
 echo "Buckets created."

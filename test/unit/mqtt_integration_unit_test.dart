@@ -10,36 +10,23 @@ import '../test_utils.dart';
 void main() {
   group('MQTT Topic Structure', () {
     test('should generate correct sensor topic paths', () {
-      final topic = TestMqttTopics.sensorDataTopicFor(
-        'rpi',
-        'temperature',
-        '01',
-      );
-      expect(topic, equals('grow/tent/rpi/sensor/temperature/01/state'));
+      final topic = TestMqttTopics.sensorTopicFor('rpi');
+      expect(topic, equals('grow/rpi/sensor'));
     });
 
-    test('should generate correct actuator state topic paths', () {
-      final topic = TestMqttTopics.deviceStatusTopicFor('rpi', 'pump', '03');
-      expect(topic, equals('grow/tent/rpi/actuator/pump/03/state'));
+    test('should generate correct actuator topic paths', () {
+      final topic = TestMqttTopics.actuatorTopicFor('esp32_1');
+      expect(topic, equals('grow/esp32_1/actuator'));
     });
 
-    test('should generate correct actuator command topic paths', () {
-      final topic = TestMqttTopics.deviceCommandTopicFor('rpi', 'light', '02');
-      expect(topic, equals('grow/tent/rpi/actuator/light/02/set'));
+    test('should generate correct device topic paths', () {
+      final topic = TestMqttTopics.deviceTopicFor('rpi');
+      expect(topic, equals('grow/rpi/device'));
     });
 
-    test('should generate correct node status topic paths', () {
-      final topic = TestMqttTopics.nodeStatusTopicFor('greenhouse_01');
-      expect(topic, equals('grow/tent/greenhouse_01/status'));
-    });
-
-    test('should handle special characters in node names', () {
-      final topic = TestMqttTopics.sensorDataTopicFor(
-        'rpi-node_01',
-        'ph',
-        '01',
-      );
-      expect(topic, equals('grow/tent/rpi-node_01/sensor/ph/01/state'));
+    test('should handle device node names with underscores', () {
+      final topic = TestMqttTopics.sensorTopicFor('esp32_node_01');
+      expect(topic, equals('grow/esp32_node_01/sensor'));
     });
   });
 
@@ -180,34 +167,36 @@ void main() {
 
     test('should create valid actuator state JSON for MQTT', () {
       final stateJson = json.encode({
-        'ts': DateTime.now().toUtc().toIso8601String(),
-        'state': 1,
-        'level': 'high',
-        'power_W': 75.5,
-        'request_id': 'test_request_123',
+        'deviceType': 'pump',
+        'deviceID': '1',
+        'location': 'tent',
+        'running': true,
+        'description': 'main circulation pump',
       });
 
       final parsed = json.decode(stateJson) as Map<String, dynamic>;
-      expect(parsed['state'], equals(1));
-      expect(parsed['level'], equals('high'));
-      expect(parsed['power_W'], equals(75.5));
-      expect(parsed['request_id'], equals('test_request_123'));
+      expect(parsed['deviceType'], equals('pump'));
+      expect(parsed['deviceID'], equals('1'));
+      expect(parsed['location'], equals('tent'));
+      expect(parsed['running'], equals(true));
+      expect(parsed['description'], equals('main circulation pump'));
     });
 
-    test('should create valid command JSON for MQTT', () {
-      final commandJson = json.encode({
-        'command': 'set_brightness',
-        'deviceId': 'light_001',
-        'timestamp': DateTime.now().toUtc().toIso8601String(),
-        'brightness': 85,
-        'duration': 3600, // 1 hour
+    test('should create valid device status JSON for MQTT', () {
+      final statusJson = json.encode({
+        'deviceType': 'microcontroller',
+        'deviceID': '1',
+        'location': 'tent',
+        'running': false,
+        'description': 'esp32 board offline',
       });
 
-      final parsed = json.decode(commandJson) as Map<String, dynamic>;
-      expect(parsed['command'], equals('set_brightness'));
-      expect(parsed['deviceId'], equals('light_001'));
-      expect(parsed['brightness'], equals(85));
-      expect(parsed['duration'], equals(3600));
+      final parsed = json.decode(statusJson) as Map<String, dynamic>;
+      expect(parsed['deviceType'], equals('microcontroller'));
+      expect(parsed['deviceID'], equals('1'));
+      expect(parsed['location'], equals('tent'));
+      expect(parsed['running'], equals(false));
+      expect(parsed['description'], equals('esp32 board offline'));
     });
   });
 
@@ -346,6 +335,66 @@ void main() {
         stopwatch.elapsedMilliseconds,
         lessThan(2000),
       ); // Should be reasonably fast
+    });
+  });
+
+  group('New MQTT Payload Format Validation', () {
+    test('should create valid sensor payload for MQTT', () {
+      final payload = TestMqttPayloads.sensorPayload(
+        deviceType: 'temperature',
+        deviceID: '1',
+        location: 'tent',
+        value: 23.22,
+        description: 'under light',
+      );
+
+      expect(payload['deviceType'], equals('temperature'));
+      expect(payload['deviceID'], equals('1'));
+      expect(payload['location'], equals('tent'));
+      expect(payload['value'], equals('23.22')); // String format
+      expect(payload['description'], equals('under light'));
+    });
+
+    test('should create valid actuator payload for MQTT', () {
+      final payload = TestMqttPayloads.actuatorPayload(
+        deviceType: 'pump',
+        deviceID: '1',
+        location: 'tent',
+        running: true,
+        description: 'main circulation',
+      );
+
+      expect(payload['deviceType'], equals('pump'));
+      expect(payload['deviceID'], equals('1'));
+      expect(payload['location'], equals('tent'));
+      expect(payload['running'], equals(true));
+      expect(payload['description'], equals('main circulation'));
+    });
+
+    test('should create valid device payload for MQTT', () {
+      final payload = TestMqttPayloads.devicePayload(
+        deviceType: 'microcontroller',
+        deviceID: '1',
+        location: 'tent',
+        running: false,
+        description: 'esp32 board on floor',
+      );
+
+      expect(payload['deviceType'], equals('microcontroller'));
+      expect(payload['running'], equals(false));
+      expect(payload['description'], equals('esp32 board on floor'));
+    });
+
+    test('should generate sensor payloads for all sensor types', () {
+      for (final sensorType in SensorType.values) {
+        final payload = TestMqttPayloads.generateSensorPayload(sensorType);
+
+        expect(payload['deviceType'], equals(sensorType.name));
+        expect(payload['deviceID'], equals('1'));
+        expect(payload['location'], equals('tent'));
+        expect(payload['value'], isA<String>());
+        expect(payload['description'], contains(sensorType.name));
+      }
     });
   });
 }

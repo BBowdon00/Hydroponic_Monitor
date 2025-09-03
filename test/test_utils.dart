@@ -202,18 +202,101 @@ class TestDataGenerator {
 
 /// MQTT topic patterns for testing.
 class TestMqttTopics {
-  static const String sensorDataTopic = 'grow/tent/+/sensor/+/+/state';
-  static const String deviceStatusTopic = 'grow/tent/+/actuator/+/+/state';
-  static const String deviceCommandTopic = 'grow/tent/+/actuator/+/+/set';
-  static const String nodeStatusTopic = 'grow/tent/+/status';
+  // Updated to match new telegraf.conf format: grow/{deviceNode}/{deviceCategory}
+  static const String sensorDataTopic = 'grow/+/sensor';
+  static const String deviceStatusTopic = 'grow/+/actuator';
+  static const String deviceTopic = 'grow/+/device';
+  static const String allTopics = 'grow/+/+';
 
-  static String sensorDataTopicFor(String node, String type, String id) =>
-      'grow/tent/$node/sensor/$type/$id/state';
-  static String deviceStatusTopicFor(String node, String type, String id) =>
-      'grow/tent/$node/actuator/$type/$id/state';
-  static String deviceCommandTopicFor(String node, String type, String id) =>
-      'grow/tent/$node/actuator/$type/$id/set';
-  static String nodeStatusTopicFor(String node) => 'grow/tent/$node/status';
+  static String sensorTopicFor(String deviceNode) => 'grow/$deviceNode/sensor';
+  static String actuatorTopicFor(String deviceNode) => 'grow/$deviceNode/actuator';
+  static String deviceTopicFor(String deviceNode) => 'grow/$deviceNode/device';
+}
+
+/// Generate MQTT payloads that match the new telegraf.conf format.
+class TestMqttPayloads {
+  static Map<String, dynamic> sensorPayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required double value,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'value': value.toString(), // String format as in telegraf examples
+      'description': description ?? 'test sensor',
+    };
+  }
+
+  static Map<String, dynamic> actuatorPayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required bool running,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'running': running,
+      'description': description ?? 'test actuator',
+    };
+  }
+
+  static Map<String, dynamic> devicePayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required bool running,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'running': running,
+      'description': description ?? 'test device',
+    };
+  }
+
+  /// Generate realistic sensor payload based on sensor type.
+  static Map<String, dynamic> generateSensorPayload(SensorType type) {
+    return sensorPayload(
+      deviceType: type.name,
+      deviceID: '1',
+      location: 'tent',
+      value: TestDataGenerator._generateRealisticValue(type, DateTime.now()),
+      description: 'test ${type.name} sensor',
+    );
+  }
+
+  /// Generate realistic actuator payload.
+  static Map<String, dynamic> generateActuatorPayload(String deviceType) {
+    return actuatorPayload(
+      deviceType: deviceType,
+      deviceID: '1',
+      location: 'tent',
+      running: _random.nextBool(),
+      description: 'test $deviceType actuator',
+    );
+  }
+
+  /// Generate realistic device payload.
+  static Map<String, dynamic> generateDevicePayload(String deviceType) {
+    return devicePayload(
+      deviceType: deviceType,
+      deviceID: '1',
+      location: 'tent',
+      running: _random.nextBool(),
+      description: 'test $deviceType device',
+    );
+  }
+
+  static final Random _random = Random();
 }
 
 /// Test configuration constants that can be overridden by environment variables.

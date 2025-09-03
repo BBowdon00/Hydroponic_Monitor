@@ -54,7 +54,6 @@ services:
         condition: service_healthy
     volumes:
       - ./config/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ./config/telegraf/telegraf.d:/etc/telegraf/telegraf.d:ro
     environment:
       - INFLUX_TOKEN=${INFLUX_ADMIN_TOKEN:-hydroponic-admin-token}
       - INFLUX_ORG=${INFLUX_ORG:-hydroponic-org}

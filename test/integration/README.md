@@ -173,7 +173,6 @@ docker compose up -d
 Since tests now use production Telegraf config:
 1. Verify `../../config/telegraf/` directory exists
 2. Check that `TELEGRAF_ENV=integration_test` is set in docker-compose.yml
-3. Ensure telegraf.d input files are accessible
 
 ### Tests failing after configuration changes
 1. Check Telegraf logs for configuration errors: `docker compose logs telegraf`

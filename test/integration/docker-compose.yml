@@ -51,12 +51,10 @@ services:
     volumes:
       - ../../config/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
-      - INFLUX_TOKEN=test-token-for-integration-tests
-      - INFLUX_ORG=test-org
-      - INFLUX_URL=http://influxdb:8086
-      - MQTT_USER=
-      - MQTT_PASS=
-      - TELEGRAF_ENV=integration_test
+      TELEGRAF_ENV: integration_test
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
     healthcheck:
       test: ["CMD", "telegraf", "--config", "/etc/telegraf/telegraf.conf", "--test"]
       interval: 60s
