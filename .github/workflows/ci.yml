@@ -96,22 +96,22 @@ jobs:
           else
             echo "No formatting changes to commit"
           fi
-      
-        # Optional: comment on the PR to notify about the auto-format
-        - name: Comment on PR about formatting
-          if: |
-            steps.check-format.outputs.needs_format == 'true' &&
-            github.event_name == 'pull_request' &&
-            github.event.pull_request.head.repo.full_name == github.repository
-          uses: actions/github-script@v7
-          with:
-            script: |
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '🔧 Code was auto-formatted and pushed to this PR branch.'
-              })
+
+      # Optional: comment on the PR to notify about the auto-format
+      - name: Comment on PR about formatting
+        if: |
+          steps.check-format.outputs.needs_format == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🔧 Code was auto-formatted and pushed to this PR branch.'
+            })
 
   # Analyze code quality
   analyze:
@@ -288,7 +288,7 @@ jobs:
           docker compose down -v --remove-orphans
           echo "Services stopped and volumes removed"
 
-# Comment on failure
+  # Comment on failure
   report-failure:
     runs-on: ubuntu-latest
     name: Comment on PR with Failure Summary
