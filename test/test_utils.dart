@@ -7,6 +7,7 @@ import 'package:hydroponic_monitor/domain/entities/device.dart';
 /// Utilities for generating realistic test data that mirrors production scenarios.
 class TestDataGenerator {
   static final Random _random = Random();
+  static int _testCounter = 0;
 
   /// Generate realistic sensor data for a specific sensor type.
   static SensorData generateSensorData({
@@ -17,7 +18,9 @@ class TestDataGenerator {
     String? location,
   }) {
     final type = sensorType ?? _randomSensorType();
-    final id = sensorId ?? 'sensor_${type.name}_${_random.nextInt(1000)}';
+    // Ensure unique sensor IDs for testing with timestamp suffix
+    final uniqueSuffix = '${DateTime.now().millisecondsSinceEpoch}_${++_testCounter}';
+    final id = sensorId ?? 'test_${type.name}_$uniqueSuffix';
     final time = timestamp ?? DateTime.now();
 
     return SensorData(

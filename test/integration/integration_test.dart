@@ -479,8 +479,8 @@ String _sensorDataToJson(SensorData data) {
     'ts': data.timestamp.toUtc().toIso8601String(),
     'value': data.value,
     'unit': data.unit,
-    'id': data.id, // Include sensor ID for InfluxDB query matching
-    'accuracy': 0.1, // Optional field for testing
+    'id': data.id, // This will become a tag in InfluxDB
+    'sensor_type': data.sensorType.name, // Additional tag for filtering
   });
 }
 
@@ -488,20 +488,14 @@ String _sensorDataToJson(SensorData data) {
 /// This bypasses our service layer to test the actual integration.
 Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
   try {
-    // Generate the expected topic for this sensor data
-    final expectedTopic = TestMqttTopics.sensorDataTopicFor(
-      'rpi',
-      expectedData.sensorType.name,
-      '01',
-    );
-
-    final query =
-        '''
+    // Use the sensor ID as the primary filter since it's now a tag
+    final query = '''
         from(bucket: "${TestConfig.testInfluxBucket}")
           |> range(start: -30m)
           |> filter(fn: (r) => r._measurement == "env")
           |> filter(fn: (r) => r._field == "value")
-          |> filter(fn: (r) => r.topic == "$expectedTopic")
+          |> filter(fn: (r) => r.id == "${expectedData.id}")
+          |> filter(fn: (r) => r.sensor_type == "${expectedData.sensorType.name}")
           |> last()
         ''';
 
@@ -521,8 +515,10 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
       final csvData = response.body;
       print('InfluxDB sensor query response: $csvData');
 
-      // Check if response contains the expected topic and value data
-      return csvData.contains(expectedTopic) && csvData.contains('_value');
+      // Check if response contains data and has the expected sensor ID
+      return csvData.contains('_value') && 
+             csvData.contains(expectedData.id) &&
+             csvData.contains(expectedData.sensorType.name);
     } else {
       print('InfluxDB sensor query failed with status: ${response.statusCode}');
       print('Response body: ${response.body}');
@@ -537,12 +533,11 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
 /// Query InfluxDB for actuator state data.
 Future<bool> _queryInfluxForActuatorStates() async {
   try {
-    final query =
-        '''
+    final query = '''
         from(bucket: "${TestConfig.testInfluxBucket}")
           |> range(start: -1h)
           |> filter(fn: (r) => r._measurement == "actuator_state")
-          |> filter(fn: (r) => r._field == "state")
+          |> filter(fn: (r) => r._field == "state" or r._field == "power_W")
           |> count()
         ''';
 
@@ -562,12 +557,20 @@ Future<bool> _queryInfluxForActuatorStates() async {
       final csvData = response.body;
       print('InfluxDB actuator query response: $csvData');
 
-      // Check if we have any actuator state records
-      return csvData.contains('_value') && !csvData.contains(',0,');
+      // Check if we have any actuator state records with non-zero count
+      final lines = csvData.split('\n');
+      for (final line in lines) {
+        if (line.contains('_value') && !line.contains(',0,') && line.contains(',') && line.split(',').length > 6) {
+          final parts = line.split(',');
+          final valueIndex = parts.indexWhere((part) => part.trim() != '' && double.tryParse(part) != null && double.parse(part) > 0);
+          if (valueIndex != -1) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      print(
-        'InfluxDB actuator query failed with status: ${response.statusCode}',
-      );
+      print('InfluxDB actuator query failed with status: ${response.statusCode}');
       print('Response body: ${response.body}');
       return false;
     }
@@ -580,14 +583,13 @@ Future<bool> _queryInfluxForActuatorStates() async {
 /// Query InfluxDB for node status data.
 Future<bool> _queryInfluxForNodeStatus() async {
   try {
-    final query =
-        '''
-from(bucket: "${TestConfig.testInfluxBucket}")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "node_status")
-  |> filter(fn: (r) => r._field == "online")
-  |> count()
-''';
+    final query = '''
+        from(bucket: "${TestConfig.testInfluxBucket}")
+          |> range(start: -1h)
+          |> filter(fn: (r) => r._measurement == "node_status")
+          |> filter(fn: (r) => r._field == "online")
+          |> count()
+        ''';
 
     final response = await http.post(
       Uri.parse(
@@ -605,12 +607,20 @@ from(bucket: "${TestConfig.testInfluxBucket}")
       final csvData = response.body;
       print('InfluxDB node status query response: $csvData');
 
-      // Check if we have any node status records
-      return csvData.contains('_value') && !csvData.contains(',0,');
+      // Check if we have any node status records with non-zero count
+      final lines = csvData.split('\n');
+      for (final line in lines) {
+        if (line.contains('_value') && !line.contains(',0,') && line.contains(',') && line.split(',').length > 6) {
+          final parts = line.split(',');
+          final valueIndex = parts.indexWhere((part) => part.trim() != '' && double.tryParse(part) != null && double.parse(part) > 0);
+          if (valueIndex != -1) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      print(
-        'InfluxDB node status query failed with status: ${response.statusCode}',
-      );
+      print('InfluxDB node status query failed with status: ${response.statusCode}');
       print('Response body: ${response.body}');
       return false;
     }
