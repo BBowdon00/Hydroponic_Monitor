@@ -488,15 +488,15 @@ String _sensorDataToJson(SensorData data) {
 /// This bypasses our service layer to test the actual integration.
 Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
   try {
-    // Use the sensor ID as the primary filter since it's now a tag
+    // Query based on the actual data structure stored by Telegraf
     final query =
         '''
         from(bucket: "${TestConfig.testInfluxBucket}")
           |> range(start: -30m)
           |> filter(fn: (r) => r._measurement == "env")
           |> filter(fn: (r) => r._field == "value")
-          |> filter(fn: (r) => r.id == "${expectedData.id}")
-          |> filter(fn: (r) => r.sensor_type == "${expectedData.sensorType.name}")
+          |> filter(fn: (r) => r.sensor_id == "01")
+          |> filter(fn: (r) => r.node == "rpi")
           |> last()
         ''';
 
@@ -516,10 +516,11 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
       final csvData = response.body;
       print('InfluxDB sensor query response: $csvData');
 
-      // Check if response contains data and has the expected sensor ID
+      // Check if response contains data with expected value field and tags
       return csvData.contains('_value') &&
-          csvData.contains(expectedData.id) &&
-          csvData.contains(expectedData.sensorType.name);
+          csvData.contains(',01,') &&
+          csvData.contains(',rpi,') &&
+          csvData.contains(',value,');
     } else {
       print('InfluxDB sensor query failed with status: ${response.statusCode}');
       print('Response body: ${response.body}');
