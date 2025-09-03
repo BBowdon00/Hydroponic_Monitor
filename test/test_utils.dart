@@ -19,7 +19,8 @@ class TestDataGenerator {
   }) {
     final type = sensorType ?? _randomSensorType();
     // Ensure unique sensor IDs for testing with timestamp suffix
-    final uniqueSuffix = '${DateTime.now().millisecondsSinceEpoch}_${++_testCounter}';
+    final uniqueSuffix =
+        '${DateTime.now().millisecondsSinceEpoch}_${++_testCounter}';
     final id = sensorId ?? 'test_${type.name}_$uniqueSuffix';
     final time = timestamp ?? DateTime.now();
 
