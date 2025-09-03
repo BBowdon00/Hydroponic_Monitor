@@ -7,10 +7,10 @@ set -e
 
 echo "🧪 Starting Hydroponic Monitor Integration Tests"
 
-# Check if docker-compose is available
-if ! command -v docker-compose &> /dev/null; then
-    echo "❌ docker-compose is required but not installed."
-    echo "Please install docker-compose to run integration tests."
+# Check if docker compose is available
+if ! command -v docker compose &> /dev/null; then
+    echo "❌ docker compose is required but not installed."
+    echo "Please install docker compose to run integration tests."
     exit 1
 fi
 
@@ -18,8 +18,8 @@ fi
 cd "$(dirname "$0")/../test/integration"
 
 echo "🐳 Starting test services with Docker Compose..."
-docker-compose down --remove-orphans
-docker-compose up -d
+docker compose down --remove-orphans
+docker compose up -d
 
 echo "⏳ Waiting for services to be healthy..."
 timeout=300  # 5 minutes timeout
@@ -27,7 +27,7 @@ elapsed=0
 interval=10
 
 while [ $elapsed -lt $timeout ]; do
-    if docker-compose ps | grep -q "healthy"; then
+    if docker compose ps | grep -q "healthy"; then
         echo "✅ Services are healthy!"
         break
     fi
@@ -40,15 +40,15 @@ done
 if [ $elapsed -ge $timeout ]; then
     echo "❌ Services did not become healthy within $timeout seconds"
     echo "🔍 Service status:"
-    docker-compose ps
+    docker compose ps
     echo "🔍 Service logs:"
-    docker-compose logs
-    docker-compose down
+    docker compose logs
+    docker compose down
     exit 1
 fi
 
 echo "🔍 Service status:"
-docker-compose ps
+docker compose ps
 
 # Go back to project root
 cd ../..
@@ -67,7 +67,7 @@ fi
 
 echo "🔽 Stopping test services..."
 cd test/integration
-docker-compose down
+docker compose down
 
 echo "🧹 Cleaning up..."
 docker system prune -f > /dev/null 2>&1 || true

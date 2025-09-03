@@ -269,7 +269,7 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
         '''
 from(bucket: "${TestConfig.testInfluxBucket}")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "mqtt_consumer")
+  |> filter(fn: (r) => r._measurement == "sensor_data")
   |> filter(fn: (r) => r._field == "id")
   |> filter(fn: (r) => r._value == "${expectedData.id}")
   |> last()

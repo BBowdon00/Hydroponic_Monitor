@@ -4,12 +4,15 @@
 
 ## Repository State
 
-This repository is in early development. Currently contains:
+This repository contains a fully functional Flutter hydroponic monitoring application:
 - `.github/copilot-instructions.md` - This file (operational instructions)
 - `.github/copilot-instructions-architecture.md` - Architecture and coding standards
-- `.github/workflows/copilot-setup-steps.yml` - Flutter/Dart environment setup for CI
+- `.github/workflows/ci.yml` - Complete CI/CD pipeline with unit and integration tests
+- `.github/workflows/copilot-end-steps.yml` - Automated test execution workflow for Copilot Agent
+- `lib/` - Complete Flutter application source code
+- `test/` - Comprehensive unit and integration test suite (50+ tests)
+- `scripts/` - Test automation scripts for local and CI execution
 
-**NO Flutter project exists yet.** You must create one first (see Setup section).
 
 ## Environment Setup
 
@@ -24,33 +27,78 @@ flutter --version  # Should show Flutter 3.35.2+
 flutter doctor -v  # Check environment - takes 10 seconds
 ```
 
-### Required Dependencies for Linux Desktop Builds
+### Required Dependencies for Integration Tests
 ```bash
-sudo apt-get update && sudo apt-get install -y libgtk-3-dev pkg-config
-# Takes ~60 seconds. NEVER CANCEL - use timeout 120+
+# Docker and Docker Compose are required for integration tests
+docker --version          # Check Docker installation
+docker compose --version  # Check Docker Compose installation
 ```
 
-## Project Initialization
+## Automated Test Execution
 
-**Since no Flutter project exists yet, create one first:**
+**The Copilot Agent must run comprehensive tests after commits and task completion.**
+
+### Test Automation Workflow Scripts
+
+**ALWAYS run the complete test suite using the test automation scripts:**
 
 ```bash
-cd [repository-root]
-flutter create --org com.hydroponicmonitor --project-name hydroponic_monitor .
-# Takes ~3 seconds - creates Flutter project in current directory
+# Recommended: Use the comprehensive test runner
+./scripts/test-runner.sh --all --verbose --coverage
+# Runs both unit tests (50+ tests) and integration tests
 ```
 
-**Alternative if directory is not empty:**
+### Test Execution Requirements
+
+**Unit Tests (ALWAYS run first):**
 ```bash
-# Create in subdirectory first, then move files
-mkdir temp_flutter && cd temp_flutter
-flutter create --org com.hydroponicmonitor --project-name hydroponic_monitor .
-mv * ../ && cd .. && rmdir temp_flutter
+flutter test --exclude-tags=integration --coverage --reporter=expanded
+# 50+ tests covering entities, repositories, services, and widgets
+# Takes ~2 minutes - NEVER CANCEL, use timeout 180+
 ```
+
+**Integration Tests (run after unit tests pass):**
+```bash
+# Requires Docker Compose services: InfluxDB, MQTT Broker, Telegraf
+cd test/integration && docker-compose up -d
+# Wait for services to be healthy (up to 5 minutes)
+flutter test test/integration/ --reporter=expanded --timeout=240s
+# Tests full MQTT → Telegraf → InfluxDB pipeline
+```
+
+### Test Failure Investigation
+
+**When tests fail, Copilot Agent MUST:**
+
+1. **Analyze the failure output** - Read error messages, stack traces, and failure logs
+2. **Check service logs** - For integration test failures, examine Docker service logs:
+   ```bash
+   cd test/integration
+   docker-compose logs influxdb --tail=100
+   docker-compose logs mosquitto --tail=100  
+   docker-compose logs telegraf --tail=100
+   ```
+3. **Identify root cause** - Distinguish between:
+   - Code logic errors (fix in source code)
+   - Test environment issues (fix test setup)
+   - Service configuration problems (fix Docker/config files)
+   - Timing issues (adjust timeouts)
+4. **Implement surgical fixes** - Make minimal changes to fix the specific failure
+5. **Verify fix** - Re-run failed tests to confirm resolution
+6. **Run full test suite** - Ensure no regressions were introduced
+
+### Post-Commit Test Automation
+
+**After every commit or task completion:**
+
+1. **Get dependencies:** `flutter pub get`
+2. **Code analysis:** `flutter analyze` (must show "No issues found!")
+3. **Code formatting:** `dart format --set-exit-if-changed .`
+4. **Unit tests:** `flutter test --exclude-tags=integration --coverage --reporter=expanded`
+5. **Integration tests:** `./scripts/run-integration-tests.sh`
+6. **Report results** and any fixes made
 
 ## Build Commands and Timing
-
-**CRITICAL: Set timeouts appropriately and NEVER CANCEL builds.**
 
 ### Dependencies and Analysis
 ```bash
@@ -59,56 +107,19 @@ flutter analyze          # ~10 seconds - NEVER CANCEL, use timeout 60+
 dart format --output none --set-exit-if-changed .  # <1 second
 ```
 
-### Build Targets
-```bash
-# Web build (recommended for development)
-flutter build web        # ~22 seconds - NEVER CANCEL, use timeout 120+
-
-# Linux desktop build (if GTK dependencies installed)
-flutter config --enable-linux-desktop
-flutter build linux      # ~20 seconds - NEVER CANCEL, use timeout 120+
-
-# Android APK build 
-flutter build apk --debug # May FAIL in CI due to Gradle issues - document if fails
-                          # If successful: ~60 seconds - NEVER CANCEL, use timeout 300+
-```
-
-### Testing
-```bash
-flutter test             # ~10 seconds - NEVER CANCEL, use timeout 60+
-```
-
-## Running the Application
-
-### Web Development Server
-```bash
-flutter run -d web-server --web-port 8080
-# Starts in ~20 seconds
-# Access at http://localhost:8080
-# Type 'q' to quit, 'r' for hot reload
-```
-
-### Available Devices
-```bash
-flutter devices          # Check available targets
-# Expected: Web Server, Chrome, Linux (if GTK installed)
-```
-
 ## Validation Scenarios
 
 **ALWAYS test these scenarios after making changes:**
 
 1. **Basic Build Validation**:
    ```bash
-   flutter pub get && flutter analyze && flutter test
+   flutter pub get && flutter analyze && flutter test --exclude-tags=integration
    ```
 
-2. **Web App Functionality**:
+2. **Complete Test Suite Validation**:
    ```bash
-   flutter run -d web-server --web-port 8080 &
-   sleep 25  # Wait for startup
-   curl -s http://localhost:8080 | head -10  # Should show HTML
-   # Manually stop with 'q' command
+   ./scripts/test-runner.sh --all --verbose --coverage
+   # Includes unit tests (50+) and integration tests
    ```
 
 3. **Code Quality Checks**:
@@ -117,82 +128,49 @@ flutter devices          # Check available targets
    flutter analyze  # Must show "No issues found!"
    ```
 
-## Common Timing Expectations
 
-- **Project creation**: 3 seconds
-- **Dependency resolution**: <1 second  
-- **Code analysis**: 10 seconds - **NEVER CANCEL, timeout 60+**
-- **Unit tests**: 10 seconds - **NEVER CANCEL, timeout 60+**
-- **Web build**: 22 seconds - **NEVER CANCEL, timeout 120+**
-- **Linux build**: 20 seconds - **NEVER CANCEL, timeout 120+**
-- **Android build**: 60 seconds (may fail) - **NEVER CANCEL, timeout 300+**
-- **Web server startup**: 20 seconds
-- **Code formatting**: <1 second
-
-## Troubleshooting
-
-### Android Build Issues
-Android builds may fail in CI environments due to Gradle plugin version issues:
-```
-Plugin [id: 'com.android.application', version: '8.9.1'] was not found
-```
-This is expected in headless environments. Focus on web and Linux builds for validation.
-
-### Missing GTK Dependencies
-If Linux builds fail:
-```bash
-sudo apt-get install -y libgtk-3-dev pkg-config
-```
-
-### Web Server Port Conflicts
-If port 8080 is busy, use different port:
-```bash
-flutter run -d web-server --web-port 8081
-```
-
-## Project Structure (After Initialization)
+## Project Structure
 
 ```
 [repo-root]/
 ├── .github/                 # GitHub configuration
-├── lib/                     # Dart source code
-│   └── main.dart           # Entry point
-├── test/                    # Test files
-├── web/                     # Web-specific files
-├── android/                 # Android platform files
-├── ios/                     # iOS platform files  
-├── linux/                   # Linux platform files
+│   ├── workflows/          # CI/CD and automation workflows
+│   ├── copilot-instructions.md
+│   └── copilot-instructions-architecture.md
+├── lib/                     # Flutter application source code
+│   ├── core/               # Shared utilities (env, errors, logger, theme)
+│   ├── data/               # Data layer (MQTT, InfluxDB, repositories)
+│   ├── domain/             # Business logic (entities, use cases)
+│   └── presentation/       # UI layer (pages, widgets, providers)
+├── test/                    # Comprehensive test suite
+│   ├── data/              # Repository and service tests
+│   ├── domain/            # Entity and business logic tests
+│   ├── presentation/      # Widget and UI tests
+│   ├── integration/       # End-to-end integration tests
+│   └── test_utils.dart    # Test utilities and helpers
+├── scripts/                # Test automation and utility scripts
+│   ├── test-runner.sh     # Comprehensive test runner
+│   └── run-integration-tests.sh  # Integration test runner
+├── android/                # Android platform files
+├── ios/                    # iOS platform files  
+├── linux/                  # Linux platform files
+├── web/                    # Web platform files
 ├── pubspec.yaml            # Dependencies and metadata
-└── analysis_options.yaml   # Linting rules
+└── analysis_options.yaml  # Linting rules
 ```
 
-## Coding Standards (After Project Creation)
+## Coding Standards
 
 **See `.github/copilot-instructions-architecture.md` for detailed coding standards and architecture guidelines.**
 
-Key points:
-- **State management**: Use Riverpod (hooks_riverpod)
-- **Navigation**: Use go_router  
-- **Architecture**: Feature-first structure under `lib/features/`
-- **Style**: Follow flutter_lints, always run `dart format`
-- **Testing**: Unit tests for providers/repositories, widget tests for screens
-
 ## CI Integration
 
-The `.github/workflows/copilot-setup-steps.yml` handles environment setup. After project creation, add Flutter-specific CI steps:
+The `.github/workflows/ci.yml` handles the complete CI/CD pipeline including:
+- Code formatting and analysis
+- Unit tests (50+ tests)
+- Integration tests with Docker Compose services
+- Test result reporting and failure handling
 
-```yaml
-- name: Get dependencies
-  run: flutter pub get
-  
-- name: Analyze code
-  run: flutter analyze
-  
-- name: Run tests  
-  run: flutter test
-  
-- name: Build web
-  run: flutter build web
-```
-
-**Remember: NEVER CANCEL long-running operations. Always use appropriate timeouts and wait for completion.**
+The `.github/workflows/copilot-end-steps.yml` documents a flow for testing for Copilot Agent:
+- Runs comprehensive test suite
+- Reports results
