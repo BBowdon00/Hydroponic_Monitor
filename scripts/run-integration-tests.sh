@@ -53,9 +53,6 @@ docker compose ps
 # Go back to project root
 cd ../..
 
-echo "📦 Getting dependencies..."
-flutter pub get
-
 echo "🧪 Running integration tests..."
 if flutter test test/integration/ --reporter=expanded; then
     echo "✅ Integration tests passed!"
@@ -66,6 +63,10 @@ else
 fi
 
 echo "🔽 Stopping test services..."
+docker compose logs mosquitto >  test/logs/mosquitto.log
+docker compose logs influxdb > test/logs/influxdb.log
+docker compose logs telegraf > test/logs/telegraf.log
+
 cd test/integration
 docker compose down
 
