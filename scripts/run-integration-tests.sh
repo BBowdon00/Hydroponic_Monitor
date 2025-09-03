@@ -5,6 +5,30 @@
 
 set -e
 
+# Parse command line arguments
+KEEP_SERVICES=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --keep-services|--no-cleanup)
+            KEEP_SERVICES=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo "Options:"
+            echo "  --keep-services, --no-cleanup    Keep Docker services running after tests"
+            echo "  --help, -h                       Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🧪 Starting Hydroponic Monitor Integration Tests"
 
 # Check if docker compose is available
@@ -65,13 +89,17 @@ else
     test_result=1
 fi
 
-echo "🔽 Stopping test services..."
+if [ "$KEEP_SERVICES" = true ]; then
+    echo "🔧 Keeping test services running (--keep-services flag detected)"
+    echo "💡 To stop services manually, run: cd test/integration && docker compose down"
+else
+    echo "🔽 Stopping test services..."
+    cd test/integration
+    docker compose down
 
-cd test/integration
-docker compose down
-
-echo "🧹 Cleaning up..."
-docker system prune -f > /dev/null 2>&1 || true
+    echo "🧹 Cleaning up..."
+    docker system prune -f > /dev/null 2>&1 || true
+fi
 
 if [ $test_result -eq 0 ]; then
     echo "🎉 All integration tests completed successfully!"
