@@ -413,7 +413,6 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
           |> filter(fn: (r) => r.deviceType == "${expectedData.sensorType.name}")
           |> filter(fn: (r) => r.project == "grow")
           |> filter(fn: (r) => r.deviceNode == "rpi")
-          |> filter(fn: (r) => r.deviceCategory == "sensor")
           |> last()
         ''';
 
@@ -462,7 +461,6 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
           |> filter(fn: (r) => r._measurement == "actuator")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
-          |> filter(fn: (r) => r.deviceCategory == "actuator")
           |> count()
         ''';
 
@@ -508,7 +506,6 @@ Future<bool> _queryInfluxForDeviceStatesNew() async {
           |> filter(fn: (r) => r._measurement == "device_state")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
-          |> filter(fn: (r) => r.deviceCategory == "device")
           |> count()
         ''';
 
