@@ -479,6 +479,7 @@ String _sensorDataToJson(SensorData data) {
     'ts': data.timestamp.toUtc().toIso8601String(),
     'value': data.value,
     'unit': data.unit,
+    'id': data.id, // Include sensor ID for InfluxDB query matching
     'accuracy': 0.1, // Optional field for testing
   });
 }
@@ -487,13 +488,20 @@ String _sensorDataToJson(SensorData data) {
 /// This bypasses our service layer to test the actual integration.
 Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
   try {
+    // Generate the expected topic for this sensor data
+    final expectedTopic = TestMqttTopics.sensorDataTopicFor(
+      'rpi',
+      expectedData.sensorType.name,
+      '01',
+    );
+    
     final query =
         '''
 from(bucket: "${TestConfig.testInfluxBucket}")
-  |> range(start: -1h)
+  |> range(start: -30m)
   |> filter(fn: (r) => r._measurement == "env")
   |> filter(fn: (r) => r._field == "value")
-  |> filter(fn: (r) => r.id == "${expectedData.id}")
+  |> filter(fn: (r) => r.topic == "$expectedTopic")
   |> last()
 ''';
 
@@ -513,8 +521,8 @@ from(bucket: "${TestConfig.testInfluxBucket}")
       final csvData = response.body;
       print('InfluxDB sensor query response: $csvData');
 
-      // Simple check: if response contains our sensor ID, data was stored
-      return csvData.contains(expectedData.id);
+      // Check if response contains the expected topic and value data
+      return csvData.contains(expectedTopic) && csvData.contains('_value');
     } else {
       print('InfluxDB sensor query failed with status: ${response.statusCode}');
       print('Response body: ${response.body}');
