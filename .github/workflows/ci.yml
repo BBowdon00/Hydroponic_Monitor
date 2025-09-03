@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write          # needed for issues.createComment on a PR
+      pull-requests: write   # safe addition; some org policies check this
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
