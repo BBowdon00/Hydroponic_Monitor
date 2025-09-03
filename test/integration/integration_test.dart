@@ -89,7 +89,7 @@ void main() {
         print('Message: $messageJson');
 
         // Wait for Telegraf to process and store in InfluxDB
-        await Future.delayed(const Duration(seconds: 30));
+        await Future.delayed(const Duration(seconds: 3));
 
         // Query InfluxDB to verify data was stored
         // Note: This uses the direct InfluxDB HTTP API since our service doesn't support
@@ -135,13 +135,13 @@ void main() {
         mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         // Small delay between publishes
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       print('Published ${testDataList.length} sensor data points');
 
       // Wait for processing
-      await Future.delayed(const Duration(seconds: 45));
+      await Future.delayed(const Duration(seconds: 3));
 
       // Verify all data types were stored
       int storedCount = 0;
@@ -219,11 +219,11 @@ void main() {
           print('Command: $commandJson');
 
           // Small delay between commands
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 100));
         }
 
         // Wait for processing
-        await Future.delayed(const Duration(seconds: 5));
+        await Future.delayed(const Duration(seconds: 3));
 
         // Device commands don't go through Telegraf to InfluxDB - they go directly to devices
         // So we just verify MQTT connectivity remains stable after publishing multiple commands
@@ -289,7 +289,7 @@ void main() {
       }
 
       // Wait for Telegraf to process and store in InfluxDB
-      await Future.delayed(const Duration(seconds: 30));
+      await Future.delayed(const Duration(seconds: 3));
 
       // Verify at least some actuator state data was stored
       // This checks that the actuator input pipeline is working
@@ -318,11 +318,11 @@ void main() {
         print('Status: $status');
 
         // Delay between status updates
-        await Future.delayed(const Duration(seconds: 5));
+        await Future.delayed(const Duration(seconds: 2));
       }
 
       // Wait for Telegraf to process
-      await Future.delayed(const Duration(seconds: 30));
+      await Future.delayed(const Duration(seconds: 3));
 
       // Verify node status data was stored
       final stored = await _queryInfluxForNodeStatus();
@@ -382,13 +382,13 @@ void main() {
           );
 
           // Small delay between publishes to avoid overwhelming the system
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(const Duration(milliseconds: 100));
         }
 
         print('All comprehensive sensor data published');
 
         // Wait for processing
-        await Future.delayed(const Duration(seconds: 60));
+        await Future.delayed(const Duration(seconds: 5));
 
         // Verify a significant portion of the data was stored
         int storedCount = 0;
@@ -430,7 +430,7 @@ Future<void> _waitForServices() async {
   await _waitForMQTT();
 
   // Wait for Telegraf (give it time to connect to other services)
-  await Future.delayed(const Duration(seconds: 10));
+  // await Future.delayed(const Duration(seconds: 1));
 
   print('All services are ready!');
 }
@@ -497,13 +497,13 @@ Future<bool> _queryInfluxDirectly(SensorData expectedData) async {
 
     final query =
         '''
-from(bucket: "${TestConfig.testInfluxBucket}")
-  |> range(start: -30m)
-  |> filter(fn: (r) => r._measurement == "env")
-  |> filter(fn: (r) => r._field == "value")
-  |> filter(fn: (r) => r.topic == "$expectedTopic")
-  |> last()
-''';
+        from(bucket: "${TestConfig.testInfluxBucket}")
+          |> range(start: -30m)
+          |> filter(fn: (r) => r._measurement == "env")
+          |> filter(fn: (r) => r._field == "value")
+          |> filter(fn: (r) => r.topic == "$expectedTopic")
+          |> last()
+        ''';
 
     final response = await http.post(
       Uri.parse(
@@ -539,12 +539,12 @@ Future<bool> _queryInfluxForActuatorStates() async {
   try {
     final query =
         '''
-from(bucket: "${TestConfig.testInfluxBucket}")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "actuator_state")
-  |> filter(fn: (r) => r._field == "state")
-  |> count()
-''';
+        from(bucket: "${TestConfig.testInfluxBucket}")
+          |> range(start: -1h)
+          |> filter(fn: (r) => r._measurement == "actuator_state")
+          |> filter(fn: (r) => r._field == "state")
+          |> count()
+        ''';
 
     final response = await http.post(
       Uri.parse(
