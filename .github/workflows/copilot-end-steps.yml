@@ -1,0 +1,129 @@
+name: Copilot Automated Test Execution
+
+# Lightweight test automation for Copilot Agent workflows
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      trigger_reason:
+        description: 'Reason for test execution'
+        required: false
+        default: 'Manual trigger'
+        type: string
+  
+concurrency:
+  group: copilot-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.35.2'
+
+jobs:
+  copilot-tests:
+    name: Copilot Test Automation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Apply auto-fixes and formatting
+        id: fixes
+        run: |
+          echo "🔧 Applying automatic fixes..."
+          
+          # Apply dart fix if available
+          if dart fix --dry-run 2>/dev/null | grep -q "Apply"; then
+            dart fix --apply
+            echo "applied_dart_fix=true" >> $GITHUB_OUTPUT
+          else
+            echo "applied_dart_fix=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Format code
+          if ! dart format --output none --set-exit-if-changed .; then
+            dart format .
+            echo "applied_formatting=true" >> $GITHUB_OUTPUT
+          else
+            echo "applied_formatting=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run unit tests
+        id: unit_tests
+        run: |
+          echo "🧪 Running unit tests..."
+          flutter test --exclude-tags=integration --coverage --reporter=expanded
+          echo "unit_tests_passed=true" >> $GITHUB_OUTPUT
+        timeout-minutes: 3
+
+      - name: Run integration tests
+        id: integration_tests
+        run: |
+          echo "🔬 Starting integration test environment..."
+          
+          cd test/integration
+          docker compose up -d --wait
+          
+          echo "Running integration tests..."
+          cd ../..
+          flutter test test/integration/ --reporter=expanded --timeout=240s
+          echo "integration_tests_passed=true" >> $GITHUB_OUTPUT
+          
+          echo "Cleaning up services..."
+          cd test/integration
+          docker compose down -v
+        timeout-minutes: 5
+
+      - name: Commit auto-fixes
+        if: steps.fixes.outputs.applied_dart_fix == 'true' || steps.fixes.outputs.applied_formatting == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Copilot Agent"
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "🔧 Auto-fix: dart fix and formatting [copilot-auto]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const unitPassed = '${{ steps.unit_tests.outputs.unit_tests_passed }}' === 'true';
+            const integrationPassed = '${{ steps.integration_tests.outputs.integration_tests_passed }}' === 'true';
+            const appliedFixes = '${{ steps.fixes.outputs.applied_dart_fix }}' === 'true' || '${{ steps.fixes.outputs.applied_formatting }}' === 'true';
+            
+            const fixesMsg = appliedFixes ? '🔧 Applied automatic fixes and formatting\n' : '';
+            const unitMsg = unitPassed ? '✅ Unit tests passed' : '❌ Unit tests failed';
+            const integrationMsg = integrationPassed ? '✅ Integration tests passed' : '❌ Integration tests failed';
+            
+            const body = `### 🤖 Copilot Test Results
+            ${fixesMsg}${unitMsg}
+            ${integrationMsg}
+            
+            **Status:** ${unitPassed && integrationPassed ? '🎉 All tests passed!' : '❌ Some tests failed'}`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
