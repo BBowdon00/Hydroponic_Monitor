@@ -2,6 +2,7 @@ name: Copilot Automated Test Execution
 
 # Lightweight test automation for Copilot Agent workflows
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       trigger_reason:
@@ -9,12 +10,6 @@ on:
         required: false
         default: 'Manual trigger'
         type: string
-  push:
-    branches: [ copilot/* ]
-    paths:
-      - 'lib/**'
-      - 'test/**'
-      - 'pubspec.yaml'
   
 concurrency:
   group: copilot-tests-${{ github.ref }}

@@ -149,7 +149,7 @@ if [ "$RUN_INTEGRATION" = true ]; then
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         print_status $RED "❌ Docker Compose is required for integration tests"
         exit 1
     fi
@@ -158,11 +158,11 @@ if [ "$RUN_INTEGRATION" = true ]; then
     print_status $BLUE "🚀 Starting test services..."
     cd test/integration
     
-    if docker-compose down --remove-orphans; then
+    if docker compose down --remove-orphans; then
         print_status $GREEN "🧹 Cleaned up existing services"
     fi
     
-    if docker-compose up -d; then
+    if docker compose up -d; then
         print_status $GREEN "🚀 Services started"
     else
         print_status $RED "❌ Failed to start services"
@@ -176,12 +176,12 @@ if [ "$RUN_INTEGRATION" = true ]; then
     interval=10
     
     while [ $elapsed -lt $timeout ]; do
-        healthy_services=$(docker-compose ps --format "table {{.Service}}\t{{.State}}" | grep -c "running" || echo "0")
+        healthy_services=$(docker compose ps --format "table {{.Service}}\t{{.State}}" | grep -c "running" || echo "0")
         total_services=3
         
         if [ "$healthy_services" -eq "$total_services" ]; then
             print_status $GREEN "✅ All services are running!"
-            docker-compose ps
+            docker compose ps
             break
         fi
         
@@ -195,10 +195,10 @@ if [ "$RUN_INTEGRATION" = true ]; then
     if [ $elapsed -ge $timeout ]; then
         print_status $RED "❌ Services did not become ready within $timeout seconds"
         print_status $BLUE "🔍 Service status:"
-        docker-compose ps
+        docker compose ps
         print_status $BLUE "🔍 Service logs:"
-        docker-compose logs --tail=20
-        docker-compose down
+        docker compose logs --tail=100
+        docker compose down
         exit 1
     fi
     
@@ -228,14 +228,14 @@ if [ "$RUN_INTEGRATION" = true ]; then
         # Show service logs for debugging
         print_status $BLUE "🔍 Service logs for debugging:"
         cd test/integration
-        docker-compose logs --tail=50
+        docker compose logs --tail=50
         cd "$PROJECT_ROOT"
     fi
     
     # Clean up services
     print_status $BLUE "🔽 Stopping test services..."
     cd test/integration
-    docker-compose down -v
+    docker compose down -v
     cd "$PROJECT_ROOT"
     
     if [ "$integration_success" = false ]; then
