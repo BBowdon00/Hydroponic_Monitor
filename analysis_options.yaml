@@ -26,7 +26,7 @@ linter:
     require_trailing_commas: true
     unnecessary_const: true
     unnecessary_new: true
-    prefer_const_constructors: true
+    prefer_const_constructors: false
     prefer_const_literals_to_create_immutables: true
     
     # Disable some overly strict rules
