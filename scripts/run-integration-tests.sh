@@ -20,6 +20,9 @@ cd "$(dirname "$0")/../test/integration"
 echo "🐳 Starting test services with Docker Compose..."
 docker compose down --remove-orphans
 docker compose up -d
+docker compose logs -f telegraf > ../logs/telegraf.log 2>&1 &
+docker compose logs -f mosquitto > ../logs/mosquitto.log 2>&1 &
+docker compose logs -f influxdb > ../logs/influxdb.log 2>&1 &
 
 echo "⏳ Waiting for services to be healthy..."
 timeout=300  # 5 minutes timeout
@@ -63,9 +66,6 @@ else
 fi
 
 echo "🔽 Stopping test services..."
-docker compose logs mosquitto >  test/logs/mosquitto.log
-docker compose logs influxdb > test/logs/influxdb.log
-docker compose logs telegraf > test/logs/telegraf.log
 
 cd test/integration
 docker compose down
