@@ -53,8 +53,8 @@ services:
     environment:
       TELEGRAF_ENV: integration_test
       INFLUX_URL: http://influxdb:8086
-      INFLUX_TOKEN: ${INFLUX_TOKEN}
-      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_TOKEN: test-token-for-integration-tests
+      INFLUX_ORG: test-org
     healthcheck:
       test: ["CMD", "telegraf", "--config", "/etc/telegraf/telegraf.conf", "--test"]
       interval: 60s
