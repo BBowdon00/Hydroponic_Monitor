@@ -7,7 +7,6 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
 import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
-import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/data/influx/influx_service.dart';
 import '../test_utils.dart';
 
@@ -545,67 +544,6 @@ Future<bool> _queryInfluxForDeviceStatesNew() async {
     }
   } catch (e) {
     print('Error querying InfluxDB for device states: $e');
-    return false;
-  }
-}
-
-/// Query InfluxDB for node status data.
-Future<bool> _queryInfluxForNodeStatus() async {
-  try {
-    final query =
-        '''
-        from(bucket: "${TestConfig.testInfluxBucket}")
-          |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "node_status")
-          |> filter(fn: (r) => r._field == "online")
-          |> count()
-        ''';
-
-    final response = await http.post(
-      Uri.parse(
-        '${TestConfig.testInfluxUrl}/api/v2/query?org=${TestConfig.testInfluxOrg}',
-      ),
-      headers: {
-        'Authorization': 'Token ${TestConfig.testInfluxToken}',
-        'Content-Type': 'application/vnd.flux',
-        'Accept': 'application/csv',
-      },
-      body: query,
-    );
-
-    if (response.statusCode == 200) {
-      final csvData = response.body;
-      print('InfluxDB node status query response: $csvData');
-
-      // Check if we have any node status records with non-zero count
-      final lines = csvData.split('\n');
-      for (final line in lines) {
-        if (line.contains('_value') &&
-            !line.contains(',0,') &&
-            line.contains(',') &&
-            line.split(',').length > 6) {
-          final parts = line.split(',');
-          final valueIndex = parts.indexWhere(
-            (part) =>
-                part.trim() != '' &&
-                double.tryParse(part) != null &&
-                double.parse(part) > 0,
-          );
-          if (valueIndex != -1) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } else {
-      print(
-        'InfluxDB node status query failed with status: ${response.statusCode}',
-      );
-      print('Response body: ${response.body}');
-      return false;
-    }
-  } catch (e) {
-    print('Error querying InfluxDB for node status: $e');
     return false;
   }
 }
