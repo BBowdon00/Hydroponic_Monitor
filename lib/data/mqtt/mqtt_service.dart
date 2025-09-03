@@ -51,7 +51,8 @@ class MqttService {
   static const String _deviceTopicPattern = 'grow/+/device';
 
   /// Stream for receiving raw MQTT messages with topic and payload
-  final StreamController<HydroMqttMessage> _messageController = StreamController.broadcast();
+  final StreamController<HydroMqttMessage> _messageController =
+      StreamController.broadcast();
   Stream<HydroMqttMessage> get messageStream => _messageController.stream;
 
   /// Initialize and connect to MQTT broker.
@@ -151,9 +152,9 @@ class MqttService {
     if (_client?.connectionStatus?.toString() != 'connected') return;
 
     final topics = [
-      _sensorTopicPattern,    // grow/+/sensor
-      _actuatorTopicPattern,  // grow/+/actuator
-      _deviceTopicPattern,    // grow/+/device
+      _sensorTopicPattern, // grow/+/sensor
+      _actuatorTopicPattern, // grow/+/actuator
+      _deviceTopicPattern, // grow/+/device
     ];
 
     for (final topic in topics) {
@@ -207,12 +208,12 @@ class MqttService {
   void _handleSensorData(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      
+
       // Parse new topic format: grow/{deviceNode}/sensor
       final topicParts = topic.split('/');
       if (topicParts.length == 3) {
         final deviceNode = topicParts[1];
-        
+
         // Extract sensor info from payload
         final deviceType = data['deviceType'] as String?;
         final deviceID = data['deviceID'] as String?;
@@ -222,7 +223,7 @@ class MqttService {
         if (deviceType != null && deviceID != null && valueStr != null) {
           final value = double.tryParse(valueStr) ?? 0.0;
           final sensorType = _parseSensorType(deviceType);
-          
+
           final sensorData = SensorData(
             id: '${deviceNode}_${deviceType}_$deviceID',
             sensorType: sensorType,
@@ -232,7 +233,7 @@ class MqttService {
             deviceId: deviceNode,
             location: location,
           );
-          
+
           _sensorDataController.add(sensorData);
         }
       }
@@ -245,12 +246,12 @@ class MqttService {
   void _handleDeviceStatus(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      
+
       // Parse new topic format: grow/{deviceNode}/{actuator|device}
       final topicParts = topic.split('/');
       if (topicParts.length == 3) {
         final deviceNode = topicParts[1];
-        
+
         // Extract device info from payload
         final deviceType = data['deviceType'] as String?;
         final deviceID = data['deviceID'] as String?;
@@ -263,12 +264,14 @@ class MqttService {
             id: '${deviceNode}_${deviceType}_$deviceID',
             name: description ?? '$deviceType $deviceID',
             type: _parseDeviceType(deviceType),
-            status: running == true ? DeviceStatus.online : DeviceStatus.offline,
+            status: running == true
+                ? DeviceStatus.online
+                : DeviceStatus.offline,
             location: location,
             isEnabled: running ?? false,
             lastUpdate: DateTime.now(),
           );
-          
+
           _deviceStatusController.add(device);
         }
       }
@@ -314,7 +317,7 @@ class MqttService {
 
       // Build command topic using new format: grow/{deviceNode}/actuator/set
       final topic = 'grow/$deviceNode/actuator/set';
-      
+
       // Build command payload
       final payload = {
         'deviceID': deviceId,
@@ -360,10 +363,11 @@ class MqttService {
     Logger.info('Unsubscribed from topic: $topic', tag: 'MQTT');
   }
 }
+
 /// Custom MQTT message container for raw topic and payload data.
 class HydroMqttMessage {
   const HydroMqttMessage({required this.topic, required this.payload});
-  
+
   final String topic;
   final String payload;
 }

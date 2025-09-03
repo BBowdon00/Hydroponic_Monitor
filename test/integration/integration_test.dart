@@ -182,11 +182,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient.publishMessage(
-          topic,
-          MqttQos.atLeastOnce,
-          builder.payload!,
-        );
+        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         print('Published actuator state to topic: $topic');
         print('Payload: $payloadJson');
@@ -235,11 +231,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient.publishMessage(
-          topic,
-          MqttQos.atLeastOnce,
-          builder.payload!,
-        );
+        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         print('Published device status to topic: $topic');
         print('Payload: $payloadJson');
@@ -397,13 +389,15 @@ Future<void> _waitForMQTT() async {
 
 /// Convert sensor data to new JSON format for MQTT publishing.
 String _sensorDataToNewJson(SensorData data) {
-  return json.encode(TestMqttPayloads.sensorPayload(
-    deviceType: data.sensorType.name,
-    deviceID: '1',
-    location: data.location ?? 'tent',
-    value: data.value,
-    description: 'integration test ${data.sensorType.name} sensor',
-  ));
+  return json.encode(
+    TestMqttPayloads.sensorPayload(
+      deviceType: data.sensorType.name,
+      deviceID: '1',
+      location: data.location ?? 'tent',
+      value: data.value,
+      description: 'integration test ${data.sensorType.name} sensor',
+    ),
+  );
 }
 
 /// Query InfluxDB for data with new format and measurement names.
@@ -446,7 +440,9 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
           csvData.contains('rpi') && // deviceNode tag
           csvData.contains('grow'); // project tag
     } else {
-      print('InfluxDB new format sensor query failed with status: ${response.statusCode}');
+      print(
+        'InfluxDB new format sensor query failed with status: ${response.statusCode}',
+      );
       print('Response body: ${response.body}');
       return false;
     }
