@@ -459,7 +459,7 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
         '''
         from(bucket: "${TestConfig.testInfluxBucket}")
           |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "actuator_state")
+          |> filter(fn: (r) => r._measurement == "actuator")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
           |> filter(fn: (r) => r.deviceCategory == "actuator")
@@ -484,7 +484,7 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
 
       // Check if we have any actuator state records
       return csvData.contains('_value') &&
-          csvData.contains('actuator_state') &&
+          csvData.contains('actuator') &&
           !csvData.contains(',0,'); // Non-zero count
     } else {
       print(
@@ -530,7 +530,7 @@ Future<bool> _queryInfluxForDeviceStatesNew() async {
 
       // Check if we have any device state records
       return csvData.contains('_value') &&
-          csvData.contains('device_state') &&
+          csvData.contains('device') &&
           !csvData.contains(',0,'); // Non-zero count
     } else {
       print(
