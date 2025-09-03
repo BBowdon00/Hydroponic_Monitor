@@ -158,6 +158,7 @@ The infrastructure behind the Hydroponic Monitor app consists of a distributed n
 
 The system is built around multiple microcontroller nodes deployed throughout the hydroponic environment:
 
+- **Ubuntu Server**: MQTT Broker, runs influxdb, and other containers
 - **Raspberry Pi devices**: Primary controllers running full Linux OS, hosting cameras for MJPEG streams and managing multiple sensors/actuators
 - **ESP32 microcontrollers**: Distributed sensor nodes and actuator controllers positioned strategically around growing areas
 - **Sensors**: Temperature, humidity, pH, electrical conductivity (EC), water level sensors, and total power usage sensors
