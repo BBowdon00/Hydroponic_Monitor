@@ -8,25 +8,26 @@ import '../../domain/entities/sensor_data.dart';
 import '../../domain/entities/device.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
+import '../../core/env.dart';
 
 /// Provider for MQTT service configuration.
 final mqttServiceProvider = Provider<MqttService>((ref) {
   return MqttService(
-    host: 'localhost', // TODO: Get from environment/settings
-    port: 1883,
+    host: Env.mqttHost,
+    port: Env.mqttPort,
     clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
-    username: 'hydro_user', // TODO: Get from secure storage
-    password: 'hydro_pass', // TODO: Get from secure storage
+    username: Env.mqttUsername.isNotEmpty ? Env.mqttUsername : null,
+    password: Env.mqttPassword.isNotEmpty ? Env.mqttPassword : null,
   );
 });
 
 /// Provider for InfluxDB service configuration.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
   return InfluxDbService(
-    url: 'http://localhost:8086', // TODO: Get from environment/settings
-    token: 'your-influxdb-token', // TODO: Get from secure storage
-    organization: 'hydroponic-org',
-    bucket: 'sensor-data',
+    url: Env.influxUrl,
+    token: Env.influxToken,
+    organization: Env.influxOrg,
+    bucket: Env.influxBucket,
   );
 });
 

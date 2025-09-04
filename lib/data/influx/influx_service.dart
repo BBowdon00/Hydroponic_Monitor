@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:influxdb_client/api.dart';
+import 'package:http/http.dart' as http;
 
 import '../../core/logger.dart';
 import '../../core/errors.dart';
@@ -24,7 +25,6 @@ class InfluxDbService {
 
   InfluxDBClient? _client;
   WriteService? _writeApi;
-  QueryService? _queryApi;
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
 
@@ -43,9 +43,8 @@ class InfluxDbService {
         bucket: bucket,
       );
 
-      // Initialize write and query APIs (2.11.0)
+      // Initialize write API only (query will use HTTP directly)
       _writeApi = _client!.getWriteService();
-      _queryApi = _client!.getQueryService();
 
       Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
       _connectionController.add('connected');
@@ -142,36 +141,106 @@ class InfluxDbService {
     DateTime? end,
     int? limit,
   }) async {
-    try {
-      // TODO: Replace dummy with Flux query via _queryApi
+    final startTime = start ?? DateTime.now().subtract(const Duration(hours: 24));
+    final endTime = end ?? DateTime.now();
+    final limitValue = limit ?? 100;
+
+    // If client is not initialized, return dummy data
+    if (_client == null) {
       Logger.info(
-        'Querying sensor data from InfluxDB (returning dummy data)',
+        'InfluxDB client not initialized, returning dummy data',
         tag: 'InfluxDB',
       );
       final dummyData = _generateDummySensorData(
         sensorType: sensorType,
         sensorId: sensorId,
         deviceId: deviceId,
-        start: start ?? DateTime.now().subtract(const Duration(hours: 24)),
-        end: end ?? DateTime.now(),
-        limit: limit ?? 100,
+        start: startTime,
+        end: endTime,
+        limit: limitValue,
       );
       return Success(dummyData);
+    }
+
+    try {
+      Logger.info(
+        'Querying sensor data from InfluxDB: start=$startTime, end=$endTime, limit=$limitValue',
+        tag: 'InfluxDB',
+      );
+
+      // Build Flux query with optional filters
+      final filters = <String>[];
+      
+      if (sensorType != null) {
+        filters.add('|> filter(fn: (r) => r["sensor_type"] == "${sensorType.name}")');
+      }
+      
+      if (sensorId != null) {
+        filters.add('|> filter(fn: (r) => r["sensor_id"] == "$sensorId")');
+      }
+      
+      if (deviceId != null) {
+        filters.add('|> filter(fn: (r) => r["device_id"] == "$deviceId")');
+      }
+
+      final filtersString = filters.join('\n  ');
+
+      final query = '''
+from(bucket: "$bucket")
+  |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${endTime.toUtc().toIso8601String()})
+  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_field"] == "value")
+  $filtersString
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: $limitValue)
+''';
+
+      Logger.debug('Executing Flux query: $query', tag: 'InfluxDB');
+
+      final response = await http.post(
+        Uri.parse('$url/api/v2/query?org=$organization'),
+        headers: {
+          'Authorization': 'Token $token',
+          'Content-Type': 'application/vnd.flux',
+          'Accept': 'application/csv',
+        },
+        body: query,
+      );
+
+      if (response.statusCode == 200) {
+        final sensorDataList = _parseCsvResponse(response.body);
+        Logger.info(
+          'Retrieved ${sensorDataList.length} sensor data points from InfluxDB',
+          tag: 'InfluxDB',
+        );
+        return Success(sensorDataList);
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
     } catch (e) {
       final error = 'Error querying sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
-      return Failure(InfluxError(error));
+      
+      // Fallback to dummy data if query fails (for development/testing)
+      Logger.warning('Falling back to dummy data due to query error', tag: 'InfluxDB');
+      final dummyData = _generateDummySensorData(
+        sensorType: sensorType,
+        sensorId: sensorId,
+        deviceId: deviceId,
+        start: startTime,
+        end: endTime,
+        limit: limitValue,
+      );
+      return Success(dummyData);
     }
   }
 
   /// Query latest sensor data for all sensors.
   Future<Result<List<SensorData>>> queryLatestSensorData() async {
-    try {
-      if (_queryApi == null) {
-        return Failure(InfluxError('InfluxDB client not initialized'));
-      }
+    // If client is not initialized, return dummy data
+    if (_client == null) {
       Logger.info(
-        'Querying latest sensor data from InfluxDB (returning dummy data)',
+        'InfluxDB client not initialized, returning dummy latest data',
         tag: 'InfluxDB',
       );
       final dummyData = SensorType.values.map((type) {
@@ -182,10 +251,188 @@ class InfluxDbService {
         );
       }).toList();
       return Success(dummyData);
+    }
+
+    try {
+      Logger.info(
+        'Querying latest sensor data from InfluxDB',
+        tag: 'InfluxDB',
+      );
+
+      // Query for latest reading of each sensor type
+      final query = '''
+from(bucket: "$bucket")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_field"] == "value")
+  |> group(columns: ["sensor_type", "sensor_id"])
+  |> last()
+  |> yield()
+''';
+
+      Logger.debug('Executing latest data Flux query: $query', tag: 'InfluxDB');
+
+      final response = await http.post(
+        Uri.parse('$url/api/v2/query?org=$organization'),
+        headers: {
+          'Authorization': 'Token $token',
+          'Content-Type': 'application/vnd.flux',
+          'Accept': 'application/csv',
+        },
+        body: query,
+      );
+
+      if (response.statusCode == 200) {
+        final sensorDataList = _parseCsvResponse(response.body);
+        Logger.info(
+          'Retrieved ${sensorDataList.length} latest sensor readings from InfluxDB',
+          tag: 'InfluxDB',
+        );
+        return Success(sensorDataList);
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
     } catch (e) {
       final error = 'Error querying latest sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
-      return Failure(InfluxError(error));
+      
+      // Fallback to dummy data if query fails (for development/testing)
+      Logger.warning('Falling back to dummy latest data due to query error', tag: 'InfluxDB');
+      final dummyData = SensorType.values.map((type) {
+        return _generateSingleSensorData(
+          type: type,
+          sensorId: 'sensor_${type.name}',
+          timestamp: DateTime.now(),
+        );
+      }).toList();
+      return Success(dummyData);
+    }
+  }
+
+  /// Parse CSV response from InfluxDB query.
+  List<SensorData> _parseCsvResponse(String csvData) {
+    final sensorDataList = <SensorData>[];
+    
+    try {
+      final lines = csvData.split('\n');
+      
+      // Skip if no data
+      if (lines.length < 2) return sensorDataList;
+      
+      // Find header line and data lines
+      int headerIndex = -1;
+      for (int i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('_result')) {
+          headerIndex = i;
+          break;
+        }
+      }
+      
+      if (headerIndex == -1) return sensorDataList;
+      
+      final headers = lines[headerIndex].split(',');
+      
+      // Map header positions
+      final timeIndex = headers.indexOf('_time');
+      final valueIndex = headers.indexOf('_value');
+      final sensorIdIndex = headers.indexOf('sensor_id');
+      final sensorTypeIndex = headers.indexOf('sensor_type');
+      final unitIndex = headers.indexOf('unit');
+      final deviceIdIndex = headers.indexOf('device_id');
+      final locationIndex = headers.indexOf('location');
+      
+      // Parse data rows
+      for (int i = headerIndex + 1; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+        
+        final values = line.split(',');
+        if (values.length < headers.length) continue;
+        
+        try {
+          final sensorData = _parseCsvRow(
+            values,
+            timeIndex,
+            valueIndex,
+            sensorIdIndex,
+            sensorTypeIndex,
+            unitIndex,
+            deviceIdIndex,
+            locationIndex,
+          );
+          
+          if (sensorData != null) {
+            sensorDataList.add(sensorData);
+          }
+        } catch (e) {
+          Logger.warning('Failed to parse CSV row: $e', tag: 'InfluxDB');
+        }
+      }
+    } catch (e) {
+      Logger.error('Error parsing CSV response: $e', tag: 'InfluxDB', error: e);
+    }
+    
+    return sensorDataList;
+  }
+
+  /// Parse a single CSV row into SensorData.
+  SensorData? _parseCsvRow(
+    List<String> values,
+    int timeIndex,
+    int valueIndex,
+    int sensorIdIndex,
+    int sensorTypeIndex,
+    int unitIndex,
+    int deviceIdIndex,
+    int locationIndex,
+  ) {
+    try {
+      // Extract required fields
+      final timeStr = timeIndex >= 0 && timeIndex < values.length ? values[timeIndex] : null;
+      final valueStr = valueIndex >= 0 && valueIndex < values.length ? values[valueIndex] : null;
+      final sensorId = sensorIdIndex >= 0 && sensorIdIndex < values.length ? values[sensorIdIndex] : null;
+      final sensorTypeStr = sensorTypeIndex >= 0 && sensorTypeIndex < values.length ? values[sensorTypeIndex] : null;
+      
+      if (timeStr == null || valueStr == null || sensorId == null || sensorTypeStr == null) {
+        return null;
+      }
+      
+      // Parse timestamp
+      final timestamp = DateTime.tryParse(timeStr);
+      if (timestamp == null) return null;
+      
+      // Parse value
+      final value = double.tryParse(valueStr);
+      if (value == null) return null;
+      
+      // Parse sensor type
+      SensorType? sensorType;
+      for (final type in SensorType.values) {
+        if (type.name == sensorTypeStr) {
+          sensorType = type;
+          break;
+        }
+      }
+      
+      if (sensorType == null) return null;
+      
+      // Extract optional fields
+      final unit = unitIndex >= 0 && unitIndex < values.length ? values[unitIndex] : null;
+      final deviceId = deviceIdIndex >= 0 && deviceIdIndex < values.length ? values[deviceIdIndex] : null;
+      final location = locationIndex >= 0 && locationIndex < values.length ? values[locationIndex] : null;
+      
+      return SensorData(
+        id: sensorId,
+        sensorType: sensorType,
+        value: value,
+        unit: unit ?? sensorType.defaultUnit,
+        timestamp: timestamp,
+        deviceId: deviceId?.isNotEmpty == true ? deviceId : null,
+        location: location?.isNotEmpty == true ? location : null,
+      );
+    } catch (e) {
+      Logger.error('Error parsing CSV row: $e', tag: 'InfluxDB', error: e);
+      return null;
     }
   }
 

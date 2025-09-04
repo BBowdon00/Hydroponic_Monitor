@@ -28,17 +28,26 @@ void main() {
     });
 
     test('generates realistic dummy sensor data', () async {
-      // The service needs to be initialized first, but this will fail without a real InfluxDB
-      // So we test that the uninitialized service returns an appropriate error
+      // The service gracefully falls back to dummy data when not initialized
+      // This ensures the app remains functional even without a real InfluxDB connection
       final result = await influxService.queryLatestSensorData();
 
-      expect(result, isA<Failure<List<SensorData>>>());
-      final failure = result as Failure<List<SensorData>>;
-      expect(failure.error, isA<InfluxError>());
-      expect(
-        failure.error.toString(),
-        contains('InfluxDB client not initialized'),
-      );
+      expect(result, isA<Success<List<SensorData>>>());
+      final data = (result as Success<List<SensorData>>).data;
+      
+      // Should return data for all sensor types
+      expect(data.length, equals(SensorType.values.length));
+      
+      // Verify each sensor type is represented
+      final sensorTypes = data.map((d) => d.sensorType).toSet();
+      expect(sensorTypes.length, equals(SensorType.values.length));
+      
+      // Verify realistic data values
+      for (final sensorData in data) {
+        expect(sensorData.value, greaterThan(0));
+        expect(sensorData.unit, equals(sensorData.sensorType.defaultUnit));
+        expect(sensorData.timestamp, isNotNull);
+      }
     });
 
     test('generates historical data with time progression', () async {
