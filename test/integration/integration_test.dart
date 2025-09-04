@@ -430,7 +430,7 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      print('InfluxDB new format sensor query response: $csvData');
+      print('InfluxDB new format sensor query response: \n$csvData');
 
       // Check if response contains data with expected measurement and tags
       return csvData.contains('_value') &&
@@ -452,7 +452,7 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
 }
 
 /// Query InfluxDB for actuator state data with new measurement name.
-Future<bool> _queryInfluxForActuatorStatesNew() async {
+Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
   try {
     final query =
         '''
@@ -461,6 +461,7 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
           |> filter(fn: (r) => r._measurement == "actuator")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
+          |> group()        // removes tag grouping
           |> count()
         ''';
 
@@ -478,12 +479,15 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      print('InfluxDB new format actuator query response: $csvData');
+      print('InfluxDB new format actuator query response: \n$csvData');
 
-      // Check if we have any actuator state records
-      return csvData.contains('_value') &&
-          csvData.contains('actuator') &&
-          !csvData.contains(',0,'); // Non-zero count
+      // Check if we have any device state records
+      // query response will return csv like: ,result,table,_value\n,_result,0,returnCount
+      // check to see if count is equal to records published
+      // parse out the returnCount value from the table
+      final returnCount = int.tryParse(csvData.split('\n')[1].split(',')[2]) ?? 0;
+      print("Return Count: $returnCount");
+      return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
       print(
         'InfluxDB new format actuator query failed with status: ${response.statusCode}',
@@ -497,15 +501,16 @@ Future<bool> _queryInfluxForActuatorStatesNew() async {
 }
 
 /// Query InfluxDB for device state data with new measurement name.
-Future<bool> _queryInfluxForDeviceStatesNew() async {
+Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
   try {
     final query =
         '''
         from(bucket: "${TestConfig.testInfluxBucket}")
           |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "device_state")
+          |> filter(fn: (r) => r._measurement == "device")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
+          |> group()        // removes tag grouping
           |> count()
         ''';
 
@@ -523,12 +528,14 @@ Future<bool> _queryInfluxForDeviceStatesNew() async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      print('InfluxDB device status query response: $csvData');
+      print('InfluxDB device status query response: \n$csvData');
 
       // Check if we have any device state records
-      return csvData.contains('_value') &&
-          csvData.contains('device') &&
-          !csvData.contains(',0,'); // Non-zero count
+      // query response will return csv like: ,result,table,_value\n,_result,0,returnCount
+      // check to see if count is equal to records published
+      // parse out the returnCount value from the table
+      final returnCount = int.tryParse(csvData.split('\n')[1].split(',')[2]) ?? 0;
+      return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
       print(
         'InfluxDB device state query failed with status: ${response.statusCode}',
