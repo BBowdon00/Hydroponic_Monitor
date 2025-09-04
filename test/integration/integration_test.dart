@@ -192,7 +192,7 @@ void main() {
       }
 
       // Wait for Telegraf to process and store in InfluxDB
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 2));
 
       // Verify actuator state data was stored using new measurement name
       final stored = await _queryInfluxForActuatorStatesNew(
@@ -243,7 +243,7 @@ void main() {
       }
 
       // Wait for Telegraf to process and store in InfluxDB
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 2));
 
       // Verify device status data was stored
       final stored = await _queryInfluxForDeviceStatesNew(
@@ -306,7 +306,7 @@ void main() {
         print('All comprehensive sensor data published');
 
         // Wait for processing
-        await Future.delayed(const Duration(seconds: 5));
+        await Future.delayed(const Duration(seconds: 3));
 
         // Verify a significant portion of the data was stored
         int storedCount = 0;

@@ -200,7 +200,7 @@ The MQTT broker serves as the central nervous system for real-time communication
 InfluxDB stores historical sensor data and device states for analytics and charting. The data is organized using InfluxDB's tag-based structure:
 
 - **Measurement**: sensor, device, or actuator
-- **Tags**: Indexed metadata (deviceID, location, deviceType)
+- **Tags**: Indexed metadata with the following tags: location, deviceType, deviceID, deviceNode,project
 - **Fields**: Actual values (sensor readings, boolean states)
 - **Timestamp**: Precise time of measurement
 
