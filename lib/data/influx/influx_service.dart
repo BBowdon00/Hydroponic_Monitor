@@ -1,9 +1,7 @@
-// No unused imports
 import 'dart:async';
 import 'dart:math';
 
 import 'package:influxdb_client/api.dart';
-import 'package:http/http.dart' as http;
 
 import '../../core/logger.dart';
 import '../../core/errors.dart';
@@ -25,6 +23,7 @@ class InfluxDbService {
 
   InfluxDBClient? _client;
   WriteService? _writeApi;
+  QueryService? _queryApi;
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
 
@@ -43,8 +42,9 @@ class InfluxDbService {
         bucket: bucket,
       );
 
-      // Initialize write API only (query will use HTTP directly)
+      // Initialize write and query APIs
       _writeApi = _client!.getWriteService();
+      _queryApi = _client!.getQueryService();
 
       Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
       _connectionController.add('connected');
@@ -147,7 +147,7 @@ class InfluxDbService {
     final limitValue = limit ?? 100;
 
     // If client is not initialized, return dummy data
-    if (_client == null) {
+    if (_client == null || _queryApi == null) {
       Logger.info(
         'InfluxDB client not initialized, returning dummy data',
         tag: 'InfluxDB',
@@ -201,26 +201,14 @@ from(bucket: "$bucket")
 
       Logger.debug('Executing Flux query: $query', tag: 'InfluxDB');
 
-      final response = await http.post(
-        Uri.parse('$url/api/v2/query?org=$organization'),
-        headers: {
-          'Authorization': 'Token $token',
-          'Content-Type': 'application/vnd.flux',
-          'Accept': 'application/csv',
-        },
-        body: query,
+      final queryResult = await _queryApi!.query(query);
+      final sensorDataList = await _parseQueryResult(queryResult);
+      
+      Logger.info(
+        'Retrieved ${sensorDataList.length} sensor data points from InfluxDB',
+        tag: 'InfluxDB',
       );
-
-      if (response.statusCode == 200) {
-        final sensorDataList = _parseCsvResponse(response.body);
-        Logger.info(
-          'Retrieved ${sensorDataList.length} sensor data points from InfluxDB',
-          tag: 'InfluxDB',
-        );
-        return Success(sensorDataList);
-      } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
-      }
+      return Success(sensorDataList);
     } catch (e) {
       final error = 'Error querying sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
@@ -245,7 +233,7 @@ from(bucket: "$bucket")
   /// Query latest sensor data for all sensors.
   Future<Result<List<SensorData>>> queryLatestSensorData() async {
     // If client is not initialized, return dummy data
-    if (_client == null) {
+    if (_client == null || _queryApi == null) {
       Logger.info(
         'InfluxDB client not initialized, returning dummy latest data',
         tag: 'InfluxDB',
@@ -277,26 +265,14 @@ from(bucket: "$bucket")
 
       Logger.debug('Executing latest data Flux query: $query', tag: 'InfluxDB');
 
-      final response = await http.post(
-        Uri.parse('$url/api/v2/query?org=$organization'),
-        headers: {
-          'Authorization': 'Token $token',
-          'Content-Type': 'application/vnd.flux',
-          'Accept': 'application/csv',
-        },
-        body: query,
+      final queryResult = await _queryApi!.query(query);
+      final sensorDataList = await _parseQueryResult(queryResult);
+      
+      Logger.info(
+        'Retrieved ${sensorDataList.length} latest sensor readings from InfluxDB',
+        tag: 'InfluxDB',
       );
-
-      if (response.statusCode == 200) {
-        final sensorDataList = _parseCsvResponse(response.body);
-        Logger.info(
-          'Retrieved ${sensorDataList.length} latest sensor readings from InfluxDB',
-          tag: 'InfluxDB',
-        );
-        return Success(sensorDataList);
-      } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
-      }
+      return Success(sensorDataList);
     } catch (e) {
       final error = 'Error querying latest sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
@@ -317,113 +293,50 @@ from(bucket: "$bucket")
     }
   }
 
-  /// Parse CSV response from InfluxDB query.
-  List<SensorData> _parseCsvResponse(String csvData) {
+  /// Parse query result from InfluxDB client.
+  Future<List<SensorData>> _parseQueryResult(Stream<FluxRecord> queryResult) async {
     final sensorDataList = <SensorData>[];
 
     try {
-      final lines = csvData.split('\n');
-
-      // Skip if no data
-      if (lines.length < 2) return sensorDataList;
-
-      // Find header line and data lines
-      int headerIndex = -1;
-      for (int i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('_result')) {
-          headerIndex = i;
-          break;
-        }
-      }
-
-      if (headerIndex == -1) return sensorDataList;
-
-      final headers = lines[headerIndex].split(',');
-
-      // Map header positions
-      final timeIndex = headers.indexOf('_time');
-      final valueIndex = headers.indexOf('_value');
-      final sensorIdIndex = headers.indexOf('sensor_id');
-      final sensorTypeIndex = headers.indexOf('sensor_type');
-      final unitIndex = headers.indexOf('unit');
-      final deviceIdIndex = headers.indexOf('device_id');
-      final locationIndex = headers.indexOf('location');
-
-      // Parse data rows
-      for (int i = headerIndex + 1; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
-
-        final values = line.split(',');
-        if (values.length < headers.length) continue;
-
+      await for (final record in queryResult) {
         try {
-          final sensorData = _parseCsvRow(
-            values,
-            timeIndex,
-            valueIndex,
-            sensorIdIndex,
-            sensorTypeIndex,
-            unitIndex,
-            deviceIdIndex,
-            locationIndex,
-          );
-
+          final sensorData = _parseFluxRecord(record);
           if (sensorData != null) {
             sensorDataList.add(sensorData);
           }
         } catch (e) {
-          Logger.warning('Failed to parse CSV row: $e', tag: 'InfluxDB');
+          Logger.warning('Failed to parse flux record: $e', tag: 'InfluxDB');
         }
       }
+      Logger.debug('Finished parsing query result with ${sensorDataList.length} records', tag: 'InfluxDB');
     } catch (e) {
-      Logger.error('Error parsing CSV response: $e', tag: 'InfluxDB', error: e);
+      Logger.error('Error parsing query result: $e', tag: 'InfluxDB', error: e);
     }
 
     return sensorDataList;
   }
 
-  /// Parse a single CSV row into SensorData.
-  SensorData? _parseCsvRow(
-    List<String> values,
-    int timeIndex,
-    int valueIndex,
-    int sensorIdIndex,
-    int sensorTypeIndex,
-    int unitIndex,
-    int deviceIdIndex,
-    int locationIndex,
-  ) {
+  /// Parse a single FluxRecord into SensorData.
+  SensorData? _parseFluxRecord(FluxRecord record) {
     try {
-      // Extract required fields
-      final timeStr = timeIndex >= 0 && timeIndex < values.length
-          ? values[timeIndex]
-          : null;
-      final valueStr = valueIndex >= 0 && valueIndex < values.length
-          ? values[valueIndex]
-          : null;
-      final sensorId = sensorIdIndex >= 0 && sensorIdIndex < values.length
-          ? values[sensorIdIndex]
-          : null;
-      final sensorTypeStr =
-          sensorTypeIndex >= 0 && sensorTypeIndex < values.length
-          ? values[sensorTypeIndex]
-          : null;
+      // Extract required fields from the flux record using correct API
+      final timestamp = record['_time'] as DateTime?;
+      final value = record['_value'];
+      final sensorId = record['sensor_id'];
+      final sensorTypeStr = record['sensor_type'];
 
-      if (timeStr == null ||
-          valueStr == null ||
+      if (timestamp == null ||
+          value == null ||
           sensorId == null ||
           sensorTypeStr == null) {
         return null;
       }
 
-      // Parse timestamp
-      final timestamp = DateTime.tryParse(timeStr);
-      if (timestamp == null) return null;
-
-      // Parse value
-      final value = double.tryParse(valueStr);
-      if (value == null) return null;
+      // Parse value as double
+      final doubleValue = value is double 
+          ? value 
+          : double.tryParse(value.toString());
+      if (doubleValue == null) return null;
 
       // Parse sensor type
       SensorType? sensorType;
@@ -437,27 +350,21 @@ from(bucket: "$bucket")
       if (sensorType == null) return null;
 
       // Extract optional fields
-      final unit = unitIndex >= 0 && unitIndex < values.length
-          ? values[unitIndex]
-          : null;
-      final deviceId = deviceIdIndex >= 0 && deviceIdIndex < values.length
-          ? values[deviceIdIndex]
-          : null;
-      final location = locationIndex >= 0 && locationIndex < values.length
-          ? values[locationIndex]
-          : null;
+      final unit = record['unit']?.toString();
+      final deviceId = record['device_id']?.toString();
+      final location = record['location']?.toString();
 
       return SensorData(
-        id: sensorId,
+        id: sensorId.toString(),
         sensorType: sensorType,
-        value: value,
+        value: doubleValue,
         unit: unit ?? sensorType.defaultUnit,
         timestamp: timestamp,
         deviceId: deviceId?.isNotEmpty == true ? deviceId : null,
         location: location?.isNotEmpty == true ? location : null,
       );
     } catch (e) {
-      Logger.error('Error parsing CSV row: $e', tag: 'InfluxDB', error: e);
+      Logger.error('Error parsing flux record: $e', tag: 'InfluxDB', error: e);
       return null;
     }
   }
