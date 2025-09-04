@@ -482,11 +482,11 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
       print('InfluxDB new format actuator query response: \n$csvData');
 
       // Check if we have any device state records
-      // query response will return csv like: ,result,table,_value\n,_result,0,returnCount
+      // query response will return csv like: ,result,table,_start,_stop,_value\n,_result,0,2024-10-05T12:00:00Z,2024-10-05T12:01:00Z,returnCount
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
       final returnCount =
-          int.tryParse(csvData.split('\n')[1].split(',')[2]) ?? 0;
+          int.tryParse(csvData.split('\n')[1].split(',')[4]) ?? 0;
       print("Return Count: $returnCount");
       return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
@@ -532,11 +532,12 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
       print('InfluxDB device status query response: \n$csvData');
 
       // Check if we have any device state records
-      // query response will return csv like: ,result,table,_value\n,_result,0,returnCount
+      // query response will return csv like: ,result,table,_start,_stop,_value\n,_result,0,2024-10-05T12:00:00Z,2024-10-05T12:01:00Z,returnCount
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
       final returnCount =
-          int.tryParse(csvData.split('\n')[1].split(',')[2]) ?? 0;
+          int.tryParse(csvData.split('\n')[1].split(',')[4]) ?? 0;
+      print("Return Count: $returnCount");
       return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
       print(
