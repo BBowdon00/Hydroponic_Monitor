@@ -195,7 +195,7 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       // Verify actuator state data was stored using new measurement name
-      final stored = await _queryInfluxForActuatorStatesNew();
+      final stored = await _queryInfluxForActuatorStatesNew(actuatorPayloads.length);
       expect(
         stored,
         isTrue,
@@ -244,7 +244,7 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       // Verify device status data was stored
-      final stored = await _queryInfluxForDeviceStatesNew();
+      final stored = await _queryInfluxForDeviceStatesNew(devicePayloads.length);
       expect(
         stored,
         isTrue,
@@ -457,7 +457,7 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
     final query =
         '''
         from(bucket: "${TestConfig.testInfluxBucket}")
-          |> range(start: -1h)
+          |> range(start: -1m)
           |> filter(fn: (r) => r._measurement == "actuator")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
@@ -506,7 +506,7 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
     final query =
         '''
         from(bucket: "${TestConfig.testInfluxBucket}")
-          |> range(start: -1h)
+          |> range(start: -1m)
           |> filter(fn: (r) => r._measurement == "device")
           |> filter(fn: (r) => r._field == "running")
           |> filter(fn: (r) => r.project == "grow")
