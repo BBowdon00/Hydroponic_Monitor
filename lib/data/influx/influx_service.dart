@@ -203,7 +203,7 @@ from(bucket: "$bucket")
 
       final queryResult = await _queryApi!.query(query);
       final sensorDataList = await _parseQueryResult(queryResult);
-      
+
       Logger.info(
         'Retrieved ${sensorDataList.length} sensor data points from InfluxDB',
         tag: 'InfluxDB',
@@ -267,7 +267,7 @@ from(bucket: "$bucket")
 
       final queryResult = await _queryApi!.query(query);
       final sensorDataList = await _parseQueryResult(queryResult);
-      
+
       Logger.info(
         'Retrieved ${sensorDataList.length} latest sensor readings from InfluxDB',
         tag: 'InfluxDB',
@@ -294,7 +294,9 @@ from(bucket: "$bucket")
   }
 
   /// Parse query result from InfluxDB client.
-  Future<List<SensorData>> _parseQueryResult(Stream<FluxRecord> queryResult) async {
+  Future<List<SensorData>> _parseQueryResult(
+    Stream<FluxRecord> queryResult,
+  ) async {
     final sensorDataList = <SensorData>[];
 
     try {
@@ -308,7 +310,10 @@ from(bucket: "$bucket")
           Logger.warning('Failed to parse flux record: $e', tag: 'InfluxDB');
         }
       }
-      Logger.debug('Finished parsing query result with ${sensorDataList.length} records', tag: 'InfluxDB');
+      Logger.debug(
+        'Finished parsing query result with ${sensorDataList.length} records',
+        tag: 'InfluxDB',
+      );
     } catch (e) {
       Logger.error('Error parsing query result: $e', tag: 'InfluxDB', error: e);
     }
@@ -333,8 +338,8 @@ from(bucket: "$bucket")
       }
 
       // Parse value as double
-      final doubleValue = value is double 
-          ? value 
+      final doubleValue = value is double
+          ? value
           : double.tryParse(value.toString());
       if (doubleValue == null) return null;
 
