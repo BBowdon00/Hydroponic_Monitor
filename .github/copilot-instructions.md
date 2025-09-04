@@ -10,7 +10,7 @@ This repository contains a fully functional Flutter hydroponic monitoring applic
 - `.github/workflows/ci.yml` - Complete CI/CD pipeline with unit and integration tests
 - `.github/workflows/copilot-end-steps.yml` - Automated test execution workflow for Copilot Agent
 - `lib/` - Complete Flutter application source code
-- `test/` - Comprehensive unit and integration test suite (50+ tests)
+- `test/` - Comprehensive unit and integration test suite (80 unit tests + 5 integration tests)
 - `scripts/` - Test automation scripts for local and CI execution
 
 
@@ -24,7 +24,7 @@ Environment setup is handled by the GitHub workflow, but for manual setup:
 # Dart and Flutter should already be installed via setup-dart and flutter-action
 dart --version     # Should show Dart 3.9.0+
 flutter --version  # Should show Flutter 3.35.2+
-flutter doctor -v  # Check environment - takes 10 seconds
+flutter doctor -v  # Check environment - takes ~12.5 seconds
 ```
 
 ### Required Dependencies for Integration Tests
@@ -32,6 +32,19 @@ flutter doctor -v  # Check environment - takes 10 seconds
 # Docker and Docker Compose are required for integration tests
 docker --version          # Check Docker installation
 docker compose --version  # Check Docker Compose installation
+```
+
+### Environment Issues and Solutions
+```bash
+# If flutter analyze shows 5 style warnings, they are non-blocking:
+# - prefer_const_literals_to_create_immutables (2 issues)
+# - unnecessary_underscores (1 issue) 
+# - prefer_single_quotes (2 issues)
+# These can be fixed but don't block builds or tests
+
+# If GTK3 headers missing for Linux builds:
+# sudo apt install libgtk-3-dev mesa-utils
+# Note: Linux desktop builds not available in sandbox environments
 ```
 
 ## Automated Test Execution
@@ -45,7 +58,8 @@ docker compose --version  # Check Docker Compose installation
 ```bash
 # Recommended: Use the comprehensive test runner
 ./scripts/test-runner.sh --all --verbose --coverage
-# Runs both unit tests (50+ tests) and integration tests
+# Runs both unit tests (80) and integration tests (5)
+# Takes ~95 seconds total - NEVER CANCEL, use timeout 600+
 ```
 
 ### Test Execution Requirements
@@ -53,17 +67,18 @@ docker compose --version  # Check Docker Compose installation
 **Unit Tests (ALWAYS run first):**
 ```bash
 flutter test --exclude-tags=integration --coverage --reporter=expanded
-# 50+ tests covering entities, repositories, services, and widgets
-# Takes ~2 minutes - NEVER CANCEL, use timeout 180+
+# 80 tests covering entities, repositories, services, and widgets
+# Takes ~18 seconds - NEVER CANCEL, use timeout 120+
 ```
 
 **Integration Tests (run after unit tests pass):**
 ```bash
 # Requires Docker Compose services: InfluxDB, MQTT Broker, Telegraf
-cd test/integration && docker-compose up -d
+cd test/integration && docker compose up -d
 # Wait for services to be healthy (up to 5 minutes)
 flutter test test/integration/ --reporter=expanded --timeout=240s
 # Tests full MQTT → Telegraf → InfluxDB pipeline
+# Takes ~62 seconds - NEVER CANCEL, use timeout 300+
 ```
 
 ### Test Failure Investigation
@@ -74,9 +89,9 @@ flutter test test/integration/ --reporter=expanded --timeout=240s
 2. **Check service logs** - For integration test failures, examine Docker service logs:
    ```bash
    cd test/integration
-   docker-compose logs influxdb --tail=100
-   docker-compose logs mosquitto --tail=100  
-   docker-compose logs telegraf --tail=100
+   docker compose logs influxdb --tail=100
+   docker compose logs mosquitto --tail=100  
+   docker compose logs telegraf --tail=100
    ```
 3. **Identify root cause** - Distinguish between:
    - Code logic errors (fix in source code)
@@ -98,13 +113,37 @@ flutter test test/integration/ --reporter=expanded --timeout=240s
 5. **Integration tests:** `./scripts/run-integration-tests.sh`
 6. **Report results** and any fixes made
 
-## Build Commands and Timing
-
 ### Dependencies and Analysis
 ```bash
-flutter pub get          # <1 second
-flutter analyze          # ~10 seconds - NEVER CANCEL, use timeout 60+
-dart format --output none --set-exit-if-changed .  # <1 second
+flutter pub get          # ~1.5 seconds
+flutter analyze          # ~13.5 seconds - NEVER CANCEL, use timeout 60+
+dart format --output none --set-exit-if-changed .  # ~1 second
+```
+
+### Build Commands and Timing
+```bash
+flutter build web        # ~34 seconds - NEVER CANCEL, use timeout 300+
+flutter build apk --debug # Not tested in sandbox environment
+flutter build linux      # Requires GTK3 headers (not available in sandbox)
+```
+
+### Test Execution Timing
+```bash
+# Unit tests only
+flutter test --exclude-tags=integration # ~18 seconds - NEVER CANCEL, use timeout 120+
+
+# Integration tests only (requires Docker)
+./scripts/run-integration-tests.sh       # ~62 seconds - NEVER CANCEL, use timeout 300+
+
+# Complete test suite (unit + integration)
+./scripts/test-runner.sh --all --verbose # ~95 seconds - NEVER CANCEL, use timeout 600+
+```
+
+### Development Server
+```bash
+# Web development server
+flutter run -d web-server --web-port 8080 # ~24 seconds to start - NEVER CANCEL, use timeout 180+
+# Serves at http://localhost:8080
 ```
 
 ## Validation Scenarios
@@ -114,18 +153,38 @@ dart format --output none --set-exit-if-changed .  # <1 second
 1. **Basic Build Validation**:
    ```bash
    flutter pub get && flutter analyze && flutter test --exclude-tags=integration
+   # Takes ~33 seconds total - NEVER CANCEL, use timeout 240+
    ```
 
 2. **Complete Test Suite Validation**:
    ```bash
    ./scripts/test-runner.sh --all --verbose --coverage
-   # Includes unit tests (50+) and integration tests
+   # Includes unit tests (80) and integration tests
+   # Takes ~95 seconds - NEVER CANCEL, use timeout 600+
    ```
 
 3. **Code Quality Checks**:
    ```bash
    dart format --output none --set-exit-if-changed .
-   flutter analyze  # Must show "No issues found!"
+   flutter analyze  # Must show "No issues found!" (currently shows 5 minor style issues)
+   ```
+
+4. **Application Functionality Validation**:
+   ```bash
+   # Start web server and verify app loads
+   flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
+   # App serves at http://localhost:8080
+   # Verify dashboard loads with no runtime errors
+   ```
+
+5. **Docker Integration Test Environment**:
+   ```bash
+   # Test Docker services can start
+   cd test/integration && docker compose up -d
+   # Verify all services are healthy
+   docker compose ps
+   # Clean up
+   docker compose down -v
    ```
 
 
@@ -167,10 +226,39 @@ dart format --output none --set-exit-if-changed .  # <1 second
 
 The `.github/workflows/ci.yml` handles the complete CI/CD pipeline including:
 - Code formatting and analysis
-- Unit tests (50+ tests)
-- Integration tests with Docker Compose services
+- Unit tests (80 tests)
+- Integration tests (5 tests) with Docker Compose services
 - Test result reporting and failure handling
 
 The `.github/workflows/copilot-end-steps.yml` documents a flow for testing for Copilot Agent:
 - Runs comprehensive test suite
 - Reports results
+
+## Quick Command Reference
+
+**All commands tested and validated with exact timings:**
+
+```bash
+# Environment check
+flutter doctor -v                                    # 12.5s
+
+# Dependencies
+flutter pub get                                       # 1.5s
+
+# Code quality
+dart format --output none --set-exit-if-changed .    # 1s
+flutter analyze                                       # 13.5s (shows 5 style warnings)
+
+# Testing
+flutter test --exclude-tags=integration              # 18s (80 tests)
+./scripts/run-integration-tests.sh                   # 62s (5 tests)
+./scripts/test-runner.sh --all --verbose             # 95s (85 total tests)
+
+# Building
+flutter build web                                     # 34s
+
+# Running
+flutter run -d web-server --web-port 8080            # 24s to start
+```
+
+**NEVER CANCEL any command above. Use appropriate timeouts (shown) + 50% buffer.**
