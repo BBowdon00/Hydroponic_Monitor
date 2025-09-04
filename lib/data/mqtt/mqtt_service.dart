@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
@@ -46,6 +45,16 @@ class MqttService {
   /// Current connection status.
   Object? get connectionStatus => _client?.connectionStatus;
 
+  // Update topic patterns to match new telegraf.conf format
+  static const String _sensorTopicPattern = 'grow/+/sensor';
+  static const String _actuatorTopicPattern = 'grow/+/actuator';
+  static const String _deviceTopicPattern = 'grow/+/device';
+
+  /// Stream for receiving raw MQTT messages with topic and payload
+  final StreamController<HydroMqttMessage> _messageController =
+      StreamController.broadcast();
+  Stream<HydroMqttMessage> get messageStream => _messageController.stream;
+
   /// Initialize and connect to MQTT broker.
   Future<Result<void>> connect() async {
     try {
@@ -60,23 +69,26 @@ class MqttService {
       _client!.onSubscribed = _onSubscribed;
       _client!.onUnsubscribed = _onUnsubscribed;
 
-      // Set up message handling
-      _client!.updates!.listen(_onMessageReceived);
+      // Set up message handling - using mqtt_client's MqttMessage type
+      final updates = _client!.updates;
+      if (updates != null) {
+        updates.listen(_onMessageReceived);
+      }
 
       // Set credentials if provided
       if (username != null && password != null) {
         _client!.connectionMessage = MqttConnectMessage()
             .withClientIdentifier(clientId)
             .authenticateAs(username!, password!)
-            .withWillTopic('hydroponic/status/$clientId')
-            .withWillMessage('offline')
+            .withWillTopic('grow/app/device')
+            .withWillMessage('OFFLINE')
             .startClean()
             .withWillQos(MqttQos.atLeastOnce);
       } else {
         _client!.connectionMessage = MqttConnectMessage()
             .withClientIdentifier(clientId)
-            .withWillTopic('hydroponic/status/$clientId')
-            .withWillMessage('offline')
+            .withWillTopic('grow/app/device')
+            .withWillMessage('OFFLINE')
             .startClean()
             .withWillQos(MqttQos.atLeastOnce);
       }
@@ -107,6 +119,7 @@ class MqttService {
       await _sensorDataController.close();
       await _deviceStatusController.close();
       await _connectionController.close();
+      await _messageController.close();
     } catch (e) {
       Logger.error(
         'Error disconnecting from MQTT broker: $e',
@@ -116,50 +129,32 @@ class MqttService {
     }
   }
 
-  /// Publish device control command.
-  Future<Result<void>> publishDeviceCommand(
-    String deviceId,
-    String command, {
-    Map<String, dynamic>? parameters,
-  }) async {
-    try {
-      if (_client?.connectionStatus?.toString() != 'connected') {
-        return const Failure(MqttError('Not connected to MQTT broker'));
-      }
-
-      final topic = 'hydroponic/devices/$deviceId/command';
-      final payload = {
-        'command': command,
-        'timestamp': DateTime.now().toIso8601String(),
-        'client_id': clientId,
-        if (parameters != null) 'parameters': parameters,
-      };
-
-      final builder = MqttClientPayloadBuilder();
-      builder.addString(jsonEncode(payload));
-
-      _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
-      Logger.info(
-        'Published command to device $deviceId: $command',
-        tag: 'MQTT',
-      );
-
-      return const Success(null);
-    } catch (e) {
-      final error = 'Error publishing device command: $e';
-      Logger.error(error, tag: 'MQTT', error: e);
-      return Failure(MqttError(error));
+  /// Subscribe to a specific topic
+  Future<void> subscribe(String topic) async {
+    if (_client?.connectionStatus?.toString() == 'connected') {
+      _client!.subscribe(topic, MqttQos.atLeastOnce);
+      Logger.info('Subscribed to topic: $topic', tag: 'MQTT');
     }
   }
 
-  /// Subscribe to relevant MQTT topics.
+  /// Publish a message to a topic
+  Future<void> publish(String topic, String payload) async {
+    if (_client?.connectionStatus?.toString() == 'connected') {
+      final builder = MqttClientPayloadBuilder();
+      builder.addString(payload);
+      _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+      Logger.info('Published to topic $topic: $payload', tag: 'MQTT');
+    }
+  }
+
+  /// Subscribe to relevant MQTT topics using new format.
   Future<void> _subscribeToTopics() async {
     if (_client?.connectionStatus?.toString() != 'connected') return;
 
     final topics = [
-      'hydroponic/sensors/+/data',
-      'hydroponic/devices/+/status',
-      'hydroponic/system/status',
+      _sensorTopicPattern, // grow/+/sensor
+      _actuatorTopicPattern, // grow/+/actuator
+      _deviceTopicPattern, // grow/+/device
     ];
 
     for (final topic in topics) {
@@ -178,11 +173,26 @@ class MqttService {
 
       Logger.debug('Received message on topic $topic: $payload', tag: 'MQTT');
 
+      // Emit raw message for repository processing
+      _messageController.add(HydroMqttMessage(topic: topic, payload: payload));
+
       try {
-        if (topic.startsWith('hydroponic/sensors/')) {
-          _handleSensorData(topic, payload);
-        } else if (topic.startsWith('hydroponic/devices/')) {
-          _handleDeviceStatus(topic, payload);
+        // Parse new topic format: grow/{deviceNode}/{deviceCategory}
+        final topicParts = topic.split('/');
+        if (topicParts.length == 3 && topicParts[0] == 'grow') {
+          final deviceCategory = topicParts[2];
+
+          switch (deviceCategory) {
+            case 'sensor':
+              _handleSensorData(topic, payload);
+              break;
+            case 'actuator':
+              _handleDeviceStatus(topic, payload);
+              break;
+            case 'device':
+              _handleDeviceStatus(topic, payload);
+              break;
+          }
         }
       } catch (e) {
         Logger.error(
@@ -194,91 +204,145 @@ class MqttService {
     }
   }
 
-  /// Handle sensor data messages.
+  /// Handle sensor data messages using new format.
   void _handleSensorData(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      final sensorId = topic.split('/')[2]; // Extract sensor ID from topic
 
-      // Generate dummy data for now since we're still using mock data
-      final sensorData = _generateDummySensorData(sensorId, data);
-      _sensorDataController.add(sensorData);
+      // Parse new topic format: grow/{deviceNode}/sensor
+      final topicParts = topic.split('/');
+      if (topicParts.length == 3) {
+        final deviceNode = topicParts[1];
+
+        // Extract sensor info from payload
+        final deviceType = data['deviceType'] as String?;
+        final deviceID = data['deviceID'] as String?;
+        final location = data['location'] as String?;
+        final valueStr = data['value'] as String?;
+
+        if (deviceType != null && deviceID != null && valueStr != null) {
+          final value = double.tryParse(valueStr) ?? 0.0;
+          final sensorType = _parseSensorType(deviceType);
+
+          final sensorData = SensorData(
+            id: '${deviceNode}_${deviceType}_$deviceID',
+            sensorType: sensorType,
+            value: value,
+            unit: sensorType.defaultUnit,
+            timestamp: DateTime.now(),
+            deviceId: deviceNode,
+            location: location,
+          );
+
+          _sensorDataController.add(sensorData);
+        }
+      }
     } catch (e) {
       Logger.error('Error parsing sensor data: $e', tag: 'MQTT', error: e);
     }
   }
 
-  /// Handle device status messages.
+  /// Handle device status messages using new format.
   void _handleDeviceStatus(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      final deviceId = topic.split('/')[2]; // Extract device ID from topic
 
-      // Generate dummy device data for now
-      final device = _generateDummyDevice(deviceId, data);
-      _deviceStatusController.add(device);
+      // Parse new topic format: grow/{deviceNode}/{actuator|device}
+      final topicParts = topic.split('/');
+      if (topicParts.length == 3) {
+        final deviceNode = topicParts[1];
+
+        // Extract device info from payload
+        final deviceType = data['deviceType'] as String?;
+        final deviceID = data['deviceID'] as String?;
+        final location = data['location'] as String?;
+        final running = data['running'] as bool?;
+        final description = data['description'] as String?;
+
+        if (deviceType != null && deviceID != null) {
+          final device = Device(
+            id: '${deviceNode}_${deviceType}_$deviceID',
+            name: description ?? '$deviceType $deviceID',
+            type: _parseDeviceType(deviceType),
+            status: running == true
+                ? DeviceStatus.online
+                : DeviceStatus.offline,
+            location: location,
+            isEnabled: running ?? false,
+            lastUpdate: DateTime.now(),
+          );
+
+          _deviceStatusController.add(device);
+        }
+      }
     } catch (e) {
       Logger.error('Error parsing device status: $e', tag: 'MQTT', error: e);
     }
   }
 
-  /// Generate dummy sensor data for testing.
-  SensorData _generateDummySensorData(
-    String sensorId,
-    Map<String, dynamic> mqttData,
-  ) {
-    final random = Random();
-    final sensorTypes = SensorType.values;
-    final sensorType = sensorTypes[random.nextInt(sensorTypes.length)];
-
-    double value;
-    switch (sensorType) {
-      case SensorType.temperature:
-        value = 20.0 + random.nextDouble() * 10; // 20-30°C
-        break;
-      case SensorType.humidity:
-        value = 50.0 + random.nextDouble() * 30; // 50-80%
-        break;
-      case SensorType.pH:
-        value = 5.5 + random.nextDouble() * 2; // 5.5-7.5 pH
-        break;
-      case SensorType.waterLevel:
-        value = 10.0 + random.nextDouble() * 20; // 10-30 cm
-        break;
-      default:
-        value = random.nextDouble() * 100;
+  /// Parse sensor type from string.
+  SensorType _parseSensorType(String typeString) {
+    for (final type in SensorType.values) {
+      if (type.name.toLowerCase() == typeString.toLowerCase()) {
+        return type;
+      }
     }
-
-    return SensorData(
-      id: sensorId,
-      sensorType: sensorType,
-      value: value,
-      unit: sensorType.defaultUnit,
-      timestamp: DateTime.now(),
-      deviceId: mqttData['device_id'] as String?,
-      location: mqttData['location'] as String?,
-    );
+    return SensorType.temperature; // Default fallback
   }
 
-  /// Generate dummy device data for testing.
-  Device _generateDummyDevice(String deviceId, Map<String, dynamic> mqttData) {
-    final random = Random();
-    final deviceTypes = DeviceType.values;
-    final deviceType = deviceTypes[random.nextInt(deviceTypes.length)];
-    final statuses = DeviceStatus.values;
-    final status = statuses[random.nextInt(statuses.length)];
+  /// Parse device type from string.
+  DeviceType _parseDeviceType(String typeString) {
+    for (final type in DeviceType.values) {
+      if (type.name.toLowerCase() == typeString.toLowerCase()) {
+        return type;
+      }
+    }
+    return DeviceType.pump; // Default fallback
+  }
 
-    return Device(
-      id: deviceId,
-      name:
-          mqttData['name'] as String? ?? '${deviceType.displayName} $deviceId',
-      type: deviceType,
-      status: status,
-      isEnabled: mqttData['enabled'] as bool? ?? random.nextBool(),
-      description: mqttData['description'] as String?,
-      location: mqttData['location'] as String?,
-      lastUpdate: DateTime.now(),
-    );
+  /// Publish a device command using the new topic format.
+  Future<Result<void>> publishDeviceCommand(
+    String deviceId,
+    String command, {
+    Map<String, dynamic>? parameters,
+  }) async {
+    try {
+      if (_client?.connectionStatus?.toString() != 'connected') {
+        return const Failure(MqttError('MQTT client not connected'));
+      }
+
+      // Parse device ID to extract device node
+      final deviceIdParts = deviceId.split('_');
+      final deviceNode = deviceIdParts.isNotEmpty ? deviceIdParts[0] : 'rpi';
+
+      // Build command topic using new format: grow/{deviceNode}/actuator/set
+      final topic = 'grow/$deviceNode/actuator/set';
+
+      // Build command payload
+      final payload = {
+        'deviceID': deviceId,
+        'command': command,
+        if (parameters != null) ...parameters,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      final payloadJson = jsonEncode(payload);
+      final builder = MqttClientPayloadBuilder();
+      builder.addString(payloadJson);
+
+      _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+
+      Logger.info(
+        'Published device command to topic $topic: $payloadJson',
+        tag: 'MQTT',
+      );
+
+      return const Success(null);
+    } catch (e) {
+      final error = 'Error publishing device command: $e';
+      Logger.error(error, tag: 'MQTT', error: e);
+      return Failure(MqttError(error));
+    }
   }
 
   void _onConnected() {
@@ -298,4 +362,12 @@ class MqttService {
   void _onUnsubscribed(String? topic) {
     Logger.info('Unsubscribed from topic: $topic', tag: 'MQTT');
   }
+}
+
+/// Custom MQTT message container for raw topic and payload data.
+class HydroMqttMessage {
+  const HydroMqttMessage({required this.topic, required this.payload});
+
+  final String topic;
+  final String payload;
 }

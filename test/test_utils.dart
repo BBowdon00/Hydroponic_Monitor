@@ -7,6 +7,7 @@ import 'package:hydroponic_monitor/domain/entities/device.dart';
 /// Utilities for generating realistic test data that mirrors production scenarios.
 class TestDataGenerator {
   static final Random _random = Random();
+  static int _testCounter = 0;
 
   /// Generate realistic sensor data for a specific sensor type.
   static SensorData generateSensorData({
@@ -17,7 +18,10 @@ class TestDataGenerator {
     String? location,
   }) {
     final type = sensorType ?? _randomSensorType();
-    final id = sensorId ?? 'sensor_${type.name}_${_random.nextInt(1000)}';
+    // Ensure unique sensor IDs for testing with timestamp suffix
+    final uniqueSuffix =
+        '${DateTime.now().millisecondsSinceEpoch}_${++_testCounter}';
+    final id = sensorId ?? 'test_${type.name}_$uniqueSuffix';
     final time = timestamp ?? DateTime.now();
 
     return SensorData(
@@ -198,16 +202,102 @@ class TestDataGenerator {
 
 /// MQTT topic patterns for testing.
 class TestMqttTopics {
-  static const String sensorDataTopic = 'hydroponic/sensors/+/data';
-  static const String deviceStatusTopic = 'hydroponic/devices/+/status';
-  static const String deviceCommandTopic = 'hydroponic/devices/+/command';
+  // Updated to match new telegraf.conf format: grow/{deviceNode}/{deviceCategory}
+  static const String sensorDataTopic = 'grow/+/sensor';
+  static const String deviceStatusTopic = 'grow/+/actuator';
+  static const String deviceTopic = 'grow/+/device';
+  static const String allTopics = 'grow/+/+';
 
-  static String sensorDataTopicFor(String sensorId) =>
-      'hydroponic/sensors/$sensorId/data';
-  static String deviceStatusTopicFor(String deviceId) =>
-      'hydroponic/devices/$deviceId/status';
-  static String deviceCommandTopicFor(String deviceId) =>
-      'hydroponic/devices/$deviceId/command';
+  static String sensorTopicFor(String deviceNode) => 'grow/$deviceNode/sensor';
+  static String actuatorTopicFor(String deviceNode) =>
+      'grow/$deviceNode/actuator';
+  static String deviceTopicFor(String deviceNode) => 'grow/$deviceNode/device';
+}
+
+/// Generate MQTT payloads that match the new telegraf.conf format.
+class TestMqttPayloads {
+  static Map<String, dynamic> sensorPayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required double value,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'value': value.toString(), // String format as in telegraf examples
+      'description': description ?? 'test sensor',
+    };
+  }
+
+  static Map<String, dynamic> actuatorPayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required bool running,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'running': running,
+      'description': description ?? 'test actuator',
+    };
+  }
+
+  static Map<String, dynamic> devicePayload({
+    required String deviceType,
+    required String deviceID,
+    required String location,
+    required bool running,
+    String? description,
+  }) {
+    return {
+      'deviceType': deviceType,
+      'deviceID': deviceID,
+      'location': location,
+      'running': running,
+      'description': description ?? 'test device',
+    };
+  }
+
+  /// Generate realistic sensor payload based on sensor type.
+  static Map<String, dynamic> generateSensorPayload(SensorType type) {
+    return sensorPayload(
+      deviceType: type.name,
+      deviceID: '1',
+      location: 'tent',
+      value: TestDataGenerator._generateRealisticValue(type, DateTime.now()),
+      description: 'test ${type.name} sensor',
+    );
+  }
+
+  /// Generate realistic actuator payload.
+  static Map<String, dynamic> generateActuatorPayload(String deviceType) {
+    return actuatorPayload(
+      deviceType: deviceType,
+      deviceID: '1',
+      location: 'tent',
+      running: _random.nextBool(),
+      description: 'test $deviceType actuator',
+    );
+  }
+
+  /// Generate realistic device payload.
+  static Map<String, dynamic> generateDevicePayload(String deviceType) {
+    return devicePayload(
+      deviceType: deviceType,
+      deviceID: '1',
+      location: 'tent',
+      running: _random.nextBool(),
+      description: 'test $deviceType device',
+    );
+  }
+
+  static final Random _random = Random();
 }
 
 /// Test configuration constants that can be overridden by environment variables.

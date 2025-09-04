@@ -151,6 +151,86 @@ MJPEG_URL=http://your-camera.local:8080/stream
 - **Riverpod Documentation**: https://riverpod.dev/
 - **Go Router Guide**: https://docs.page/csells/go_router
 
+## Backend Infrastructure and Data 
+The infrastructure behind the Hydroponic Monitor app consists of a distributed network of hardware devices, MQTT message broker, and InfluxDB time-series database that work together to provide real-time monitoring and control capabilities.
+
+### Hardware Architecture
+
+The system is built around multiple microcontroller nodes deployed throughout the hydroponic environment:
+
+- **Ubuntu Server**: MQTT Broker, runs influxdb, and other containers
+- **Raspberry Pi devices**: Primary controllers running full Linux OS, hosting cameras for MJPEG streams and managing multiple sensors/actuators
+- **ESP32 microcontrollers**: Distributed sensor nodes and actuator controllers positioned strategically around growing areas
+- **Sensors**: Temperature, humidity, pH, electrical conductivity (EC), water level sensors, and total power usage sensors
+- **Actuators**: Water pumps, circulation fans, LED grow lights
+
+Each device operates independently with its own sensor/actuator management while participating in the larger network ecosystem.
+
+### MQTT Message Broker
+
+The MQTT broker serves as the central nervous system for real-time communication between all devices and the monitoring app. It handles three primary message types:
+
+**Sensor Data Messages** (e.g., `grow/rpi/sensor`):
+```json
+{
+   "deviceType": "temperature",
+   "deviceID": "1", 
+   "location": "tent",
+   "value": "23.22",
+   "description": "under light"
+}
+```
+
+**Actuator Status Messages** (e.g., `grow/rpi/actuator`):
+```json
+{
+   "deviceType": "pump",
+   "deviceID": "1",
+   "location": "tent", 
+   "running": true,
+   "description": "main circulation"
+}
+```
+
+**Device Health Messages** (e.g., `grow/esp32_1/device`):
+```json
+{
+   "deviceType": "microcontroller",
+   "deviceID": "1",
+   "location": "tent",
+   "running": false,
+   "description": "esp32 board on floor"
+}
+```
+
+### InfluxDB Time-Series Database
+
+InfluxDB stores historical sensor data and device states for analytics and charting. The data is organized using InfluxDB's tag-based structure:
+
+- **Measurement**: sensor, device, or actuator
+- **Tags**: Indexed metadata (deviceID, location, deviceType)
+- **Fields**: Actual values (sensor readings, boolean states)
+- **Timestamp**: Precise time of measurement
+
+This structure enables efficient querying for historical charts with customizable time ranges (1h, 24h, 7d, 30d) and aggregation functions.
+
+### Actuator Control Flow
+
+The app implements a robust control system for managing actuators:
+
+1. **Command Publishing**: App publishes control messages to device-specific topics (e.g., `grow/esp32_1/actuator/set`)
+2. **Device Processing**: Target device receives command and attempts state change
+3. **State Confirmation**: Device publishes actual state via status messages
+4. **Monitoring Loop**: App monitors for confirmation within timeout period
+5. **Failure Handling**: Retry logic and error reporting for failed commands
+
+This architecture ensures reliable control with feedback verification, preventing assumptions about successful state changes and providing visibility into system responsiveness.
+
+### Network Resilience
+
+The distributed design provides fault tolerance - individual device failures don't compromise the entire system. The app gracefully handles intermittent connectivity, offline devices, and partial system availability while maintaining core monitoring functionality.
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

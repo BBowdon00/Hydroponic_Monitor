@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write          # needed for issues.createComment on a PR
+      pull-requests: write   # safe addition; some org policies check this
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,7 +41,14 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
-
+      
+      - name: Determine branch
+        id: br
+        shell: bash
+        run: |
+          # For PR runs, this is the source branch; for push runs, it's the ref name
+          echo "name=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" >> "$GITHUB_OUTPUT"
+      
       - name: Check if formatting is needed
         id: check-format
         run: |
@@ -50,29 +59,52 @@ jobs:
             echo "needs_format=false" >> $GITHUB_OUTPUT
             echo "Code is already properly formatted"
           fi
-
+      
       - name: Format code
         if: steps.check-format.outputs.needs_format == 'true'
         run: dart format .
-
+      
+      # Only try to commit/push on:
+      #  - push events (branch in same repo), or
+      #  - PRs where the source branch is in the SAME repo (not a fork)
       - name: Commit formatted code
-        if: steps.check-format.outputs.needs_format == 'true'
+        if: |
+          steps.check-format.outputs.needs_format == 'true' &&
+          (
+            github.event_name == 'push' ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+          )
+        shell: bash
         run: |
+          set -euo pipefail
+          BRANCH='${{ steps.br.outputs.name }}'
+      
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
-          git fetch origin ${{ github.head_ref || github.ref_name }}
-          git rebase origin/${{ github.head_ref || github.ref_name }}
-          git add .
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      
+          # Ensure we have the remote branch
+          git fetch origin "$BRANCH"
+      
+          # Rebase cleanly even if the workspace became dirty (autostash)
+          git pull --rebase --autostash origin "$BRANCH"
+      
+          git add -A
           if ! git diff --staged --quiet; then
-            git commit -m "🔧 Auto-format code with dart format [skip ci]"
-            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+            # NOTE: intentionally no [skip ci] so subsequent workflows still run
+            git commit -m "🔧 Auto-format code with dart format"
+            git push origin "HEAD:$BRANCH"
             echo "Code has been automatically formatted and committed"
           else
             echo "No formatting changes to commit"
           fi
 
+      # Optional: comment on the PR to notify about the auto-format
       - name: Comment on PR about formatting
-        if: steps.check-format.outputs.needs_format == 'true' && github.event_name == 'pull_request'
+        if: |
+          steps.check-format.outputs.needs_format == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           script: |
@@ -80,7 +112,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🔧 Code has been automatically formatted with `dart format` and committed.'
+              body: '🔧 Code was auto-formatted and pushed to this PR branch.'
             })
 
   # Analyze code quality
@@ -258,7 +290,7 @@ jobs:
           docker compose down -v --remove-orphans
           echo "Services stopped and volumes removed"
 
-# Comment on failure
+  # Comment on failure
   report-failure:
     runs-on: ubuntu-latest
     name: Comment on PR with Failure Summary
