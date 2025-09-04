@@ -20,8 +20,8 @@ import '../test_utils.dart';
 void main() {
   group('MQTT → Telegraf → InfluxDB Integration', () {
     const testTimeout = Timeout(Duration(minutes: 3));
-    late MqttServerClient mqttClient;
-    late InfluxDbService influxService;
+    MqttServerClient? mqttClient;
+    InfluxDbService? influxService;
 
     setUpAll(() async {
       // Wait for services to be ready
@@ -32,9 +32,9 @@ void main() {
         TestConfig.testMqttHost,
         'integration_test_publisher',
       );
-      mqttClient.port = TestConfig.testMqttPort;
-      mqttClient.keepAlivePeriod = 20;
-      mqttClient.autoReconnect = true;
+      mqttClient!.port = TestConfig.testMqttPort;
+      mqttClient!.keepAlivePeriod = 20;
+      mqttClient!.autoReconnect = true;
 
       // Initialize InfluxDB service for querying data
       influxService = InfluxDbService(
@@ -44,12 +44,12 @@ void main() {
         bucket: TestConfig.testInfluxBucket,
       );
 
-      await influxService.initialize();
+      await influxService!.initialize();
     });
 
     tearDownAll(() async {
-      mqttClient.disconnect();
-      await influxService.close();
+      mqttClient?.disconnect();
+      await influxService?.close();
     });
 
     test(
@@ -65,9 +65,9 @@ void main() {
         );
 
         // Connect to MQTT broker
-        await mqttClient.connect();
+        await mqttClient!.connect();
         expect(
-          mqttClient.connectionStatus!.state,
+          mqttClient!.connectionStatus!.state,
           equals(MqttConnectionState.connected),
         );
 
@@ -78,7 +78,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(messageJson);
 
-        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         print('Published sensor data to topic: $topic');
         print('Message: $messageJson');
@@ -110,7 +110,7 @@ void main() {
           )
           .toList();
 
-      await mqttClient.connect();
+      await mqttClient!.connect();
 
       // Publish all sensor types using new format
       for (final data in testDataList) {
@@ -120,7 +120,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(messageJson);
 
-        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         // Small delay between publishes
         await Future.delayed(const Duration(milliseconds: 100));
@@ -148,7 +148,7 @@ void main() {
     }, timeout: testTimeout);
 
     test('Actuator state reporting', tags: ['integration'], () async {
-      await mqttClient.connect();
+      await mqttClient!.connect();
 
       // Test actuator state messages using new format
       final actuatorPayloads = [
@@ -182,7 +182,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         print('Published actuator state to topic: $topic');
         print('Payload: $payloadJson');
@@ -206,7 +206,7 @@ void main() {
     }, timeout: testTimeout);
 
     test('Device status reporting', tags: ['integration'], () async {
-      await mqttClient.connect();
+      await mqttClient!.connect();
 
       // Test device status messages using new format
       final devicePayloads = [
@@ -233,7 +233,7 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
         print('Published device status to topic: $topic');
         print('Payload: $payloadJson');
@@ -260,7 +260,7 @@ void main() {
       'Comprehensive sensor type coverage',
       tags: ['integration'],
       () async {
-        await mqttClient.connect();
+        await mqttClient!.connect();
 
         // Test all available sensor types with realistic data
         final comprehensiveTestData = <SensorData>[];
@@ -293,7 +293,7 @@ void main() {
           final builder = MqttClientPayloadBuilder();
           builder.addString(messageJson);
 
-          mqttClient.publishMessage(
+          mqttClient!.publishMessage(
             topic,
             MqttQos.atLeastOnce,
             builder.payload!,
@@ -341,21 +341,27 @@ void main() {
 Future<void> _waitForServices() async {
   print('Waiting for services to be ready...');
 
-  // Wait for InfluxDB
-  await _waitForInfluxDB();
+  try {
+    // Wait for InfluxDB
+    await _waitForInfluxDB();
 
-  // Wait for MQTT broker
-  await _waitForMQTT();
+    // Wait for MQTT broker
+    await _waitForMQTT();
 
-  // Wait for Telegraf (give it time to connect to other services)
-  // await Future.delayed(const Duration(seconds: 1));
+    // Wait for Telegraf (give it time to connect to other services)
+    await Future.delayed(const Duration(seconds: 2));
 
-  print('All services are ready!');
+    print('All services are ready!');
+  } catch (e) {
+    // If services aren't available, we'll skip the tests
+    throw Exception('Integration test services not available: $e. Please run "./scripts/run-integration-tests.sh" to start services.');
+  }
 }
 
 /// Wait for InfluxDB to be ready.
 Future<void> _waitForInfluxDB() async {
-  for (int i = 0; i < 30; i++) {
+  print('Waiting for InfluxDB to become ready...');
+  for (int i = 0; i < 10; i++) { // Reduced from 60 to 10 attempts for faster failure
     try {
       final response = await http.get(
         Uri.parse('${TestConfig.testInfluxUrl}/health'),
@@ -364,17 +370,19 @@ Future<void> _waitForInfluxDB() async {
         print('InfluxDB is ready');
         return;
       }
+      print('InfluxDB attempt ${i + 1}: status ${response.statusCode}');
     } catch (e) {
-      // Service not ready yet
+      print('InfluxDB attempt ${i + 1}: $e');
     }
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1)); // Reduced from 2s to 1s
   }
-  throw Exception('InfluxDB did not become ready in time');
+  throw Exception('InfluxDB did not become ready in time (tried for ${10 * 1} seconds)');
 }
 
 /// Wait for MQTT broker to be ready.
 Future<void> _waitForMQTT() async {
-  for (int i = 0; i < 30; i++) {
+  print('Waiting for MQTT broker to become ready...');
+  for (int i = 0; i < 10; i++) { // Reduced from 60 to 10 attempts for faster failure
     try {
       final socket = await Socket.connect(
         TestConfig.testMqttHost,
@@ -384,11 +392,11 @@ Future<void> _waitForMQTT() async {
       print('MQTT broker is ready');
       return;
     } catch (e) {
-      // Service not ready yet
+      print('MQTT attempt ${i + 1}: $e');
     }
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1)); // Reduced from 2s to 1s
   }
-  throw Exception('MQTT broker did not become ready in time');
+  throw Exception('MQTT broker did not become ready in time (tried for ${10 * 1} seconds)');
 }
 
 /// Convert sensor data to new JSON format for MQTT publishing.
