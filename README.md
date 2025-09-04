@@ -1,10 +1,4 @@
 [![CI/CD Pipeline](https://github.com/BBowdon00/Hydroponic_Monitor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BBowdon00/Hydroponic_Monitor/actions/workflows/ci.yml)
-# hydroponic_monitor
-
-A new Flutter project.
-
-## Getting Started
-
 # Hydroponic Monitor 🌱
 
 A cross-platform Flutter application to monitor and control hydroponic systems with real-time sensors, device controls, video feed, historical charts, and MQTT integration. The app provides an intuitive dashboard for tracking water levels, temperature, humidity, pH, and electrical conductivity while enabling remote control of pumps, fans, lighting, and heating systems.
@@ -50,7 +44,7 @@ lib/
 
 - **State Management**: Riverpod (hooks_riverpod) for reactive state and dependency injection
 - **Navigation**: go_router for type-safe, declarative routing
-- **Data Sources**: MQTT (mqtt_client), InfluxDB (influxdb_client), HTTP (dio)
+- **Data Sources**: MQTT (mqtt_client), InfluxDB (influxdb_client)
 - **Charts**: fl_chart for time-series visualization
 - **Storage**: flutter_secure_storage for sensitive configuration
 - **Theming**: Material 3 with 8-point grid system and consistent spacing
@@ -70,8 +64,6 @@ lib/
 - Flutter SDK 3.35.2+ (Dart 3.9.0+)
 - For web deployment: Modern web browser with WASM support
 - For Android: Android SDK and emulator/device
-- Optional: Linux desktop development requires GTK3 development headers
-
 ### Installation
 
 1. **Clone the repository:**
@@ -185,7 +177,7 @@ The MQTT broker serves as the central nervous system for real-time communication
 ```json
 {
    "deviceType": "pump",
-   "deviceID": "1",
+   "deviceID": "2",
    "location": "tent", 
    "running": true,
    "description": "main circulation"
@@ -216,7 +208,7 @@ This structure enables efficient querying for historical charts with customizabl
 
 ### Actuator Control Flow
 
-The app implements a robust control system for managing actuators:
+The app **will** implement a robust control system for managing actuators:
 
 1. **Command Publishing**: App publishes control messages to device-specific topics (e.g., `grow/esp32_1/actuator/set`)
 2. **Device Processing**: Target device receives command and attempts state change
