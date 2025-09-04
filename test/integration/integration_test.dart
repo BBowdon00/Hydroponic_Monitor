@@ -195,7 +195,9 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       // Verify actuator state data was stored using new measurement name
-      final stored = await _queryInfluxForActuatorStatesNew(actuatorPayloads.length);
+      final stored = await _queryInfluxForActuatorStatesNew(
+        actuatorPayloads.length,
+      );
       expect(
         stored,
         isTrue,
@@ -244,7 +246,9 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       // Verify device status data was stored
-      final stored = await _queryInfluxForDeviceStatesNew(devicePayloads.length);
+      final stored = await _queryInfluxForDeviceStatesNew(
+        devicePayloads.length,
+      );
       expect(
         stored,
         isTrue,
