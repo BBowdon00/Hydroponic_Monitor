@@ -34,14 +34,14 @@ void main() {
 
       expect(result, isA<Success<List<SensorData>>>());
       final data = (result as Success<List<SensorData>>).data;
-      
+
       // Should return data for all sensor types
       expect(data.length, equals(SensorType.values.length));
-      
+
       // Verify each sensor type is represented
       final sensorTypes = data.map((d) => d.sensorType).toSet();
       expect(sensorTypes.length, equals(SensorType.values.length));
-      
+
       // Verify realistic data values
       for (final sensorData in data) {
         expect(sensorData.value, greaterThan(0));

@@ -141,7 +141,8 @@ class InfluxDbService {
     DateTime? end,
     int? limit,
   }) async {
-    final startTime = start ?? DateTime.now().subtract(const Duration(hours: 24));
+    final startTime =
+        start ?? DateTime.now().subtract(const Duration(hours: 24));
     final endTime = end ?? DateTime.now();
     final limitValue = limit ?? 100;
 
@@ -170,22 +171,25 @@ class InfluxDbService {
 
       // Build Flux query with optional filters
       final filters = <String>[];
-      
+
       if (sensorType != null) {
-        filters.add('|> filter(fn: (r) => r["sensor_type"] == "${sensorType.name}")');
+        filters.add(
+          '|> filter(fn: (r) => r["sensor_type"] == "${sensorType.name}")',
+        );
       }
-      
+
       if (sensorId != null) {
         filters.add('|> filter(fn: (r) => r["sensor_id"] == "$sensorId")');
       }
-      
+
       if (deviceId != null) {
         filters.add('|> filter(fn: (r) => r["device_id"] == "$deviceId")');
       }
 
       final filtersString = filters.join('\n  ');
 
-      final query = '''
+      final query =
+          '''
 from(bucket: "$bucket")
   |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${endTime.toUtc().toIso8601String()})
   |> filter(fn: (r) => r["_measurement"] == "sensor_data")
@@ -220,9 +224,12 @@ from(bucket: "$bucket")
     } catch (e) {
       final error = 'Error querying sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
-      
+
       // Fallback to dummy data if query fails (for development/testing)
-      Logger.warning('Falling back to dummy data due to query error', tag: 'InfluxDB');
+      Logger.warning(
+        'Falling back to dummy data due to query error',
+        tag: 'InfluxDB',
+      );
       final dummyData = _generateDummySensorData(
         sensorType: sensorType,
         sensorId: sensorId,
@@ -254,13 +261,11 @@ from(bucket: "$bucket")
     }
 
     try {
-      Logger.info(
-        'Querying latest sensor data from InfluxDB',
-        tag: 'InfluxDB',
-      );
+      Logger.info('Querying latest sensor data from InfluxDB', tag: 'InfluxDB');
 
       // Query for latest reading of each sensor type
-      final query = '''
+      final query =
+          '''
 from(bucket: "$bucket")
   |> range(start: -24h)
   |> filter(fn: (r) => r["_measurement"] == "sensor_data")
@@ -295,9 +300,12 @@ from(bucket: "$bucket")
     } catch (e) {
       final error = 'Error querying latest sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
-      
+
       // Fallback to dummy data if query fails (for development/testing)
-      Logger.warning('Falling back to dummy latest data due to query error', tag: 'InfluxDB');
+      Logger.warning(
+        'Falling back to dummy latest data due to query error',
+        tag: 'InfluxDB',
+      );
       final dummyData = SensorType.values.map((type) {
         return _generateSingleSensorData(
           type: type,
@@ -312,13 +320,13 @@ from(bucket: "$bucket")
   /// Parse CSV response from InfluxDB query.
   List<SensorData> _parseCsvResponse(String csvData) {
     final sensorDataList = <SensorData>[];
-    
+
     try {
       final lines = csvData.split('\n');
-      
+
       // Skip if no data
       if (lines.length < 2) return sensorDataList;
-      
+
       // Find header line and data lines
       int headerIndex = -1;
       for (int i = 0; i < lines.length; i++) {
@@ -327,11 +335,11 @@ from(bucket: "$bucket")
           break;
         }
       }
-      
+
       if (headerIndex == -1) return sensorDataList;
-      
+
       final headers = lines[headerIndex].split(',');
-      
+
       // Map header positions
       final timeIndex = headers.indexOf('_time');
       final valueIndex = headers.indexOf('_value');
@@ -340,15 +348,15 @@ from(bucket: "$bucket")
       final unitIndex = headers.indexOf('unit');
       final deviceIdIndex = headers.indexOf('device_id');
       final locationIndex = headers.indexOf('location');
-      
+
       // Parse data rows
       for (int i = headerIndex + 1; i < lines.length; i++) {
         final line = lines[i].trim();
         if (line.isEmpty) continue;
-        
+
         final values = line.split(',');
         if (values.length < headers.length) continue;
-        
+
         try {
           final sensorData = _parseCsvRow(
             values,
@@ -360,7 +368,7 @@ from(bucket: "$bucket")
             deviceIdIndex,
             locationIndex,
           );
-          
+
           if (sensorData != null) {
             sensorDataList.add(sensorData);
           }
@@ -371,7 +379,7 @@ from(bucket: "$bucket")
     } catch (e) {
       Logger.error('Error parsing CSV response: $e', tag: 'InfluxDB', error: e);
     }
-    
+
     return sensorDataList;
   }
 
@@ -388,23 +396,35 @@ from(bucket: "$bucket")
   ) {
     try {
       // Extract required fields
-      final timeStr = timeIndex >= 0 && timeIndex < values.length ? values[timeIndex] : null;
-      final valueStr = valueIndex >= 0 && valueIndex < values.length ? values[valueIndex] : null;
-      final sensorId = sensorIdIndex >= 0 && sensorIdIndex < values.length ? values[sensorIdIndex] : null;
-      final sensorTypeStr = sensorTypeIndex >= 0 && sensorTypeIndex < values.length ? values[sensorTypeIndex] : null;
-      
-      if (timeStr == null || valueStr == null || sensorId == null || sensorTypeStr == null) {
+      final timeStr = timeIndex >= 0 && timeIndex < values.length
+          ? values[timeIndex]
+          : null;
+      final valueStr = valueIndex >= 0 && valueIndex < values.length
+          ? values[valueIndex]
+          : null;
+      final sensorId = sensorIdIndex >= 0 && sensorIdIndex < values.length
+          ? values[sensorIdIndex]
+          : null;
+      final sensorTypeStr =
+          sensorTypeIndex >= 0 && sensorTypeIndex < values.length
+          ? values[sensorTypeIndex]
+          : null;
+
+      if (timeStr == null ||
+          valueStr == null ||
+          sensorId == null ||
+          sensorTypeStr == null) {
         return null;
       }
-      
+
       // Parse timestamp
       final timestamp = DateTime.tryParse(timeStr);
       if (timestamp == null) return null;
-      
+
       // Parse value
       final value = double.tryParse(valueStr);
       if (value == null) return null;
-      
+
       // Parse sensor type
       SensorType? sensorType;
       for (final type in SensorType.values) {
@@ -413,14 +433,20 @@ from(bucket: "$bucket")
           break;
         }
       }
-      
+
       if (sensorType == null) return null;
-      
+
       // Extract optional fields
-      final unit = unitIndex >= 0 && unitIndex < values.length ? values[unitIndex] : null;
-      final deviceId = deviceIdIndex >= 0 && deviceIdIndex < values.length ? values[deviceIdIndex] : null;
-      final location = locationIndex >= 0 && locationIndex < values.length ? values[locationIndex] : null;
-      
+      final unit = unitIndex >= 0 && unitIndex < values.length
+          ? values[unitIndex]
+          : null;
+      final deviceId = deviceIdIndex >= 0 && deviceIdIndex < values.length
+          ? values[deviceIdIndex]
+          : null;
+      final location = locationIndex >= 0 && locationIndex < values.length
+          ? values[locationIndex]
+          : null;
+
       return SensorData(
         id: sensorId,
         sensorType: sensorType,
