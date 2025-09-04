@@ -57,23 +57,41 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
     final sensorRepository = ref.read(sensorRepositoryProvider);
     final deviceRepository = ref.read(deviceRepositoryProvider);
 
-    // Initialize repositories
-    final sensorResult = await sensorRepository.initialize();
-    if (sensorResult is Failure) {
+    // Initialize repositories with error handling
+    try {
+      final sensorResult = await sensorRepository.initialize();
+      if (sensorResult is Failure) {
+        Logger.error(
+          'Failed to initialize sensor repository: ${sensorResult.error}',
+          tag: 'DataProviders',
+        );
+        throw sensorResult.error;
+      }
+    } catch (e) {
       Logger.error(
-        'Failed to initialize sensor repository: ${sensorResult.error}',
+        'Exception during sensor repository initialization: $e',
         tag: 'DataProviders',
+        error: e,
       );
-      throw Exception('Sensor repository initialization failed');
+      throw NotInitializedError('Sensor repository initialization failed: $e');
     }
 
-    final deviceResult = await deviceRepository.initialize();
-    if (deviceResult is Failure) {
+    try {
+      final deviceResult = await deviceRepository.initialize();
+      if (deviceResult is Failure) {
+        Logger.error(
+          'Failed to initialize device repository: ${deviceResult.error}',
+          tag: 'DataProviders',
+        );
+        throw deviceResult.error;
+      }
+    } catch (e) {
       Logger.error(
-        'Failed to initialize device repository: ${deviceResult.error}',
+        'Exception during device repository initialization: $e',
         tag: 'DataProviders',
+        error: e,
       );
-      throw Exception('Device repository initialization failed');
+      throw NotInitializedError('Device repository initialization failed: $e');
     }
 
     Logger.info('Data services initialized successfully', tag: 'DataProviders');
@@ -83,6 +101,11 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
       tag: 'DataProviders',
       error: e,
     );
+    
+    // Wrap unknown errors in NotInitializedError for consistency
+    if (e is! AppError) {
+      throw NotInitializedError('Data services initialization failed: $e');
+    }
     rethrow;
   }
 });

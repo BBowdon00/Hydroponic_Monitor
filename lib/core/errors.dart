@@ -37,6 +37,11 @@ class UnknownError extends AppError {
   const UnknownError(super.message);
 }
 
+/// Initialization errors.
+class NotInitializedError extends AppError {
+  const NotInitializedError(super.message);
+}
+
 /// Result type for error handling.
 /// Use instead of throwing exceptions across layers.
 sealed class Result<T> {

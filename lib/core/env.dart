@@ -24,9 +24,12 @@ class Env {
   static Future<void> init() async {
     try {
       await dotenv.load(fileName: '.env');
+      print('✅ Environment configuration loaded from .env file');
     } catch (e) {
       // .env file not found or couldn't be loaded - using defaults
-      print('Warning: .env file not found, using default values');
+      print('⚠️ Warning: .env file not found, using default values');
+      print('   Make sure .env is included in pubspec.yaml assets section');
+      print('   Error: $e');
     }
   }
 }

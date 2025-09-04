@@ -61,6 +61,13 @@ class MqttService {
       Logger.info('Connecting to MQTT broker at $host:$port', tag: 'MQTT');
 
       _client = MqttServerClient.withPort(host, clientId, port);
+      
+      if (_client == null) {
+        const error = 'Failed to create MQTT client instance';
+        Logger.error(error, tag: 'MQTT');
+        return const Failure(MqttError(error));
+      }
+
       _client!.logging(on: true);
       _client!.keepAlivePeriod = 60;
       _client!.connectTimeoutPeriod = 30000;
@@ -73,6 +80,8 @@ class MqttService {
       final updates = _client!.updates;
       if (updates != null) {
         updates.listen(_onMessageReceived);
+      } else {
+        Logger.warning('MQTT client updates stream is null', tag: 'MQTT');
       }
 
       // Set credentials if provided
@@ -93,7 +102,10 @@ class MqttService {
             .withWillQos(MqttQos.atLeastOnce);
       }
 
+      Logger.info('Attempting to connect to MQTT broker...', tag: 'MQTT');
       final status = await _client!.connect();
+
+      Logger.info('MQTT connection attempt complete. Status: ${status?.toString()}', tag: 'MQTT');
 
       if (status?.toString() == 'connected') {
         Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');
@@ -104,9 +116,10 @@ class MqttService {
         Logger.error(error, tag: 'MQTT');
         return Failure(MqttError(error));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       final error = 'Error connecting to MQTT broker: $e';
       Logger.error(error, tag: 'MQTT', error: e);
+      Logger.debug('Stack trace: $stackTrace', tag: 'MQTT');
       return Failure(MqttError(error));
     }
   }
