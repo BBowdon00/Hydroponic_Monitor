@@ -490,7 +490,7 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
       final returnCount =
-          int.tryParse(csvData.split('\n')[1].split(',')[4]) ?? 0;
+          int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
       print("Return Count: $returnCount");
       return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
@@ -540,7 +540,7 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
       final returnCount =
-          int.tryParse(csvData.split('\n')[1].split(',')[4]) ?? 0;
+          int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
       print("Return Count: $returnCount");
       return csvData.contains('_value') && returnCount == expectedResultNum;
     } else {
