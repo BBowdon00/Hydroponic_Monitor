@@ -160,7 +160,10 @@ Each device operates independently with its own sensor/actuator management while
 
 ### MQTT Message Broker
 
-The MQTT broker serves as the central nervous system for real-time communication between all devices and the monitoring app. It handles three primary message types:
+The MQTT broker serves as the central nervous system for real-time communication between all devices and the monitoring app. It handles four primary message types:
+
+Topic format:
+{project}/{node}/{deviceCategory}
 
 **Sensor Data Messages** (e.g., `grow/rpi/sensor`):
 ```json
@@ -194,6 +197,21 @@ The MQTT broker serves as the central nervous system for real-time communication
    "description": "esp32 board on floor"
 }
 ```
+**Actuator Action Request** (e.g. `grow/rpi_2/actuator/set`)
+```json
+{
+   "deviceType": "fan",
+   "deviceID":"3",
+   "location":"tent",
+   "requestID": "phone",
+   "reason": "manual", // automatic, or kill switch
+   "duration": "-", //duration of "-" = infinite (until turned off/on). In seconds
+   "action": "on", // "on", "off", or "toggle"
+}
+```
+
+### Dashboard/Display Integration for Sensor Data
+Each tile will display the latest sensor information. It will wait for MQTT messages and update as they are received. If no message has been received yet, the display should indicate it is waiting for a new message. Each tile will be hold data for unique deviceID+deviceType+node. I.e. one tile will be displaying data from deviceType="temperature", deviceID="1", and node="rpi". Another tile will display for deviceType="humidity", deviceID="1", and node="esp32" and et cetera. Currently, there is only one sensor per sensorType, so device ID should always be 1. 
 
 ### InfluxDB Time-Series Database
 
