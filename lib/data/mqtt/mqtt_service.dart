@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'dart:math' as Math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:mqtt_client/mqtt_browser_client.dart';
 
 import '../../core/logger.dart';
 import '../../core/errors.dart';
@@ -25,7 +29,7 @@ class MqttService {
   final String? username;
   final String? password;
 
-  MqttServerClient? _client;
+  MqttClient? _client;
   final StreamController<SensorData> _sensorDataController =
       StreamController<SensorData>.broadcast();
   final StreamController<Device> _deviceStatusController =
@@ -60,6 +64,18 @@ class MqttService {
     try {
       Logger.info('Connecting to MQTT broker at $host:$port', tag: 'MQTT');
 
+      // For web platform, provide mock data instead of trying MQTT connection
+      if (kIsWeb) {
+        Logger.info('Web platform detected - using mock MQTT data for demo', tag: 'MQTT');
+        _connectionController.add('connected');
+        
+        // Start mock data simulation
+        _startMockDataSimulation();
+        
+        return const Success(null);
+      }
+
+      // Create server client for non-web platforms
       _client = MqttServerClient.withPort(host, clientId, port);
       
       if (_client == null) {
@@ -374,6 +390,103 @@ class MqttService {
 
   void _onUnsubscribed(String? topic) {
     Logger.info('Unsubscribed from topic: $topic', tag: 'MQTT');
+  }
+
+  /// Start mock data simulation for web platform
+  void _startMockDataSimulation() {
+    Logger.info('Starting mock MQTT data simulation for web demo', tag: 'MQTT');
+    
+    // Generate mock sensor data every 5 seconds
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      final now = DateTime.now();
+      final sensorTypes = [
+        SensorType.temperature,
+        SensorType.humidity,
+        SensorType.pH,
+        SensorType.waterLevel,
+        SensorType.electricalConductivity,
+        SensorType.powerUsage,
+      ];
+      
+      for (final sensorType in sensorTypes) {
+        final sensorData = _generateMockSensorData(sensorType, now);
+        _sensorDataController.add(sensorData);
+      }
+    });
+    
+    // Generate mock device status every 10 seconds
+    Timer.periodic(const Duration(seconds: 10), (timer) {
+      final devices = [
+        Device(
+          id: 'water_pump_1',
+          name: 'Water Pump',
+          type: DeviceType.pump,
+          status: DeviceStatus.online,
+          isEnabled: DateTime.now().second % 2 == 0,
+          lastUpdate: DateTime.now(),
+        ),
+        Device(
+          id: 'fan_1',
+          name: 'Fan 1',
+          type: DeviceType.fan,
+          status: DeviceStatus.online,
+          isEnabled: DateTime.now().second % 3 == 0,
+          lastUpdate: DateTime.now(),
+        ),
+        Device(
+          id: 'led_lights_1',
+          name: 'LED Lights',
+          type: DeviceType.light,
+          status: DeviceStatus.online,
+          isEnabled: true,
+          lastUpdate: DateTime.now(),
+        ),
+      ];
+      
+      for (final device in devices) {
+        _deviceStatusController.add(device);
+      }
+    });
+  }
+
+  SensorData _generateMockSensorData(SensorType type, DateTime timestamp) {
+    final random = Math.Random();
+    double value;
+    switch (type) {
+      case SensorType.temperature:
+        value = 18.0 + (random.nextDouble() * 12.0); // 18-30°C
+        break;
+      case SensorType.humidity:
+        value = 40.0 + (random.nextDouble() * 40.0); // 40-80%
+        break;
+      case SensorType.pH:
+        value = 5.5 + (random.nextDouble() * 2.0); // 5.5-7.5 pH
+        break;
+      case SensorType.waterLevel:
+        value = 20.0 + (random.nextDouble() * 60.0); // 20-80%
+        break;
+      case SensorType.electricalConductivity:
+        value = 800.0 + (random.nextDouble() * 400.0); // 800-1200 μS/cm
+        break;
+      case SensorType.powerUsage:
+        value = 50.0 + (random.nextDouble() * 200.0); // 50-250W
+        break;
+      case SensorType.lightIntensity:
+        value = 100.0 + (random.nextDouble() * 500.0); // 100-600 lux
+        break;
+      case SensorType.airQuality:
+        value = 200.0 + (random.nextDouble() * 300.0); // 200-500 ppm
+        break;
+    }
+    
+    return SensorData(
+      id: '${type.name}_${DateTime.now().millisecondsSinceEpoch}',
+      deviceId: 'rpi',
+      sensorType: type,
+      value: value,
+      unit: type.defaultUnit,
+      timestamp: timestamp,
+    );
   }
 }
 
