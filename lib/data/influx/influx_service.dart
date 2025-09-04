@@ -456,6 +456,18 @@ from(bucket: "$bucket")
       case SensorType.airQuality:
         value = 400.0 + random.nextDouble() * 200;
         break;
+      case SensorType.powerUsage:
+        // Power usage varies based on time of day (lights, heaters, etc.)
+        final hourOfDay = timestamp.hour;
+        final baseUsage = 50.0; // Base system power
+        if (hourOfDay >= 6 && hourOfDay <= 18) {
+          // Daytime with lights on
+          value = baseUsage + 120.0 + random.nextDouble() * 80;
+        } else {
+          // Night time, lower usage
+          value = baseUsage + random.nextDouble() * 50;
+        }
+        break;
     }
 
     return SensorData(

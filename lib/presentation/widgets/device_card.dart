@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/status_badge.dart';
 import '../../core/theme.dart';
+import '../../domain/entities/device.dart';
 
 /// A card for controlling individual devices.
 /// Includes toggle switch, optional intensity slider, and pending state indicator.

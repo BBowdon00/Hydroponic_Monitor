@@ -10,6 +10,6 @@ class MqttTopics {
       'grow/$deviceNode/actuator';
   static String deviceTopicFor(String deviceNode) => 'grow/$deviceNode/device';
 
-  // TODO: Implement command topics when actuator control feature is added
-  // static String actuatorCommandTopicFor(String deviceNode) => 'grow/$deviceNode/actuator/set';
+  // Actuator command topics for device control
+  static String actuatorCommandTopicFor(String deviceNode) => 'grow/$deviceNode/actuator/set';
 }

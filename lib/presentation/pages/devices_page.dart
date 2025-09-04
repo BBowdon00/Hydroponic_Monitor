@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../widgets/device_card.dart';
 import '../widgets/status_badge.dart';
 import '../../core/theme.dart';
+import '../providers/device_control_providers.dart';
 
 /// Devices page for controlling hydroponic system devices.
 class DevicesPage extends ConsumerWidget {
@@ -11,13 +12,18 @@ class DevicesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final deviceStates = ref.watch(deviceStatesProvider);
+    final systemStatus = ref.watch(systemStatusProvider);
+    final pumpState = ref.watch(pumpControlProvider);
+    final fan1State = ref.watch(fan1ControlProvider);
+    final fan2State = ref.watch(fan2ControlProvider);
+    final lightState = ref.watch(lightControlProvider);
+    final heaterState = ref.watch(heaterControlProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Devices'),
         actions: [
-          StatusBadge(label: 'System', status: deviceStates.systemStatus),
+          StatusBadge(label: 'System', status: systemStatus),
           const SizedBox(width: AppTheme.spaceMd),
         ],
       ),
@@ -31,10 +37,10 @@ class DevicesPage extends ConsumerWidget {
               description: 'Main nutrient circulation pump',
               icon: Icons.water_drop,
               color: Colors.blue,
-              isEnabled: deviceStates.pumpEnabled,
-              isPending: deviceStates.pumpPending,
+              isEnabled: pumpState.isEnabled,
+              isPending: pumpState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).togglePump(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(pumpState.deviceId, enabled);
               },
             ),
 
@@ -42,20 +48,37 @@ class DevicesPage extends ConsumerWidget {
 
             // Circulation fans
             DeviceCard(
-              title: 'Circulation Fans',
+              title: 'Circulation Fan 1',
               description: 'Air circulation and ventilation',
               icon: Icons.air,
               color: Colors.cyan,
-              isEnabled: deviceStates.fansEnabled,
-              isPending: deviceStates.fansPending,
-              intensity: deviceStates.fanIntensity,
+              isEnabled: fan1State.isEnabled,
+              isPending: fan1State.isPending,
+              intensity: fan1State.intensity ?? 0.6,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleFans(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(fan1State.deviceId, enabled);
               },
               onIntensityChanged: (intensity) {
-                ref
-                    .read(deviceStatesProvider.notifier)
-                    .setFanIntensity(intensity);
+                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(fan1State.deviceId, intensity);
+              },
+            ),
+
+            const SizedBox(height: AppTheme.spaceMd),
+
+            // Second fan
+            DeviceCard(
+              title: 'Circulation Fan 2',
+              description: 'Secondary air circulation',
+              icon: Icons.air,
+              color: Colors.teal,
+              isEnabled: fan2State.isEnabled,
+              isPending: fan2State.isPending,
+              intensity: fan2State.intensity ?? 0.6,
+              onToggle: (enabled) {
+                ref.read(deviceControlsProvider.notifier).toggleDevice(fan2State.deviceId, enabled);
+              },
+              onIntensityChanged: (intensity) {
+                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(fan2State.deviceId, intensity);
               },
             ),
 
@@ -67,16 +90,14 @@ class DevicesPage extends ConsumerWidget {
               description: 'Primary plant lighting system',
               icon: Icons.wb_sunny,
               color: Colors.amber,
-              isEnabled: deviceStates.lightsEnabled,
-              isPending: deviceStates.lightsPending,
-              intensity: deviceStates.lightIntensity,
+              isEnabled: lightState.isEnabled,
+              isPending: lightState.isPending,
+              intensity: lightState.intensity ?? 0.8,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleLights(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(lightState.deviceId, enabled);
               },
               onIntensityChanged: (intensity) {
-                ref
-                    .read(deviceStatesProvider.notifier)
-                    .setLightIntensity(intensity);
+                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(lightState.deviceId, intensity);
               },
             ),
 
@@ -88,10 +109,10 @@ class DevicesPage extends ConsumerWidget {
               description: 'Maintains optimal water temperature',
               icon: Icons.thermostat,
               color: Colors.orange,
-              isEnabled: deviceStates.heaterEnabled,
-              isPending: deviceStates.heaterPending,
+              isEnabled: heaterState.isEnabled,
+              isPending: heaterState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleHeater(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(heaterState.deviceId, enabled);
               },
             ),
 
@@ -160,7 +181,7 @@ class DevicesPage extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              ref.read(deviceStatesProvider.notifier).emergencyStop();
+              ref.read(deviceControlsProvider.notifier).emergencyStopAll();
               Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(
@@ -172,149 +193,5 @@ class DevicesPage extends ConsumerWidget {
         ],
       ),
     );
-  }
-}
-
-/// Device states model.
-class DeviceStates {
-  const DeviceStates({
-    required this.pumpEnabled,
-    required this.pumpPending,
-    required this.fansEnabled,
-    required this.fansPending,
-    required this.fanIntensity,
-    required this.lightsEnabled,
-    required this.lightsPending,
-    required this.lightIntensity,
-    required this.heaterEnabled,
-    required this.heaterPending,
-    required this.systemStatus,
-  });
-
-  final bool pumpEnabled;
-  final bool pumpPending;
-  final bool fansEnabled;
-  final bool fansPending;
-  final double fanIntensity;
-  final bool lightsEnabled;
-  final bool lightsPending;
-  final double lightIntensity;
-  final bool heaterEnabled;
-  final bool heaterPending;
-  final DeviceStatus systemStatus;
-
-  DeviceStates copyWith({
-    bool? pumpEnabled,
-    bool? pumpPending,
-    bool? fansEnabled,
-    bool? fansPending,
-    double? fanIntensity,
-    bool? lightsEnabled,
-    bool? lightsPending,
-    double? lightIntensity,
-    bool? heaterEnabled,
-    bool? heaterPending,
-    DeviceStatus? systemStatus,
-  }) {
-    return DeviceStates(
-      pumpEnabled: pumpEnabled ?? this.pumpEnabled,
-      pumpPending: pumpPending ?? this.pumpPending,
-      fansEnabled: fansEnabled ?? this.fansEnabled,
-      fansPending: fansPending ?? this.fansPending,
-      fanIntensity: fanIntensity ?? this.fanIntensity,
-      lightsEnabled: lightsEnabled ?? this.lightsEnabled,
-      lightsPending: lightsPending ?? this.lightsPending,
-      lightIntensity: lightIntensity ?? this.lightIntensity,
-      heaterEnabled: heaterEnabled ?? this.heaterEnabled,
-      heaterPending: heaterPending ?? this.heaterPending,
-      systemStatus: systemStatus ?? this.systemStatus,
-    );
-  }
-}
-
-/// Provider for device states with optimistic updates.
-final deviceStatesProvider =
-    StateNotifierProvider<DeviceStatesNotifier, DeviceStates>((ref) {
-      return DeviceStatesNotifier();
-    });
-
-class DeviceStatesNotifier extends StateNotifier<DeviceStates> {
-  DeviceStatesNotifier()
-    : super(
-        const DeviceStates(
-          pumpEnabled: false,
-          pumpPending: false,
-          fansEnabled: true,
-          fansPending: false,
-          fanIntensity: 0.6,
-          lightsEnabled: true,
-          lightsPending: false,
-          lightIntensity: 0.8,
-          heaterEnabled: false,
-          heaterPending: false,
-          systemStatus: DeviceStatus.online,
-        ),
-      );
-
-  void togglePump(bool enabled) {
-    state = state.copyWith(pumpEnabled: enabled, pumpPending: true);
-    // Simulate network request
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        state = state.copyWith(pumpPending: false);
-      }
-    });
-  }
-
-  void toggleFans(bool enabled) {
-    state = state.copyWith(fansEnabled: enabled, fansPending: true);
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        state = state.copyWith(fansPending: false);
-      }
-    });
-  }
-
-  void setFanIntensity(double intensity) {
-    state = state.copyWith(fanIntensity: intensity);
-  }
-
-  void toggleLights(bool enabled) {
-    state = state.copyWith(lightsEnabled: enabled, lightsPending: true);
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        state = state.copyWith(lightsPending: false);
-      }
-    });
-  }
-
-  void setLightIntensity(double intensity) {
-    state = state.copyWith(lightIntensity: intensity);
-  }
-
-  void toggleHeater(bool enabled) {
-    state = state.copyWith(heaterEnabled: enabled, heaterPending: true);
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        state = state.copyWith(heaterPending: false);
-      }
-    });
-  }
-
-  void emergencyStop() {
-    state = state.copyWith(
-      pumpEnabled: false,
-      fansEnabled: false,
-      lightsEnabled: false,
-      heaterEnabled: false,
-      systemStatus: DeviceStatus.stopped,
-    );
-
-    // Reset status after a delay
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted) {
-        state = state.copyWith(systemStatus: DeviceStatus.online);
-      }
-    });
   }
 }

@@ -154,6 +154,17 @@ class TestDataGenerator {
         final basePPM =
             400.0 + (hourOfDay > 12 ? 50.0 : 0.0); // Worse in afternoon
         return basePPM + (baseRandom * 100.0 - 50.0);
+
+      case SensorType.powerUsage:
+        // Power usage varies with time of day: lights on during day, heaters at night
+        final basePower = 50.0; // Base system power
+        if (hourOfDay >= 6 && hourOfDay <= 18) {
+          // Daytime with lights
+          return basePower + 120.0 + (baseRandom * 80.0);
+        } else {
+          // Night time, possible heating
+          return basePower + (baseRandom * 50.0);
+        }
     }
   }
 

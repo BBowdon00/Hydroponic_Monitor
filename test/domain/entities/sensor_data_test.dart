@@ -105,6 +105,7 @@ void main() {
       );
       expect(SensorType.lightIntensity.displayName, equals('Light Intensity'));
       expect(SensorType.airQuality.displayName, equals('Air Quality'));
+      expect(SensorType.powerUsage.displayName, equals('Power Usage'));
     });
 
     test('default units are correct', () {
@@ -115,6 +116,7 @@ void main() {
       expect(SensorType.electricalConductivity.defaultUnit, equals('µS/cm'));
       expect(SensorType.lightIntensity.defaultUnit, equals('lux'));
       expect(SensorType.airQuality.defaultUnit, equals('ppm'));
+      expect(SensorType.powerUsage.defaultUnit, equals('W'));
     });
   });
 }

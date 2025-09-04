@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'dart:async';
-import 'dart:math';
 
 import '../widgets/sensor_tile.dart';
 import '../../core/theme.dart';
-import 'devices_page.dart';
+import '../../domain/entities/sensor_data.dart';
+import '../providers/sensor_aggregation_providers.dart';
+import '../providers/device_control_providers.dart';
+import '../providers/data_providers.dart';
 
 /// Dashboard page showing overview of sensor data and system status.
 class DashboardPage extends ConsumerStatefulWidget {
@@ -16,151 +17,219 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-  Timer? _updateTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start mock data updates
-    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      ref.read(mockSensorDataProvider.notifier).updateValues();
-    });
-  }
-
-  @override
-  void dispose() {
-    _updateTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final sensorData = ref.watch(mockSensorDataProvider);
+    // Watch initialization status
+    final dataInitialization = ref.watch(dataServicesInitializationProvider);
+    final hasSensorData = ref.watch(hasSensorDataProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          // Connection status indicators
+          IconButton(
+            icon: Icon(
+              hasSensorData ? Icons.wifi : Icons.wifi_off,
+              color: hasSensorData ? Colors.green : Colors.orange,
+            ),
+            onPressed: () {
+              // Show connection status dialog
+              _showConnectionStatus(context);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.read(mockSensorDataProvider.notifier).updateValues();
+              // Trigger data refresh
+              ref.invalidate(dataServicesInitializationProvider);
             },
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.read(mockSensorDataProvider.notifier).updateValues();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spaceMd),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Responsive grid: more columns on wider screens
-              final crossAxisCount = constraints.maxWidth > 1200
-                  ? 4
-                  : constraints.maxWidth > 800
-                  ? 3
-                  : 2;
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sensor Status Section
-                    Text(
-                      'Sensor Status',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spaceMd),
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: AppTheme.spaceMd,
-                      mainAxisSpacing: AppTheme.spaceMd,
-                      childAspectRatio: 1.5, // Smaller tiles
-                      children: [
-                        SensorTile(
-                          title: 'Water Level',
-                          value:
-                              '${sensorData.waterLevel.toStringAsFixed(1)} cm',
-                          unit: 'cm',
-                          icon: Icons.water_drop,
-                          color: Colors.blue,
-                          trend: sensorData.waterLevelTrend,
-                        ),
-                        SensorTile(
-                          title: 'Temperature',
-                          value:
-                              '${sensorData.temperature.toStringAsFixed(1)}°C',
-                          unit: '°C',
-                          icon: Icons.thermostat,
-                          color: Colors.orange,
-                          trend: sensorData.temperatureTrend,
-                        ),
-                        SensorTile(
-                          title: 'Humidity',
-                          value: '${sensorData.humidity.toStringAsFixed(0)}%',
-                          unit: '%',
-                          icon: Icons.opacity,
-                          color: Colors.cyan,
-                          trend: sensorData.humidityTrend,
-                        ),
-                        SensorTile(
-                          title: 'pH Level',
-                          value: sensorData.pH.toStringAsFixed(2),
-                          unit: 'pH',
-                          icon: Icons.science,
-                          color: Colors.green,
-                          trend: sensorData.pHTrend,
-                        ),
-                        SensorTile(
-                          title: 'EC Level',
-                          value: 'N/A',
-                          unit: 'mS/cm',
-                          icon: Icons.electrical_services,
-                          color: Colors.purple,
-                          trend: sensorData.ecTrend,
-                        ),
-                        SensorTile(
-                          title: 'Power Usage',
-                          value: sensorData.powerUsage > 1000
-                              ? '${(sensorData.powerUsage / 1000).toStringAsFixed(2)} kW'
-                              : '${sensorData.powerUsage.toStringAsFixed(1)} W',
-                          unit: sensorData.powerUsage > 1000 ? 'kW' : 'W',
-                          icon: Icons.bolt,
-                          color: Colors.yellow,
-                          trend: sensorData.powerTrend,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: AppTheme.spaceLg),
-
-                    // Device Control Section
-                    Text(
-                      'Device Control',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spaceMd),
-                    _buildDeviceControls(ref),
-                  ],
-                ),
-              );
-            },
+      body: dataInitialization.when(
+        data: (_) => _buildDashboardContent(),
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: AppTheme.spaceMd),
+              Text('Initializing data services...'),
+            ],
+          ),
+        ),
+        error: (error, stackTrace) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: AppTheme.spaceMd),
+              Text('Failed to initialize: $error'),
+              const SizedBox(height: AppTheme.spaceMd),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(dataServicesInitializationProvider);
+                },
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+  Widget _buildDashboardContent() {
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Refresh data services
+        ref.invalidate(dataServicesInitializationProvider);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spaceMd),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Responsive grid: more columns on wider screens
+            final crossAxisCount = constraints.maxWidth > 1200
+                ? 4
+                : constraints.maxWidth > 800
+                ? 3
+                : 2;
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Sensor Status Section
+                  Text(
+                    'Sensor Status',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spaceMd),
+                  _buildSensorGrid(crossAxisCount),
 
-  Widget _buildDeviceControls(WidgetRef ref) {
-    final deviceStates = ref.watch(deviceStatesProvider);
+                  const SizedBox(height: AppTheme.spaceLg),
+
+                  // Device Control Section
+                  Text(
+                    'Device Control',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spaceMd),
+                  _buildDeviceControls(),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSensorGrid(int crossAxisCount) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: AppTheme.spaceMd,
+      mainAxisSpacing: AppTheme.spaceMd,
+      childAspectRatio: 1.5,
+      children: [
+        _buildSensorTile(SensorType.waterLevel, 'Water Level', Icons.water_drop, Colors.blue),
+        _buildSensorTile(SensorType.temperature, 'Temperature', Icons.thermostat, Colors.orange),
+        _buildSensorTile(SensorType.humidity, 'Humidity', Icons.opacity, Colors.cyan),
+        _buildSensorTile(SensorType.pH, 'pH Level', Icons.science, Colors.green),
+        _buildSensorTile(SensorType.electricalConductivity, 'EC Level', Icons.electrical_services, Colors.purple),
+        _buildSensorTile(SensorType.powerUsage, 'Power Usage', Icons.bolt, Colors.yellow),
+      ],
+    );
+  }
+
+  Widget _buildSensorTile(SensorType sensorType, String title, IconData icon, Color color) {
+    final sensorReading = ref.watch(latestSensorReadingProvider(sensorType));
+    final hasSensorData = ref.watch(hasSensorDataProvider);
+
+    if (!hasSensorData) {
+      return SensorTile(
+        title: title,
+        value: 'Waiting...',
+        unit: sensorType.defaultUnit,
+        icon: icon,
+        color: color.withValues(alpha: 0.5),
+        trend: SensorTrend.stable,
+      );
+    }
+
+    if (sensorReading == null) {
+      return SensorTile(
+        title: title,
+        value: 'No Data',
+        unit: sensorType.defaultUnit,
+        icon: icon,
+        color: Colors.grey,
+        trend: SensorTrend.stable,
+      );
+    }
+
+    // Format value based on sensor type
+    String formattedValue;
+    switch (sensorType) {
+      case SensorType.temperature:
+        formattedValue = '${sensorReading.value.toStringAsFixed(1)}°C';
+        break;
+      case SensorType.humidity:
+        formattedValue = '${sensorReading.value.toStringAsFixed(0)}%';
+        break;
+      case SensorType.pH:
+        formattedValue = sensorReading.value.toStringAsFixed(2);
+        break;
+      case SensorType.powerUsage:
+        if (sensorReading.value > 1000) {
+          formattedValue = '${(sensorReading.value / 1000).toStringAsFixed(2)} kW';
+        } else {
+          formattedValue = '${sensorReading.value.toStringAsFixed(1)} W';
+        }
+        break;
+      default:
+        formattedValue = sensorReading.value.toStringAsFixed(1);
+    }
+
+    return SensorTile(
+      title: title,
+      value: formattedValue,
+      unit: sensorReading.unit,
+      icon: icon,
+      color: color,
+      trend: _calculateTrend(sensorType, sensorReading.value),
+    );
+  }
+
+  SensorTrend _calculateTrend(SensorType sensorType, double value) {
+    // Simple trend calculation - in a real implementation, this would compare
+    // with previous values to determine actual trend
+    switch (sensorType) {
+      case SensorType.temperature:
+        if (value > 26) return SensorTrend.up;
+        if (value < 20) return SensorTrend.down;
+        return SensorTrend.stable;
+      case SensorType.pH:
+        if (value > 7.0) return SensorTrend.up;
+        if (value < 6.0) return SensorTrend.down;
+        return SensorTrend.stable;
+      default:
+        return SensorTrend.stable;
+    }
+  }
+
+  Widget _buildDeviceControls() {
+    final pumpState = ref.watch(pumpControlProvider);
+    final fan1State = ref.watch(fan1ControlProvider);
+    final fan2State = ref.watch(fan2ControlProvider);
+    final lightState = ref.watch(lightControlProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -178,10 +247,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               title: 'Water Pump',
               icon: Icons.water_drop,
               color: Colors.blue,
-              isEnabled: deviceStates.pumpEnabled,
-              isPending: deviceStates.pumpPending,
+              isEnabled: pumpState.isEnabled,
+              isPending: pumpState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).togglePump(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(pumpState.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -189,10 +258,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               title: 'Fan 1',
               icon: Icons.air,
               color: Colors.cyan,
-              isEnabled: deviceStates.fansEnabled,
-              isPending: deviceStates.fansPending,
+              isEnabled: fan1State.isEnabled,
+              isPending: fan1State.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleFans(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(fan1State.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -200,10 +269,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               title: 'Fan 2',
               icon: Icons.air,
               color: Colors.teal,
-              isEnabled: deviceStates.fansEnabled, // Using same state for now
-              isPending: deviceStates.fansPending,
+              isEnabled: fan2State.isEnabled,
+              isPending: fan2State.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleFans(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(fan2State.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -211,10 +280,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               title: 'LED Lights',
               icon: Icons.wb_sunny,
               color: Colors.amber,
-              isEnabled: deviceStates.lightsEnabled,
-              isPending: deviceStates.lightsPending,
+              isEnabled: lightState.isEnabled,
+              isPending: lightState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceStatesProvider.notifier).toggleLights(enabled);
+                ref.read(deviceControlsProvider.notifier).toggleDevice(lightState.deviceId, enabled);
               },
             ),
           ],
@@ -279,115 +348,71 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
     );
   }
-}
 
-/// Mock sensor data for demonstration.
-class SensorData {
-  const SensorData({
-    required this.waterLevel,
-    required this.temperature,
-    required this.humidity,
-    required this.pH,
-    required this.electricalConductivity,
-    required this.powerUsage,
-    required this.waterLevelTrend,
-    required this.temperatureTrend,
-    required this.humidityTrend,
-    required this.pHTrend,
-    required this.ecTrend,
-    required this.powerTrend,
-  });
+  void _showConnectionStatus(BuildContext context) {
+    final mqttConnection = ref.read(mqttConnectionStatusProvider);
+    final influxConnection = ref.read(influxConnectionStatusProvider);
+    final hasSensorData = ref.watch(hasSensorDataProvider);
 
-  final double waterLevel;
-  final double temperature;
-  final double humidity;
-  final double pH;
-  final double electricalConductivity;
-  final double powerUsage;
-  final SensorTrend waterLevelTrend;
-  final SensorTrend temperatureTrend;
-  final SensorTrend humidityTrend;
-  final SensorTrend pHTrend;
-  final SensorTrend ecTrend;
-  final SensorTrend powerTrend;
-}
-
-/// Provider for mock sensor data with live updates.
-final mockSensorDataProvider =
-    StateNotifierProvider<MockSensorDataNotifier, SensorData>((ref) {
-      return MockSensorDataNotifier();
-    });
-
-class MockSensorDataNotifier extends StateNotifier<SensorData> {
-  MockSensorDataNotifier() : super(_generateInitialData());
-
-  static final Random _random = Random();
-
-  static SensorData _generateInitialData() {
-    return SensorData(
-      waterLevel: 15.0 + _random.nextDouble() * 5.0,
-      temperature: 22.0 + _random.nextDouble() * 6.0,
-      humidity: 65.0 + _random.nextDouble() * 10.0,
-      pH: 6.0 + _random.nextDouble() * 2.0,
-      electricalConductivity: 1.2 + _random.nextDouble() * 0.8,
-      powerUsage: 50.0 + _random.nextDouble() * 150.0, // 50-200 Watts
-      waterLevelTrend:
-          SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      temperatureTrend:
-          SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      humidityTrend:
-          SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      pHTrend: SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      ecTrend: SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-      powerTrend:
-          SensorTrend.values[_random.nextInt(SensorTrend.values.length)],
-    );
-  }
-
-  void updateValues() {
-    // Simulate realistic sensor value changes
-    state = SensorData(
-      waterLevel: _updateValue(state.waterLevel, 10.0, 25.0, 0.2),
-      temperature: _updateValue(state.temperature, 18.0, 30.0, 0.3),
-      humidity: _updateValue(state.humidity, 40.0, 90.0, 1.0),
-      pH: _updateValue(state.pH, 5.5, 8.0, 0.05),
-      electricalConductivity: _updateValue(
-        state.electricalConductivity,
-        0.8,
-        2.5,
-        0.02,
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Connection Status'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildConnectionRow('MQTT', mqttConnection.asData?.value ?? 'unknown'),
+            _buildConnectionRow('InfluxDB', influxConnection.asData?.value ?? 'unknown'),
+            _buildConnectionRow('Sensor Data', hasSensorData ? 'receiving' : 'waiting'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
-      powerUsage: _updateValue(
-        state.powerUsage,
-        30.0,
-        250.0,
-        5.0,
-      ), // 30-250 Watts
-      waterLevelTrend: _updateTrend(state.waterLevelTrend),
-      temperatureTrend: _updateTrend(state.temperatureTrend),
-      humidityTrend: _updateTrend(state.humidityTrend),
-      pHTrend: _updateTrend(state.pHTrend),
-      ecTrend: _updateTrend(state.ecTrend),
-      powerTrend: _updateTrend(state.powerTrend),
     );
   }
 
-  double _updateValue(
-    double current,
-    double min,
-    double max,
-    double maxChange,
-  ) {
-    final change = (_random.nextDouble() - 0.5) * 2 * maxChange;
-    final newValue = current + change;
-    return newValue.clamp(min, max);
-  }
+  Widget _buildConnectionRow(String service, String status) {
+    Color statusColor;
+    IconData statusIcon;
 
-  SensorTrend _updateTrend(SensorTrend current) {
-    // 70% chance to keep the same trend, 30% chance to change
-    if (_random.nextDouble() < 0.7) {
-      return current;
+    switch (status.toLowerCase()) {
+      case 'connected':
+      case 'receiving':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'disconnected':
+      case 'waiting':
+        statusColor = Colors.orange;
+        statusIcon = Icons.warning;
+        break;
+      default:
+        statusColor = Colors.red;
+        statusIcon = Icons.error;
     }
-    return SensorTrend.values[_random.nextInt(SensorTrend.values.length)];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 16),
+          const SizedBox(width: 8),
+          Text('$service: '),
+          Text(
+            status,
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
