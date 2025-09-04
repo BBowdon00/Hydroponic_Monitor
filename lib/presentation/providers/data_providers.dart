@@ -57,56 +57,49 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
     final sensorRepository = ref.read(sensorRepositoryProvider);
     final deviceRepository = ref.read(deviceRepositoryProvider);
 
-    // Initialize repositories with error handling
+    // Initialize repositories (allow them to succeed even if underlying services fail)
     try {
       final sensorResult = await sensorRepository.initialize();
       if (sensorResult is Failure) {
-        Logger.error(
-          'Failed to initialize sensor repository: ${sensorResult.error}',
+        Logger.warning(
+          'Sensor repository initialization had issues: ${sensorResult.error}',
           tag: 'DataProviders',
         );
-        throw sensorResult.error;
+      } else {
+        Logger.info('Sensor repository initialized successfully', tag: 'DataProviders');
       }
     } catch (e) {
-      Logger.error(
-        'Exception during sensor repository initialization: $e',
+      Logger.warning(
+        'Exception during sensor repository initialization (continuing): $e',
         tag: 'DataProviders',
-        error: e,
       );
-      throw NotInitializedError('Sensor repository initialization failed: $e');
     }
 
     try {
       final deviceResult = await deviceRepository.initialize();
       if (deviceResult is Failure) {
-        Logger.error(
-          'Failed to initialize device repository: ${deviceResult.error}',
+        Logger.warning(
+          'Device repository initialization had issues: ${deviceResult.error}',
           tag: 'DataProviders',
         );
-        throw deviceResult.error;
+      } else {
+        Logger.info('Device repository initialized successfully', tag: 'DataProviders');
       }
     } catch (e) {
-      Logger.error(
-        'Exception during device repository initialization: $e',
+      Logger.warning(
+        'Exception during device repository initialization (continuing): $e',
         tag: 'DataProviders',
-        error: e,
       );
-      throw NotInitializedError('Device repository initialization failed: $e');
     }
 
-    Logger.info('Data services initialized successfully', tag: 'DataProviders');
+    Logger.info('Data services initialization completed', tag: 'DataProviders');
   } catch (e) {
     Logger.error(
-      'Error initializing data services: $e',
+      'Unexpected error during data services initialization: $e',
       tag: 'DataProviders',
       error: e,
     );
-    
-    // Wrap unknown errors in NotInitializedError for consistency
-    if (e is! AppError) {
-      throw NotInitializedError('Data services initialization failed: $e');
-    }
-    rethrow;
+    // Don't rethrow - allow the app to continue even if services fail
   }
 });
 

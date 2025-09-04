@@ -20,35 +20,46 @@ class SensorRepository {
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
 
-      // Initialize MQTT and InfluxDB services
+      // Initialize MQTT service (non-blocking - continue if it fails)
       final mqttResult = await mqttService.connect();
       if (mqttResult is Failure) {
-        return mqttResult;
-      }
-
-      final influxResult = await influxService.initialize();
-      if (influxResult is Failure) {
-        return influxResult;
-      }
-
-      // Start listening to sensor data from MQTT and store in InfluxDB
-      _mqttSubscription = mqttService.sensorDataStream.listen(
-        (sensorData) async {
-          final result = await influxService.writeSensorData(sensorData);
-          if (result is Failure) {
+        Logger.warning(
+          'MQTT connection failed - sensor data will not be available: ${mqttResult.error}',
+          tag: 'SensorRepository',
+        );
+      } else {
+        Logger.info('MQTT connected successfully', tag: 'SensorRepository');
+        
+        // Only start listening to sensor data if MQTT connected successfully
+        _mqttSubscription = mqttService.sensorDataStream.listen(
+          (sensorData) async {
+            final result = await influxService.writeSensorData(sensorData);
+            if (result is Failure) {
+              Logger.error(
+                'Failed to store sensor data in InfluxDB: ${result.error}',
+                tag: 'SensorRepository',
+              );
+            }
+          },
+          onError: (error) {
             Logger.error(
-              'Failed to store sensor data in InfluxDB: ${result.error}',
+              'Error in MQTT sensor data stream: $error',
               tag: 'SensorRepository',
             );
-          }
-        },
-        onError: (error) {
-          Logger.error(
-            'Error in MQTT sensor data stream: $error',
-            tag: 'SensorRepository',
-          );
-        },
-      );
+          },
+        );
+      }
+
+      // Initialize InfluxDB service (non-blocking - continue if it fails)
+      final influxResult = await influxService.initialize();
+      if (influxResult is Failure) {
+        Logger.warning(
+          'InfluxDB connection failed - data storage will not be available: ${influxResult.error}',
+          tag: 'SensorRepository',
+        );
+      } else {
+        Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
+      }
 
       Logger.info(
         'Sensor repository initialized successfully',
