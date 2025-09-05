@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../widgets/status_badge.dart';
 import '../../core/theme.dart';
+import '../../domain/entities/device.dart';
 
 /// Video page for viewing live MJPEG stream from Raspberry Pi.
 class VideoPage extends ConsumerWidget {

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
-
-/// Device status enumeration.
-enum DeviceStatus { online, offline, pending, error, stopped }
+import '../../domain/entities/device.dart';
 
 /// A badge showing device or system status with appropriate color coding.
 class StatusBadge extends StatelessWidget {

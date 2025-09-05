@@ -55,6 +55,7 @@ enum SensorType {
   electricalConductivity,
   lightIntensity,
   airQuality,
+  powerUsage,
 }
 
 extension SensorTypeExtension on SensorType {
@@ -74,6 +75,8 @@ extension SensorTypeExtension on SensorType {
         return 'Light Intensity';
       case SensorType.airQuality:
         return 'Air Quality';
+      case SensorType.powerUsage:
+        return 'Power Usage';
     }
   }
 
@@ -93,6 +96,8 @@ extension SensorTypeExtension on SensorType {
         return 'lux';
       case SensorType.airQuality:
         return 'ppm';
+      case SensorType.powerUsage:
+        return 'W';
     }
   }
 }

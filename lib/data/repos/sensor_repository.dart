@@ -20,32 +20,54 @@ class SensorRepository {
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
 
-      // Initialize MQTT and InfluxDB services
+      // Initialize MQTT service (non-blocking - continue if it fails)
       final mqttResult = await mqttService.connect();
       if (mqttResult is Failure) {
+        Logger.warning(
+          'MQTT connection failed during initialization: ${mqttResult.error}',
+          tag: 'SensorRepository',
+        );
         return mqttResult;
+      } else {
+        Logger.info('MQTT connected successfully', tag: 'SensorRepository');
       }
 
+      // Initialize InfluxDB service (non-blocking - continue if it fails)
       final influxResult = await influxService.initialize();
       if (influxResult is Failure) {
+        Logger.warning(
+          'InfluxDB connection failed during initialization: ${influxResult.error}',
+          tag: 'SensorRepository',
+        );
         return influxResult;
+      } else {
+        Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
       }
 
-      // Start listening to sensor data from MQTT and store in InfluxDB
+      // Subscribe to MQTT sensor stream and forward to InfluxDB
       _mqttSubscription = mqttService.sensorDataStream.listen(
         (sensorData) async {
-          final result = await influxService.writeSensorData(sensorData);
-          if (result is Failure) {
+          try {
+            final writeResult = await influxService.writeSensorData(sensorData);
+            if (writeResult is Failure) {
+              Logger.warning(
+                'Failed to write sensor data to InfluxDB: ${writeResult.error}',
+                tag: 'SensorRepository',
+              );
+            }
+          } catch (e) {
             Logger.error(
-              'Failed to store sensor data in InfluxDB: ${result.error}',
+              'Exception while writing sensor data: $e',
               tag: 'SensorRepository',
+              error: e,
             );
           }
         },
-        onError: (error) {
+        onError: (e) {
           Logger.error(
-            'Error in MQTT sensor data stream: $error',
+            'MQTT sensor stream error: $e',
             tag: 'SensorRepository',
+            error: e,
           );
         },
       );

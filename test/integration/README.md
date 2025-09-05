@@ -82,10 +82,12 @@ The integration tests comprehensively cover:
 - Bucket-specific data routing (test vs. production)
 - Data format validation
 
-### 6. **Service health and reliability**
-- All services start and remain healthy during tests
-- Connection stability under load
-- Error handling and recovery
+### 7. **Provider Framework Integration**
+- **MQTT Provider Tests** (`mqtt_provider_test.dart`): Tests that MQTT messages are properly received and processed through the Riverpod provider framework
+- Real-time sensor data streaming through providers
+- Device status updates via provider streams
+- Connection status monitoring
+- Error handling for malformed messages
 
 ## Test Data Formats
 
