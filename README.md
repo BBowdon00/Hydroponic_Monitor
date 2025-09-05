@@ -264,22 +264,21 @@ Below is a simplified diagram showing how data flows through the Hydroponic Moni
 flowchart TD
     A[Sensors/Actuators] --> B[ESP32/Raspberry Pi Nodes]
     B --> C[MQTT Broker]
-    C --> D[MQTT Client (lib/data/mqtt/)]
-    D --> E[Repositories (lib/data/repos/)]
-    E --> F[Providers (lib/presentation/providers/)]
+    C --> D[MQTT Client: lib/data/mqtt]
+    D --> E[Repositories: lib/data/repos]
+    E --> F[Providers: lib/presentation/providers]
     F --> G[Streams]
-    G --> H[Dashboard/Controls/Charts Screens (lib/presentation/pages/)]
-    H --> I[Sensor/Device Tiles (lib/presentation/widgets/)]
+    G --> H[Dashboard/Controls/Charts Screens: lib/presentation/pages]
+    H --> I[Sensor/Device Tiles: lib/presentation/widgets]
 
     H -- Actuator Commands --> C
     C -- State Confirmation --> D
 
-    H --> J[InfluxDB Client (lib/data/influx/)]
+    H --> J[InfluxDB Client: lib/data/influx]
     J --> E
 
-    F --> K[Connection Notification (lib/presentation/widgets/connection_notification.dart)]
+    F --> K[Connection Notification: lib/presentation/widgets/connection_notification.dart]
 ```
-
 - **Sensor/Actuator data** is published via MQTT.
 - **MQTT client** receives messages and updates repositories.
 - **Repositories** expose data via **streams**.
