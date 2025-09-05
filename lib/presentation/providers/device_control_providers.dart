@@ -57,10 +57,7 @@ class DeviceControlState {
 
 /// Aggregated device control state for the dashboard.
 class DeviceControlsState {
-  const DeviceControlsState({
-    this.devices = const {},
-    this.lastUpdate,
-  });
+  const DeviceControlsState({this.devices = const {}, this.lastUpdate});
 
   final Map<String, DeviceControlState> devices;
   final DateTime? lastUpdate;
@@ -77,12 +74,13 @@ class DeviceControlsState {
 
   /// Get device state by ID, or return a default offline state.
   DeviceControlState getDeviceState(String deviceId, DeviceType deviceType) {
-    return devices[deviceId] ?? DeviceControlState(
-      deviceId: deviceId,
-      deviceType: deviceType,
-      isEnabled: false,
-      status: DeviceStatus.offline,
-    );
+    return devices[deviceId] ??
+        DeviceControlState(
+          deviceId: deviceId,
+          deviceType: deviceType,
+          isEnabled: false,
+          status: DeviceStatus.offline,
+        );
   }
 
   /// Check if any device is pending.
@@ -91,22 +89,25 @@ class DeviceControlsState {
   /// Get system status based on individual device statuses.
   DeviceStatus get systemStatus {
     if (devices.isEmpty) return DeviceStatus.offline;
-    
+
     final statuses = devices.values.map((d) => d.status).toSet();
-    
+
     if (statuses.contains(DeviceStatus.error)) return DeviceStatus.error;
     if (statuses.contains(DeviceStatus.pending)) return DeviceStatus.pending;
-    if (statuses.every((s) => s == DeviceStatus.offline)) return DeviceStatus.offline;
-    if (statuses.every((s) => s == DeviceStatus.online)) return DeviceStatus.online;
-    
+    if (statuses.every((s) => s == DeviceStatus.offline))
+      return DeviceStatus.offline;
+    if (statuses.every((s) => s == DeviceStatus.online))
+      return DeviceStatus.online;
+
     return DeviceStatus.online; // Mixed states, consider online
   }
 }
 
 /// Provider for device control states with MQTT integration.
-final deviceControlsProvider = StateNotifierProvider<DeviceControlsNotifier, DeviceControlsState>((ref) {
-  return DeviceControlsNotifier(ref);
-});
+final deviceControlsProvider =
+    StateNotifierProvider<DeviceControlsNotifier, DeviceControlsState>((ref) {
+      return DeviceControlsNotifier(ref);
+    });
 
 class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   DeviceControlsNotifier(this.ref) : super(const DeviceControlsState()) {
@@ -119,9 +120,12 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
 
   void _initialize() {
     Logger.info('Initializing device controls provider', tag: 'DeviceControls');
-    
+
     // Listen to device status updates from MQTT
-    _deviceStatusSubscription = ref.listen(deviceStatusUpdatesProvider, (previous, next) {
+    _deviceStatusSubscription = ref.listen(deviceStatusUpdatesProvider, (
+      previous,
+      next,
+    ) {
       _onDeviceStatusUpdate(next);
     });
 
@@ -163,7 +167,10 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
         // Handle loading state if needed
       },
       error: (error, stackTrace) {
-        Logger.error('Error processing device update: $error', tag: 'DeviceControls');
+        Logger.error(
+          'Error processing device update: $error',
+          tag: 'DeviceControls',
+        );
       },
     );
   }
@@ -171,23 +178,23 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   void _updateDeviceStatus(Device device) {
     final newDevices = Map<String, DeviceControlState>.from(state.devices);
     final currentState = newDevices[device.id];
-    
-    final updatedState = (currentState ?? DeviceControlState(
-      deviceId: device.id,
-      deviceType: device.type,
-      isEnabled: device.isEnabled,
-      status: device.status,
-    )).copyWith(
-      isEnabled: device.isEnabled,
-      status: device.status,
-      isPending: false, // Status update means command completed
-    );
+
+    final updatedState =
+        (currentState ??
+                DeviceControlState(
+                  deviceId: device.id,
+                  deviceType: device.type,
+                  isEnabled: device.isEnabled,
+                  status: device.status,
+                ))
+            .copyWith(
+              isEnabled: device.isEnabled,
+              status: device.status,
+              isPending: false, // Status update means command completed
+            );
 
     newDevices[device.id] = updatedState;
-    state = state.copyWith(
-      devices: newDevices,
-      lastUpdate: DateTime.now(),
-    );
+    state = state.copyWith(devices: newDevices, lastUpdate: DateTime.now());
 
     // Clear any pending timeout for this device
     _clearPendingTimeout(device.id);
@@ -204,7 +211,10 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
     String command, {
     Map<String, dynamic>? parameters,
   }) async {
-    Logger.info('Sending device command: $deviceId -> $command', tag: 'DeviceControls');
+    Logger.info(
+      'Sending device command: $deviceId -> $command',
+      tag: 'DeviceControls',
+    );
 
     // Update state to pending
     final newDevices = Map<String, DeviceControlState>.from(state.devices);
@@ -232,7 +242,10 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
     );
 
     if (result is Failure) {
-      Logger.error('Failed to send device command: ${result.error}', tag: 'DeviceControls');
+      Logger.error(
+        'Failed to send device command: ${result.error}',
+        tag: 'DeviceControls',
+      );
       // Reset pending state on failure
       if (currentState != null) {
         newDevices[deviceId] = currentState.copyWith(isPending: false);
@@ -243,9 +256,12 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
 
   void _setPendingTimeout(String deviceId, String commandId) {
     _clearPendingTimeout(deviceId);
-    
+
     _pendingTimeouts[deviceId] = Timer(const Duration(seconds: 10), () {
-      Logger.warning('Command timeout for device $deviceId', tag: 'DeviceControls');
+      Logger.warning(
+        'Command timeout for device $deviceId',
+        tag: 'DeviceControls',
+      );
       _handleCommandTimeout(deviceId, commandId);
     });
   }
@@ -258,7 +274,7 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   void _handleCommandTimeout(String deviceId, String commandId) {
     final newDevices = Map<String, DeviceControlState>.from(state.devices);
     final currentState = newDevices[deviceId];
-    
+
     if (currentState != null && currentState.pendingCommandId == commandId) {
       newDevices[deviceId] = currentState.copyWith(
         isPending: false,
@@ -287,23 +303,34 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
     final deviceType = currentState?.deviceType;
     switch (deviceType) {
       case DeviceType.fan:
-        await controlDevice(deviceId, 'set_fan_speed', parameters: {'speed': intensity});
+        await controlDevice(
+          deviceId,
+          'set_fan_speed',
+          parameters: {'speed': intensity},
+        );
         break;
       case DeviceType.light:
-        await controlDevice(deviceId, 'set_light', parameters: {'brightness': intensity});
+        await controlDevice(
+          deviceId,
+          'set_light',
+          parameters: {'brightness': intensity},
+        );
         break;
       default:
-        Logger.warning('Intensity control not supported for device type: $deviceType', tag: 'DeviceControls');
+        Logger.warning(
+          'Intensity control not supported for device type: $deviceType',
+          tag: 'DeviceControls',
+        );
     }
   }
 
   /// Emergency stop all devices.
   Future<void> emergencyStopAll() async {
     Logger.warning('Emergency stop initiated', tag: 'DeviceControls');
-    
+
     final deviceRepository = ref.read(deviceRepositoryProvider);
     final result = await deviceRepository.emergencyStopAll();
-    
+
     if (result is Success) {
       // Update all devices to stopped state
       final newDevices = <String, DeviceControlState>{};

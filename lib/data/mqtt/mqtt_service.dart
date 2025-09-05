@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 // Only import browser client on web platforms
-import 'mqtt_browser_client_stub.dart' 
+import 'mqtt_browser_client_stub.dart'
     if (dart.library.js) 'package:mqtt_client/mqtt_browser_client.dart';
 
 import '../../core/logger.dart';
@@ -69,19 +69,28 @@ class MqttService {
         try {
           _client = MqttBrowserClient('ws://$host', clientId);
           (_client as MqttBrowserClient).websocketProtocols = ['mqtt'];
-          _client!.port = 9001;  // WebSocket port for MQTT
-          Logger.info('Web platform detected - attempting WebSocket MQTT connection at ws://$host:9001', tag: 'MQTT');
+          _client!.port = 9001; // WebSocket port for MQTT
+          Logger.info(
+            'Web platform detected - attempting WebSocket MQTT connection at ws://$host:9001',
+            tag: 'MQTT',
+          );
         } catch (e) {
-          Logger.warning('Failed to create web MQTT client (expected in non-web environments): $e', tag: 'MQTT');
+          Logger.warning(
+            'Failed to create web MQTT client (expected in non-web environments): $e',
+            tag: 'MQTT',
+          );
           // Fallback to server client for test environments
           _client = MqttServerClient.withPort(host, clientId, port);
           Logger.info('Using server MQTT client as fallback', tag: 'MQTT');
         }
       } else {
         _client = MqttServerClient.withPort(host, clientId, port);
-        Logger.info('Non-web platform detected - using server MQTT client', tag: 'MQTT');
+        Logger.info(
+          'Non-web platform detected - using server MQTT client',
+          tag: 'MQTT',
+        );
       }
-      
+
       if (_client == null) {
         const error = 'Failed to create MQTT client instance';
         Logger.error(error, tag: 'MQTT');
@@ -125,7 +134,10 @@ class MqttService {
       Logger.info('Attempting to connect to MQTT broker...', tag: 'MQTT');
       final status = await _client!.connect();
 
-      Logger.info('MQTT connection attempt complete. Status: ${status?.toString()}', tag: 'MQTT');
+      Logger.info(
+        'MQTT connection attempt complete. Status: ${status?.toString()}',
+        tag: 'MQTT',
+      );
 
       if (status?.toString() == 'connected') {
         Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');

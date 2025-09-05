@@ -29,7 +29,7 @@ class SensorRepository {
         );
       } else {
         Logger.info('MQTT connected successfully', tag: 'SensorRepository');
-        
+
         // Only start listening to sensor data if MQTT connected successfully
         _mqttSubscription = mqttService.sensorDataStream.listen(
           (sensorData) async {

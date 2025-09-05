@@ -19,7 +19,7 @@ void main() {
     setUpAll(() async {
       // Ensure environment is initialized
       await Env.init();
-      
+
       // Set up test MQTT client
       mqttTestClient = MqttServerClient.withPort(
         Env.mqttHost,
@@ -48,11 +48,9 @@ void main() {
       (WidgetTester tester) async {
         // Initialize the Flutter app
         await tester.pumpWidget(
-          const ProviderScope(
-            child: HydroponicMonitorApp(),
-          ),
+          const ProviderScope(child: HydroponicMonitorApp()),
         );
-        
+
         // Wait for initial app load
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -66,37 +64,37 @@ void main() {
             'deviceType': 'temperature',
             'deviceID': 'temp_01',
             'location': 'greenhouse_01',
-            'value': '23.5'
+            'value': '23.5',
           },
           {
             'deviceType': 'humidity',
             'deviceID': 'hum_01',
             'location': 'greenhouse_01',
-            'value': '68.2'
+            'value': '68.2',
           },
           {
             'deviceType': 'pH',
             'deviceID': 'ph_01',
             'location': 'greenhouse_01',
-            'value': '6.5'
+            'value': '6.5',
           },
           {
             'deviceType': 'waterLevel',
             'deviceID': 'wl_01',
             'location': 'greenhouse_01',
-            'value': '18.7'
+            'value': '18.7',
           },
           {
             'deviceType': 'electricalConductivity',
             'deviceID': 'ec_01',
             'location': 'greenhouse_01',
-            'value': '1350.0'
+            'value': '1350.0',
           },
           {
             'deviceType': 'powerUsage',
             'deviceID': 'power_01',
             'location': 'greenhouse_01',
-            'value': '156.8'
+            'value': '156.8',
           },
         ];
 
@@ -104,7 +102,7 @@ void main() {
         for (final sensorData in testSensorData) {
           final topic = 'grow/rpi/sensor';
           final payload = jsonEncode(sensorData);
-          
+
           final builder = MqttClientPayloadBuilder();
           builder.addString(payload);
           mqttTestClient.publishMessage(
@@ -112,7 +110,7 @@ void main() {
             MqttQos.atLeastOnce,
             builder.payload!,
           );
-          
+
           // Wait between messages
           await Future.delayed(const Duration(milliseconds: 100));
         }
@@ -123,15 +121,15 @@ void main() {
 
         // Verify the dashboard shows the sensor data
         // Look for sensor tiles with expected values
-        
+
         // Check temperature tile
         final tempTileFinder = find.ancestor(
           of: find.text('Temperature'),
           matching: find.byType(SensorTile),
         );
         expect(tempTileFinder, findsOneWidget);
-        
-        // Check humidity tile  
+
+        // Check humidity tile
         final humidityTileFinder = find.ancestor(
           of: find.text('Humidity'),
           matching: find.byType(SensorTile),
@@ -169,10 +167,10 @@ void main() {
         // Verify that we don't see "Waiting..." or "No Data" messages
         // (which would indicate the data didn't arrive)
         expect(find.text('Waiting...'), findsNothing);
-        
+
         // Look for specific sensor values (may be formatted)
         expect(find.textContaining('23.5'), findsOneWidget); // Temperature
-        expect(find.textContaining('68'), findsOneWidget); // Humidity  
+        expect(find.textContaining('68'), findsOneWidget); // Humidity
         expect(find.textContaining('6.5'), findsOneWidget); // pH
         expect(find.textContaining('18.7'), findsOneWidget); // Water level
         expect(find.textContaining('1350'), findsOneWidget); // EC
@@ -190,7 +188,8 @@ void main() {
         // TODO: Fix timer cleanup in MQTT service during failed connections
         return;
       },
-      skip: true, // Timer cleanup issues during MQTT connection failure - needs investigation
+      skip:
+          true, // Timer cleanup issues during MQTT connection failure - needs investigation
     );
   });
 }

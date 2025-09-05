@@ -40,7 +40,9 @@ class DevicesPage extends ConsumerWidget {
               isEnabled: pumpState.isEnabled,
               isPending: pumpState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(pumpState.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(pumpState.deviceId, enabled);
               },
             ),
 
@@ -56,10 +58,14 @@ class DevicesPage extends ConsumerWidget {
               isPending: fan1State.isPending,
               intensity: fan1State.intensity ?? 0.6,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(fan1State.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(fan1State.deviceId, enabled);
               },
               onIntensityChanged: (intensity) {
-                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(fan1State.deviceId, intensity);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .setDeviceIntensity(fan1State.deviceId, intensity);
               },
             ),
 
@@ -75,10 +81,14 @@ class DevicesPage extends ConsumerWidget {
               isPending: fan2State.isPending,
               intensity: fan2State.intensity ?? 0.6,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(fan2State.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(fan2State.deviceId, enabled);
               },
               onIntensityChanged: (intensity) {
-                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(fan2State.deviceId, intensity);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .setDeviceIntensity(fan2State.deviceId, intensity);
               },
             ),
 
@@ -94,10 +104,14 @@ class DevicesPage extends ConsumerWidget {
               isPending: lightState.isPending,
               intensity: lightState.intensity ?? 0.8,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(lightState.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(lightState.deviceId, enabled);
               },
               onIntensityChanged: (intensity) {
-                ref.read(deviceControlsProvider.notifier).setDeviceIntensity(lightState.deviceId, intensity);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .setDeviceIntensity(lightState.deviceId, intensity);
               },
             ),
 
@@ -112,7 +126,9 @@ class DevicesPage extends ConsumerWidget {
               isEnabled: heaterState.isEnabled,
               isPending: heaterState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(heaterState.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(heaterState.deviceId, enabled);
               },
             ),
 

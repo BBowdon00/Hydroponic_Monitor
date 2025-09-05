@@ -50,10 +50,7 @@ class SensorReading {
 
 /// State for managing current sensor readings.
 class SensorAggregationState {
-  const SensorAggregationState({
-    this.readings = const {},
-    this.lastUpdate,
-  });
+  const SensorAggregationState({this.readings = const {}, this.lastUpdate});
 
   final Map<String, SensorReading> readings;
   final DateTime? lastUpdate;
@@ -90,9 +87,12 @@ class SensorAggregationState {
 }
 
 /// Provider for aggregating and managing current sensor readings.
-final sensorAggregationProvider = StateNotifierProvider<SensorAggregationNotifier, SensorAggregationState>((ref) {
-  return SensorAggregationNotifier(ref);
-});
+final sensorAggregationProvider =
+    StateNotifierProvider<SensorAggregationNotifier, SensorAggregationState>((
+      ref,
+    ) {
+      return SensorAggregationNotifier(ref);
+    });
 
 class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
   SensorAggregationNotifier(this.ref) : super(const SensorAggregationState()) {
@@ -103,10 +103,16 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
   ProviderSubscription? _sensorSubscription;
 
   void _initialize() {
-    Logger.info('Initializing sensor aggregation provider', tag: 'SensorAggregation');
-    
+    Logger.info(
+      'Initializing sensor aggregation provider',
+      tag: 'SensorAggregation',
+    );
+
     // Listen to real-time sensor data
-    _sensorSubscription = ref.listen(realTimeSensorDataProvider, (previous, next) {
+    _sensorSubscription = ref.listen(realTimeSensorDataProvider, (
+      previous,
+      next,
+    ) {
       _onSensorData(next);
     });
   }
@@ -134,7 +140,10 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
         // Handle loading state if needed
       },
       error: (error, stackTrace) {
-        Logger.error('Error processing sensor data: $error', tag: 'SensorAggregation');
+        Logger.error(
+          'Error processing sensor data: $error',
+          tag: 'SensorAggregation',
+        );
       },
     );
   }
@@ -143,10 +152,7 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
     final newReadings = Map<String, SensorReading>.from(state.readings);
     newReadings[reading.key] = reading;
 
-    state = state.copyWith(
-      readings: newReadings,
-      lastUpdate: DateTime.now(),
-    );
+    state = state.copyWith(readings: newReadings, lastUpdate: DateTime.now());
 
     Logger.debug(
       'Updated sensor reading: ${reading.sensorType.name} = ${reading.value}${reading.unit}',
@@ -162,10 +168,12 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
 }
 
 /// Provider for getting the latest reading of a specific sensor type.
-final latestSensorReadingProvider = Provider.family<SensorReading?, SensorType>((ref, sensorType) {
-  final aggregationState = ref.watch(sensorAggregationProvider);
-  return aggregationState.getLatestReading(sensorType);
-});
+final latestSensorReadingProvider = Provider.family<SensorReading?, SensorType>(
+  (ref, sensorType) {
+    final aggregationState = ref.watch(sensorAggregationProvider);
+    return aggregationState.getLatestReading(sensorType);
+  },
+);
 
 /// Provider for checking if sensor data is available (not waiting).
 final hasSensorDataProvider = Provider<bool>((ref) {

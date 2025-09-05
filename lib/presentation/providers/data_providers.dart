@@ -66,7 +66,10 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
           tag: 'DataProviders',
         );
       } else {
-        Logger.info('Sensor repository initialized successfully', tag: 'DataProviders');
+        Logger.info(
+          'Sensor repository initialized successfully',
+          tag: 'DataProviders',
+        );
       }
     } catch (e) {
       Logger.warning(
@@ -83,7 +86,10 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
           tag: 'DataProviders',
         );
       } else {
-        Logger.info('Device repository initialized successfully', tag: 'DataProviders');
+        Logger.info(
+          'Device repository initialized successfully',
+          tag: 'DataProviders',
+        );
       }
     } catch (e) {
       Logger.warning(

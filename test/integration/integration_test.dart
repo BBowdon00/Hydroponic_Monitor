@@ -78,7 +78,11 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(messageJson);
 
-        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(
+          topic,
+          MqttQos.atLeastOnce,
+          builder.payload!,
+        );
 
         print('Published sensor data to topic: $topic');
         print('Message: $messageJson');
@@ -120,7 +124,11 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(messageJson);
 
-        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(
+          topic,
+          MqttQos.atLeastOnce,
+          builder.payload!,
+        );
 
         // Small delay between publishes
         await Future.delayed(const Duration(milliseconds: 100));
@@ -182,7 +190,11 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(
+          topic,
+          MqttQos.atLeastOnce,
+          builder.payload!,
+        );
 
         print('Published actuator state to topic: $topic');
         print('Payload: $payloadJson');
@@ -233,7 +245,11 @@ void main() {
         final builder = MqttClientPayloadBuilder();
         builder.addString(payloadJson);
 
-        mqttClient!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+        mqttClient!.publishMessage(
+          topic,
+          MqttQos.atLeastOnce,
+          builder.payload!,
+        );
 
         print('Published device status to topic: $topic');
         print('Payload: $payloadJson');
@@ -354,14 +370,17 @@ Future<void> _waitForServices() async {
     print('All services are ready!');
   } catch (e) {
     // If services aren't available, we'll skip the tests
-    throw Exception('Integration test services not available: $e. Please run "./scripts/run-integration-tests.sh" to start services.');
+    throw Exception(
+      'Integration test services not available: $e. Please run "./scripts/run-integration-tests.sh" to start services.',
+    );
   }
 }
 
 /// Wait for InfluxDB to be ready.
 Future<void> _waitForInfluxDB() async {
   print('Waiting for InfluxDB to become ready...');
-  for (int i = 0; i < 10; i++) { // Reduced from 60 to 10 attempts for faster failure
+  for (int i = 0; i < 10; i++) {
+    // Reduced from 60 to 10 attempts for faster failure
     try {
       final response = await http.get(
         Uri.parse('${TestConfig.testInfluxUrl}/health'),
@@ -376,13 +395,16 @@ Future<void> _waitForInfluxDB() async {
     }
     await Future.delayed(const Duration(seconds: 1)); // Reduced from 2s to 1s
   }
-  throw Exception('InfluxDB did not become ready in time (tried for ${10 * 1} seconds)');
+  throw Exception(
+    'InfluxDB did not become ready in time (tried for ${10 * 1} seconds)',
+  );
 }
 
 /// Wait for MQTT broker to be ready.
 Future<void> _waitForMQTT() async {
   print('Waiting for MQTT broker to become ready...');
-  for (int i = 0; i < 10; i++) { // Reduced from 60 to 10 attempts for faster failure
+  for (int i = 0; i < 10; i++) {
+    // Reduced from 60 to 10 attempts for faster failure
     try {
       final socket = await Socket.connect(
         TestConfig.testMqttHost,
@@ -396,7 +418,9 @@ Future<void> _waitForMQTT() async {
     }
     await Future.delayed(const Duration(seconds: 1)); // Reduced from 2s to 1s
   }
-  throw Exception('MQTT broker did not become ready in time (tried for ${10 * 1} seconds)');
+  throw Exception(
+    'MQTT broker did not become ready in time (tried for ${10 * 1} seconds)',
+  );
 }
 
 /// Convert sensor data to new JSON format for MQTT publishing.

@@ -11,5 +11,6 @@ class MqttTopics {
   static String deviceTopicFor(String deviceNode) => 'grow/$deviceNode/device';
 
   // Actuator command topics for device control
-  static String actuatorCommandTopicFor(String deviceNode) => 'grow/$deviceNode/actuator/set';
+  static String actuatorCommandTopicFor(String deviceNode) =>
+      'grow/$deviceNode/actuator/set';
 }

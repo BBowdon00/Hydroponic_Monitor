@@ -17,7 +17,6 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-
   @override
   Widget build(BuildContext context) {
     // Watch initialization status
@@ -80,6 +79,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
     );
   }
+
   Widget _buildDashboardContent() {
     return RefreshIndicator(
       onRefresh: () async {
@@ -139,17 +139,52 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       mainAxisSpacing: AppTheme.spaceMd,
       childAspectRatio: 1.5,
       children: [
-        _buildSensorTile(SensorType.waterLevel, 'Water Level', Icons.water_drop, Colors.blue),
-        _buildSensorTile(SensorType.temperature, 'Temperature', Icons.thermostat, Colors.orange),
-        _buildSensorTile(SensorType.humidity, 'Humidity', Icons.opacity, Colors.cyan),
-        _buildSensorTile(SensorType.pH, 'pH Level', Icons.science, Colors.green),
-        _buildSensorTile(SensorType.electricalConductivity, 'EC Level', Icons.electrical_services, Colors.purple),
-        _buildSensorTile(SensorType.powerUsage, 'Power Usage', Icons.bolt, Colors.yellow),
+        _buildSensorTile(
+          SensorType.waterLevel,
+          'Water Level',
+          Icons.water_drop,
+          Colors.blue,
+        ),
+        _buildSensorTile(
+          SensorType.temperature,
+          'Temperature',
+          Icons.thermostat,
+          Colors.orange,
+        ),
+        _buildSensorTile(
+          SensorType.humidity,
+          'Humidity',
+          Icons.opacity,
+          Colors.cyan,
+        ),
+        _buildSensorTile(
+          SensorType.pH,
+          'pH Level',
+          Icons.science,
+          Colors.green,
+        ),
+        _buildSensorTile(
+          SensorType.electricalConductivity,
+          'EC Level',
+          Icons.electrical_services,
+          Colors.purple,
+        ),
+        _buildSensorTile(
+          SensorType.powerUsage,
+          'Power Usage',
+          Icons.bolt,
+          Colors.yellow,
+        ),
       ],
     );
   }
 
-  Widget _buildSensorTile(SensorType sensorType, String title, IconData icon, Color color) {
+  Widget _buildSensorTile(
+    SensorType sensorType,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
     final sensorReading = ref.watch(latestSensorReadingProvider(sensorType));
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
@@ -189,7 +224,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         break;
       case SensorType.powerUsage:
         if (sensorReading.value > 1000) {
-          formattedValue = '${(sensorReading.value / 1000).toStringAsFixed(2)} kW';
+          formattedValue =
+              '${(sensorReading.value / 1000).toStringAsFixed(2)} kW';
         } else {
           formattedValue = '${sensorReading.value.toStringAsFixed(1)} W';
         }
@@ -250,7 +286,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               isEnabled: pumpState.isEnabled,
               isPending: pumpState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(pumpState.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(pumpState.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -261,7 +299,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               isEnabled: fan1State.isEnabled,
               isPending: fan1State.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(fan1State.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(fan1State.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -272,7 +312,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               isEnabled: fan2State.isEnabled,
               isPending: fan2State.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(fan2State.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(fan2State.deviceId, enabled);
               },
             ),
             _buildSimpleDeviceCard(
@@ -283,7 +325,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               isEnabled: lightState.isEnabled,
               isPending: lightState.isPending,
               onToggle: (enabled) {
-                ref.read(deviceControlsProvider.notifier).toggleDevice(lightState.deviceId, enabled);
+                ref
+                    .read(deviceControlsProvider.notifier)
+                    .toggleDevice(lightState.deviceId, enabled);
               },
             ),
           ],
@@ -362,9 +406,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildConnectionRow('MQTT', mqttConnection.asData?.value ?? 'unknown'),
-            _buildConnectionRow('InfluxDB', influxConnection.asData?.value ?? 'unknown'),
-            _buildConnectionRow('Sensor Data', hasSensorData ? 'receiving' : 'waiting'),
+            _buildConnectionRow(
+              'MQTT',
+              mqttConnection.asData?.value ?? 'unknown',
+            ),
+            _buildConnectionRow(
+              'InfluxDB',
+              influxConnection.asData?.value ?? 'unknown',
+            ),
+            _buildConnectionRow(
+              'Sensor Data',
+              hasSensorData ? 'receiving' : 'waiting',
+            ),
           ],
         ),
         actions: [
@@ -406,10 +459,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           Text('$service: '),
           Text(
             status,
-            style: TextStyle(
-              color: statusColor,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
           ),
         ],
       ),
