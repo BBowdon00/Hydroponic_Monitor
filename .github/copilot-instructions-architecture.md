@@ -10,7 +10,6 @@ Build a **cross-platform Flutter** application (Windows, Web, Android, iOS) to *
 - **Device controls** (one pump, multiple fans, lighting)
 - **Video feed** (live MJPEG stream from Raspberry Pi; recording support)
 - **Historical charts** (trends/analytics powered by InfluxDB)
-- **System alerts** (automated rules + notifications)
 - **MQTT** for sensor ingest and (optionally) device control
 
 When in doubt, **use official Flutter docs and APIs** and prefer first-party guidance. (Reference: https://docs.flutter.dev/)
@@ -29,7 +28,7 @@ When in doubt, **use official Flutter docs and APIs** and prefer first-party gui
 
 ## Data & Integrations
 - **MQTT:** Use `mqtt_client` package. Connect using TLS when available. Reconnect with backoff. Topics are namespaced:  
-  `hydro/<site>/<system>/<sensor|device>/<id>`
+  `grow/{node}/{deviceCategory}`
 - **InfluxDB:** Use `influxdb_client` (Dart) for queries (v2, Flux). All writes happen server-side (gateway or edge) when possible; the app **reads/query-only** by default. Queries are encapsulated in repositories.
 - **Video (MJPEG):** Use `flutter_mjpeg` (or a lightweight custom widget) to render streams. Expose stream URL via secure config.
 - **Charts:** Use `fl_chart` for time-series (line/area). Large datasets: downsample on the query side.
@@ -57,7 +56,7 @@ When in doubt, **use official Flutter docs and APIs** and prefer first-party gui
   - Controls: distinct **safety affordances** (confirmations for pump/lighting).
   - Charts screen: time range presets (1h/6h/24h/7d/30d) + pinch/drag on mobile.
   - Video: show **latency indicator** and reconnect UI.
-- Follow Flutter’s official guidance where applicable (widgets, navigation, performance best practices). (See: https://docs.flutter.dev/)
+  - Follow Flutter’s official guidance where applicable (widgets, navigation, performance best practices). (See: https://docs.flutter.dev/)
 
 ## Testing & Quality
 - **Unit:** providers, repositories, and use cases.

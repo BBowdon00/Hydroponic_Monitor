@@ -79,9 +79,10 @@ lib/
 
 3. **Configure environment:**
    ```bash
-   cp .env.example .env
-   # Edit .env with your MQTT, InfluxDB, and video stream settings
+   cp dart_defines.example.json dart_defines.json
+   # Edit dart_defines.json with your MQTT, InfluxDB, and video stream settings
    ```
+   For dev/test builds, you may use `.env` and `flutter_dotenv` as described in the architecture guide.
 
 4. **Run the application:**
    ```bash
@@ -112,26 +113,30 @@ flutter build apk --debug                   # Android debug APK
 flutter build linux                         # Linux desktop binary
 ```
 
-## Configuration
+## Developer Onboarding
 
-The app uses environment variables for configuration. Copy `.env.example` to `.env` and update with your settings:
+**Before starting development, please read:**
+- [Operational Instructions](.github/copilot-instructions.md)
+- [Architecture & Coding Standards](.github/copilot-instructions-architecture.md)
 
+These documents contain essential setup, workflow, and code style guidance.
+
+## Environment Setup
+
+Follow the steps in `.github/workflows/copilot-setup-steps.yml` for environment preparation.  
+Ensure you have the correct Flutter/Dart versions and platform dependencies.
+
+## Testing
+
+To run all tests (unit + integration) locally, use the provided automation script:
 ```bash
-# MQTT Configuration
-MQTT_HOST=your-mqtt-broker.local
-MQTT_PORT=1883
-MQTT_USERNAME=hydro_user
-MQTT_PASSWORD=your_password
-
-# InfluxDB Configuration  
-INFLUX_URL=http://your-influxdb.local:8086
-INFLUX_TOKEN=your_influxdb_token
-INFLUX_ORG=hydroponic-monitor
-INFLUX_BUCKET=sensors
-
-# Video Stream
-MJPEG_URL=http://your-camera.local:8080/stream
+./scripts/test-runner.sh --all --verbose
 ```
+For integration test troubleshooting, check logs:
+```bash
+cat test/logs/*.log
+```
+See [Operational Instructions](.github/copilot-instructions.md) for detailed test failure analysis and resolution steps.
 
 ## References
 
@@ -144,7 +149,7 @@ MJPEG_URL=http://your-camera.local:8080/stream
 - **Go Router Guide**: https://docs.page/csells/go_router
 
 ## Backend Infrastructure and Data 
-The infrastructure behind the Hydroponic Monitor app consists of a distributed network of hardware devices, MQTT message broker, and InfluxDB time-series database that work together to provide real-time monitoring and control capabilities.
+The infrastructure behind the Hydroponic Monitor app consists of a distributed network of hardware devices, MQTT message broker, and InfluxDB time-series database that work together to provide real-time monitoring and control capabilities. The app will subscribe and wait for MQTT messages. It will update the sensor and actuator/device tiles with the latest data received. It will only interface with Influxdb for historical data and chart making. All other data comes from the MQTT subscriptions & message payloads. It will be common that this app is not connected to the servers and thus must gracefully handle disconnection states from the MQTT and influxdb services, while updating appropriately when re-connected.
 
 ### Hardware Architecture
 
@@ -240,6 +245,51 @@ This architecture ensures reliable control with feedback verification, preventin
 
 The distributed design provides fault tolerance - individual device failures don't compromise the entire system. The app gracefully handles intermittent connectivity, offline devices, and partial system availability while maintaining core monitoring functionality.
 
+## Data Flow Overview
+
+This section describes how data moves through the Hydroponic Monitor system:
+
+1. **Sensors** (temperature, humidity, pH, EC, water level, etc.) collect readings on ESP32 or Raspberry Pi nodes.
+2. **Microcontrollers** publish sensor data to the MQTT broker using namespaced topics (`grow/{node}/{deviceCategory}`).
+3. **App** subscribes to relevant MQTT topics and receives real-time sensor and actuator status messages.
+4. **Dashboard Tiles** update immediately as new MQTT messages arrive, showing the latest values for each device.
+5. **Historical Data** is queried from InfluxDB for charts and analytics; only reads are performed by the app.
+6. **Actuator Commands** are sent by the app via MQTT to device-specific topics; devices confirm state changes by publishing status messages.
+7. **Offline Handling**: If the app loses connection to MQTT or InfluxDB, it displays appropriate status and resumes updates when reconnected.
+
+## Data Flow Diagram
+
+Below is a simplified diagram showing how data flows through the Hydroponic Monitor app:
+```mermaid
+flowchart TD
+    A[Sensors/Actuators] --> B[ESP32/Raspberry Pi Nodes]
+    B --> C[MQTT Broker]
+    C --> D[MQTT Client (data/mqtt/)]
+    D --> E[Repositories (data/repos/)]
+    E --> F[Providers (presentation/providers/)]
+    F --> G[Streams]
+    G --> H[Dashboard/Controls/Charts Screens]
+    H --> I[Sensor/Device Tiles (presentation/widgets/)]
+
+    %% Actuator control feedback loop
+    H -.->|Actuator Commands| C
+    C -.->|State Confirmation| D
+
+    %% Historical data flow
+    H --> J[InfluxDB Client (data/influx/)]
+    J --> E
+
+    %% Connection status
+    F --> K[Connection Notification (presentation/widgets/connection_notification.dart)]
+```
+
+- **Sensor/Actuator data** is published via MQTT.
+- **MQTT client** receives messages and updates repositories.
+- **Repositories** expose data via **streams**.
+- **Providers** (Riverpod) listen to streams and manage state.
+- **UI screens** and **tiles** subscribe to providers for real-time updates.
+
+> For more detail, see the architecture and operational instructions in `.github/`.
 
 ## License
 
