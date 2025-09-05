@@ -30,8 +30,8 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_logs:/mosquitto/log
+      # mosquitto_data:/mosquitto/data
+      #- mosquitto_logs:/mosquitto/log
       - ../../config/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     healthcheck:
       test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "health", "-m", "check"]

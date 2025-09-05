@@ -12,22 +12,22 @@ class DeviceRepository {
   final MqttService mqttService;
 
   StreamSubscription<Device>? _mqttSubscription;
-  final StreamController<Device> _deviceStatusController =
-      StreamController<Device>.broadcast();
 
   /// Initialize the repository and start listening to device status updates.
   Future<Result<void>> initialize() async {
     try {
       Logger.info('Initializing device repository', tag: 'DeviceRepository');
 
-      // Start listening to device status updates from MQTT
+      // Start listening to device status updates from MQTT so we can log
+      // and perform any repository-level processing if needed.
       _mqttSubscription = mqttService.deviceStatusStream.listen(
         (device) {
           Logger.debug(
             'Received device status update: ${device.id}',
             tag: 'DeviceRepository',
           );
-          _deviceStatusController.add(device);
+          // No internal buffering here; expose mqttService stream directly
+          // via the public getter so subscribers receive buffered items.
         },
         onError: (error) {
           Logger.error(
@@ -49,8 +49,20 @@ class DeviceRepository {
     }
   }
 
+  /// Ensure repository and underlying services are initialized.
+  Future<Result<void>> ensureInitialized({Duration timeout = const Duration(seconds: 5)}) async {
+    try {
+      await mqttService.ensureInitialized(timeout: timeout);
+      return const Success(null);
+    } catch (e) {
+      final error = 'Error ensuring device repository initialized: $e';
+      Logger.warning(error, tag: 'DeviceRepository');
+      return Failure(UnknownError(error));
+    }
+  }
+
   /// Get real-time device status updates from MQTT.
-  Stream<Device> get deviceStatusUpdates => _deviceStatusController.stream;
+  Stream<Device> get deviceStatusUpdates => mqttService.deviceStatusStream;
 
   /// Send a command to control a device.
   Future<Result<void>> controlDevice(
@@ -166,7 +178,7 @@ class DeviceRepository {
     try {
       Logger.info('Disposing device repository', tag: 'DeviceRepository');
       await _mqttSubscription?.cancel();
-      await _deviceStatusController.close();
+  // No internal controller to close.
     } catch (e) {
       Logger.error(
         'Error disposing device repository: $e',

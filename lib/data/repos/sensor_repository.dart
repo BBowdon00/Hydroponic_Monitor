@@ -24,42 +24,42 @@ class SensorRepository {
       final mqttResult = await mqttService.connect();
       if (mqttResult is Failure) {
         Logger.warning(
-          'MQTT connection failed - sensor data will not be available: ${mqttResult.error}',
+          'MQTT connection failed during initialization: ${mqttResult.error}',
           tag: 'SensorRepository',
         );
+        return mqttResult;
       } else {
         Logger.info('MQTT connected successfully', tag: 'SensorRepository');
-
-        // Only start listening to sensor data if MQTT connected successfully
-        _mqttSubscription = mqttService.sensorDataStream.listen(
-          (sensorData) async {
-            final result = await influxService.writeSensorData(sensorData);
-            if (result is Failure) {
-              Logger.error(
-                'Failed to store sensor data in InfluxDB: ${result.error}',
-                tag: 'SensorRepository',
-              );
-            }
-          },
-          onError: (error) {
-            Logger.error(
-              'Error in MQTT sensor data stream: $error',
-              tag: 'SensorRepository',
-            );
-          },
-        );
       }
 
       // Initialize InfluxDB service (non-blocking - continue if it fails)
       final influxResult = await influxService.initialize();
       if (influxResult is Failure) {
         Logger.warning(
-          'InfluxDB connection failed - data storage will not be available: ${influxResult.error}',
+          'InfluxDB connection failed during initialization: ${influxResult.error}',
           tag: 'SensorRepository',
         );
+        return influxResult;
       } else {
         Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
       }
+
+      // Subscribe to MQTT sensor stream and forward to InfluxDB
+      _mqttSubscription = mqttService.sensorDataStream.listen((sensorData) async {
+        try {
+          final writeResult = await influxService.writeSensorData(sensorData);
+          if (writeResult is Failure) {
+            Logger.warning(
+              'Failed to write sensor data to InfluxDB: ${writeResult.error}',
+              tag: 'SensorRepository',
+            );
+          }
+        } catch (e) {
+          Logger.error('Exception while writing sensor data: $e', tag: 'SensorRepository', error: e);
+        }
+      }, onError: (e) {
+        Logger.error('MQTT sensor stream error: $e', tag: 'SensorRepository', error: e);
+      });
 
       Logger.info(
         'Sensor repository initialized successfully',

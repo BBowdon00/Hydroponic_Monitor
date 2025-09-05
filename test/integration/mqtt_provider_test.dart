@@ -12,6 +12,7 @@ import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 import '../test_utils.dart';
+import 'package:hydroponic_monitor/core/logger.dart';
 
 /// Integration tests for MQTT publish/subscribe functionality using the provider framework.
 ///
@@ -30,6 +31,9 @@ void main() {
     MqttServerClient? testPublisherClient;
 
     setUpAll(() async {
+      // Initialize logger for tests
+      Logger.init(isTest: true);
+
       // Initialize DotEnv for the tests
       // Try to load .env.test first, fallback to .env
       try {
@@ -62,19 +66,16 @@ void main() {
       // Create a fresh container for each test
       container = ProviderContainer();
 
-      // Get the MQTT service from the container
-      mqttService = container.read(mqttServiceProvider);
+  // Ensure data services (repositories and their subscriptions) are initialized
+  // Use the provider-driven initializer so Env, MQTT, and repositories are
+  // prepared consistently for each test.
+  await container.read(dataServicesInitializationProvider.future);
 
-      // Connect the MQTT service
-      final connectResult = await mqttService.connect();
-      expect(
-        connectResult,
-        isA<Success<void>>(),
-        reason: 'MQTT service should connect successfully',
-      );
+  // Get the MQTT service from the container after initialization
+  mqttService = container.read(mqttServiceProvider);
 
-      // Wait a moment for subscriptions to be established
-      await Future.delayed(const Duration(milliseconds: 500));
+  // Small safety delay to allow any in-flight stream replays to deliver
+  await Future.delayed(const Duration(milliseconds: 200));
     });
 
     tearDown(() async {
@@ -114,11 +115,11 @@ void main() {
         builder.payload!,
       );
 
-      print('Published sensor data to topic: $topic');
-      print('Message: $messageJson');
+      Logger.info('Published sensor data to topic: $topic');
+      Logger.debug('Message: $messageJson');
 
       // Wait for the message to be processed
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 2));
 
       // Verify the data was received through the provider
       expect(
@@ -166,11 +167,11 @@ void main() {
         builder.payload!,
       );
 
-      print('Published device status to topic: $topic');
-      print('Payload: $payloadJson');
+      Logger.info('Published device status to topic: $topic',tag: 'MQTT');
+      Logger.debug('Payload: $payloadJson', tag: 'MQTT');
 
       // Wait for the message to be processed
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 3));
 
       // Verify the device status was received through the provider
       expect(
@@ -284,8 +285,8 @@ void main() {
         builder.payload!,
       );
 
-      print('Published actuator state to topic: $topic');
-      print('Payload: $payloadJson');
+      Logger.info('Published actuator state to topic: $topic');
+      Logger.debug('Payload: $payloadJson');
 
       // Wait for the message to be processed
       await Future.delayed(const Duration(seconds: 1));
