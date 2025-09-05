@@ -10,8 +10,11 @@ void main() {
     });
 
     test('creates valid device with all properties', () {
-      Logger.info("Testing device creation with all properties", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing device creation with all properties",
+        tag: 'DeviceEntityTest',
+      );
+
       final lastUpdate = DateTime.now();
       final device = Device(
         id: 'pump_001',
@@ -24,7 +27,10 @@ void main() {
         lastUpdate: lastUpdate,
       );
 
-      Logger.debug("Created device: ${device.name} (${device.type.name})", tag: 'DeviceEntityTest');
+      Logger.debug(
+        "Created device: ${device.name} (${device.type.name})",
+        tag: 'DeviceEntityTest',
+      );
 
       expect(device.id, equals('pump_001'));
       expect(device.name, equals('Water Pump 1'));
@@ -34,13 +40,19 @@ void main() {
       expect(device.description, equals('Main water circulation pump'));
       expect(device.location, equals('greenhouse_a'));
       expect(device.lastUpdate, equals(lastUpdate));
-      
-      Logger.info("Device creation with all properties test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "Device creation with all properties test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
 
     test('creates valid device with minimal properties', () {
-      Logger.info("Testing device creation with minimal properties", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing device creation with minimal properties",
+        tag: 'DeviceEntityTest',
+      );
+
       final device = Device(
         id: 'fan_001',
         name: 'Ventilation Fan',
@@ -48,7 +60,10 @@ void main() {
         status: DeviceStatus.offline,
       );
 
-      Logger.debug("Created minimal device: ${device.name}", tag: 'DeviceEntityTest');
+      Logger.debug(
+        "Created minimal device: ${device.name}",
+        tag: 'DeviceEntityTest',
+      );
 
       expect(device.id, equals('fan_001'));
       expect(device.name, equals('Ventilation Fan'));
@@ -58,13 +73,19 @@ void main() {
       expect(device.description, isNull);
       expect(device.location, isNull);
       expect(device.lastUpdate, isNull);
-      
-      Logger.info("Device creation with minimal properties test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "Device creation with minimal properties test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
 
     test('copyWith works correctly', () {
-      Logger.info("Testing device copyWith functionality", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing device copyWith functionality",
+        tag: 'DeviceEntityTest',
+      );
+
       final originalDevice = Device(
         id: 'heater_001',
         name: 'Water Heater',
@@ -73,7 +94,10 @@ void main() {
         isEnabled: false,
       );
 
-      Logger.debug("Original device status: ${originalDevice.status.name}", tag: 'DeviceEntityTest');
+      Logger.debug(
+        "Original device status: ${originalDevice.status.name}",
+        tag: 'DeviceEntityTest',
+      );
 
       final updatedDevice = originalDevice.copyWith(
         status: DeviceStatus.online,
@@ -81,7 +105,10 @@ void main() {
         lastUpdate: DateTime.now(),
       );
 
-      Logger.debug("Updated device status: ${updatedDevice.status.name}", tag: 'DeviceEntityTest');
+      Logger.debug(
+        "Updated device status: ${updatedDevice.status.name}",
+        tag: 'DeviceEntityTest',
+      );
 
       expect(updatedDevice.id, equals('heater_001'));
       expect(updatedDevice.name, equals('Water Heater'));
@@ -94,13 +121,19 @@ void main() {
       expect(originalDevice.status, equals(DeviceStatus.offline));
       expect(originalDevice.isEnabled, isFalse);
       expect(originalDevice.lastUpdate, isNull);
-      
-      Logger.info("Device copyWith functionality test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "Device copyWith functionality test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
 
     test('equality works correctly', () {
-      Logger.info("Testing device equality comparison", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing device equality comparison",
+        tag: 'DeviceEntityTest',
+      );
+
       final lastUpdate = DateTime.now();
       final device1 = Device(
         id: 'light_001',
@@ -129,18 +162,27 @@ void main() {
         lastUpdate: lastUpdate,
       );
 
-      Logger.debug("Comparing devices: ${device1.id} vs ${device2.id} vs ${device3.id}", tag: 'DeviceEntityTest');
+      Logger.debug(
+        "Comparing devices: ${device1.id} vs ${device2.id} vs ${device3.id}",
+        tag: 'DeviceEntityTest',
+      );
 
       expect(device1, equals(device2));
       expect(device1, isNot(equals(device3)));
       expect(device1.hashCode, equals(device2.hashCode));
-      
-      Logger.info("Device equality comparison test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "Device equality comparison test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
 
     test('toString provides useful information', () {
-      Logger.info("Testing device toString representation", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing device toString representation",
+        tag: 'DeviceEntityTest',
+      );
+
       final device = Device(
         id: 'sensor_001',
         name: 'Temperature Sensor',
@@ -150,16 +192,22 @@ void main() {
       );
 
       final stringRepresentation = device.toString();
-      
-      Logger.debug("Device string representation: $stringRepresentation", tag: 'DeviceEntityTest');
-      
+
+      Logger.debug(
+        "Device string representation: $stringRepresentation",
+        tag: 'DeviceEntityTest',
+      );
+
       expect(stringRepresentation, contains('sensor_001'));
       expect(stringRepresentation, contains('Temperature Sensor'));
       expect(stringRepresentation, contains('sensor'));
       expect(stringRepresentation, contains('online'));
       expect(stringRepresentation, contains('true'));
-      
-      Logger.info("Device toString representation test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "Device toString representation test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
   });
 
@@ -170,7 +218,7 @@ void main() {
 
     test('display names are correct', () {
       Logger.info("Testing DeviceType display names", tag: 'DeviceEntityTest');
-      
+
       final displayNames = {
         DeviceType.pump: 'Pump',
         DeviceType.fan: 'Fan',
@@ -181,11 +229,17 @@ void main() {
       };
 
       for (final entry in displayNames.entries) {
-        Logger.debug("${entry.key.name} -> ${entry.value}", tag: 'DeviceEntityTest');
+        Logger.debug(
+          "${entry.key.name} -> ${entry.value}",
+          tag: 'DeviceEntityTest',
+        );
         expect(entry.key.displayName, equals(entry.value));
       }
-      
-      Logger.info("DeviceType display names test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "DeviceType display names test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
   });
 
@@ -195,8 +249,11 @@ void main() {
     });
 
     test('display names are correct', () {
-      Logger.info("Testing DeviceStatus display names", tag: 'DeviceEntityTest');
-      
+      Logger.info(
+        "Testing DeviceStatus display names",
+        tag: 'DeviceEntityTest',
+      );
+
       final displayNames = {
         DeviceStatus.online: 'Online',
         DeviceStatus.offline: 'Offline',
@@ -206,11 +263,17 @@ void main() {
       };
 
       for (final entry in displayNames.entries) {
-        Logger.debug("${entry.key.name} -> ${entry.value}", tag: 'DeviceEntityTest');
+        Logger.debug(
+          "${entry.key.name} -> ${entry.value}",
+          tag: 'DeviceEntityTest',
+        );
         expect(entry.key.displayName, equals(entry.value));
       }
-      
-      Logger.info("DeviceStatus display names test passed", tag: 'DeviceEntityTest');
+
+      Logger.info(
+        "DeviceStatus display names test passed",
+        tag: 'DeviceEntityTest',
+      );
     });
   });
 }

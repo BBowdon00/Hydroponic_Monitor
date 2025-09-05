@@ -46,13 +46,13 @@ class Logger {
 
   static void _log(String level, String message, {String? tag}) {
     final tagStr = tag != null ? ':$tag' : '';
-    
+
     if (_isTest) {
       // In test mode, use print to ensure output is visible
       // ignore: avoid_print
       print('[$_appName$tagStr] [$level] $message');
     }
-    
+
     developer.log('[$level] $message', name: '$_appName$tagStr');
   }
 }

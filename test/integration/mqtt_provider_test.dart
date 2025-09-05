@@ -66,16 +66,16 @@ void main() {
       // Create a fresh container for each test
       container = ProviderContainer();
 
-  // Ensure data services (repositories and their subscriptions) are initialized
-  // Use the provider-driven initializer so Env, MQTT, and repositories are
-  // prepared consistently for each test.
-  await container.read(dataServicesInitializationProvider.future);
+      // Ensure data services (repositories and their subscriptions) are initialized
+      // Use the provider-driven initializer so Env, MQTT, and repositories are
+      // prepared consistently for each test.
+      await container.read(dataServicesInitializationProvider.future);
 
-  // Get the MQTT service from the container after initialization
-  mqttService = container.read(mqttServiceProvider);
+      // Get the MQTT service from the container after initialization
+      mqttService = container.read(mqttServiceProvider);
 
-  // Small safety delay to allow any in-flight stream replays to deliver
-  await Future.delayed(const Duration(milliseconds: 200));
+      // Small safety delay to allow any in-flight stream replays to deliver
+      await Future.delayed(const Duration(milliseconds: 200));
     });
 
     tearDown(() async {
@@ -167,7 +167,7 @@ void main() {
         builder.payload!,
       );
 
-      Logger.info('Published device status to topic: $topic',tag: 'MQTT');
+      Logger.info('Published device status to topic: $topic', tag: 'MQTT');
       Logger.debug('Payload: $payloadJson', tag: 'MQTT');
 
       // Wait for the message to be processed

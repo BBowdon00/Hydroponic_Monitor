@@ -45,21 +45,32 @@ class SensorRepository {
       }
 
       // Subscribe to MQTT sensor stream and forward to InfluxDB
-      _mqttSubscription = mqttService.sensorDataStream.listen((sensorData) async {
-        try {
-          final writeResult = await influxService.writeSensorData(sensorData);
-          if (writeResult is Failure) {
-            Logger.warning(
-              'Failed to write sensor data to InfluxDB: ${writeResult.error}',
+      _mqttSubscription = mqttService.sensorDataStream.listen(
+        (sensorData) async {
+          try {
+            final writeResult = await influxService.writeSensorData(sensorData);
+            if (writeResult is Failure) {
+              Logger.warning(
+                'Failed to write sensor data to InfluxDB: ${writeResult.error}',
+                tag: 'SensorRepository',
+              );
+            }
+          } catch (e) {
+            Logger.error(
+              'Exception while writing sensor data: $e',
               tag: 'SensorRepository',
+              error: e,
             );
           }
-        } catch (e) {
-          Logger.error('Exception while writing sensor data: $e', tag: 'SensorRepository', error: e);
-        }
-      }, onError: (e) {
-        Logger.error('MQTT sensor stream error: $e', tag: 'SensorRepository', error: e);
-      });
+        },
+        onError: (e) {
+          Logger.error(
+            'MQTT sensor stream error: $e',
+            tag: 'SensorRepository',
+            error: e,
+          );
+        },
+      );
 
       Logger.info(
         'Sensor repository initialized successfully',

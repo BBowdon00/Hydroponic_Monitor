@@ -16,12 +16,12 @@ import '../../domain/entities/device.dart';
 /// MQTT client for communicating with hydroponic system devices.
 class MqttService {
   MqttService({
-  required this.host,
-  required this.port,
-  required this.clientId,
-  this.username,
-  this.password,
-  this.autoReconnect = true,
+    required this.host,
+    required this.port,
+    required this.clientId,
+    this.username,
+    this.password,
+    this.autoReconnect = true,
   });
 
   final String host;
@@ -112,13 +112,19 @@ class MqttService {
 
       // Prevent duplicate concurrent connect attempts or reconnect storms.
       if (_isConnecting) {
-        Logger.debug('Connect called while already connecting - skipping', tag: 'MQTT');
+        Logger.debug(
+          'Connect called while already connecting - skipping',
+          tag: 'MQTT',
+        );
         return const Success(null);
       }
 
       final currentState = _client?.connectionStatus?.state;
       if (currentState == MqttConnectionState.connected) {
-        Logger.debug('MQTT client already connected - skipping connect', tag: 'MQTT');
+        Logger.debug(
+          'MQTT client already connected - skipping connect',
+          tag: 'MQTT',
+        );
         return const Success(null);
       }
 
@@ -158,11 +164,11 @@ class MqttService {
       }
 
       // Configure client settings
-  _client!.logging(on: false); // Disable verbose logging
+      _client!.logging(on: false); // Disable verbose logging
       _client!.setProtocolV311();
       _client!.keepAlivePeriod = 20;
       _client!.connectTimeoutPeriod = 5000;
-  _client!.autoReconnect = autoReconnect;
+      _client!.autoReconnect = autoReconnect;
 
       // Set up connection callbacks
       _client!.onConnected = _onConnected;
@@ -171,8 +177,6 @@ class MqttService {
       _client!.onUnsubscribed = _onUnsubscribed;
       _client!.onAutoReconnect = _onAutoReconnect;
       _client!.onAutoReconnected = _onAutoReconnected;
-
-
 
       // Set up connection message with proper authentication
       final connMess = MqttConnectMessage()
@@ -186,26 +190,29 @@ class MqttService {
 
       _client!.connectionMessage = connMess;
 
-  // Attempt connection
-  _isConnecting = true;
-  final status = await _client!.connect();
+      // Attempt connection
+      _isConnecting = true;
+      final status = await _client!.connect();
 
       if (status?.state == MqttConnectionState.connected) {
         _isConnecting = false;
         Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');
-              // Set up message handling
+        // Set up message handling
         final updates = _client!.updates;
         if (updates != null) {
-          updates.listen(_onMessageReceived,
+          updates.listen(
+            _onMessageReceived,
             onError: (error) {
               Logger.error('MQTT message stream error: $error', tag: 'MQTT');
-            });
-          } else {
+            },
+          );
+        } else {
           Logger.warning('MQTT client updates stream is null', tag: 'MQTT');
         }
         await _subscribeToTopics();
-  // Mark as initialized once subscriptions have been requested
-  if (!_initializedCompleter.isCompleted) _initializedCompleter.complete();
+        // Mark as initialized once subscriptions have been requested
+        if (!_initializedCompleter.isCompleted)
+          _initializedCompleter.complete();
         return const Success(null);
       } else {
         _isConnecting = false;
@@ -224,7 +231,9 @@ class MqttService {
 
   /// Ensure the service is initialized (connected and topics subscribed).
   /// Returns once initialization completes or immediately if already initialized.
-  Future<void> ensureInitialized({Duration timeout = const Duration(seconds: 5)}) async {
+  Future<void> ensureInitialized({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     if (_initializedCompleter.isCompleted) return;
     try {
       await _initializedCompleter.future.timeout(timeout);
@@ -277,7 +286,11 @@ class MqttService {
     if (isConnected) {
       final builder = MqttClientPayloadBuilder();
       builder.addString(payload);
-      final pubResult = _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+      final pubResult = _client!.publishMessage(
+        topic,
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
 
       if (pubResult != null) {
         Logger.debug('Published to topic $topic: $payload', tag: 'MQTT');
@@ -310,12 +323,16 @@ class MqttService {
       try {
         final topic = message.topic;
         final pt = message.payload as MqttPublishMessage;
-        final payload = MqttPublishPayload.bytesToStringAsString(pt.payload.message);
+        final payload = MqttPublishPayload.bytesToStringAsString(
+          pt.payload.message,
+        );
 
         Logger.debug('Received message on topic $topic: $payload', tag: 'MQTT');
 
         // Emit raw message for repository processing
-        _messageController.add(HydroMqttMessage(topic: topic, payload: payload));
+        _messageController.add(
+          HydroMqttMessage(topic: topic, payload: payload),
+        );
 
         // Parse new topic format: grow/{deviceNode}/{deviceCategory}
         final topicParts = topic.split('/');
@@ -382,7 +399,10 @@ class MqttService {
     final location = data['location'] as String?;
 
     if (deviceTypeRaw == null || deviceIDRaw == null) {
-      Logger.debug('Sensor payload missing deviceType/deviceID, ignoring', tag: 'MQTT');
+      Logger.debug(
+        'Sensor payload missing deviceType/deviceID, ignoring',
+        tag: 'MQTT',
+      );
       return;
     }
 
@@ -394,7 +414,10 @@ class MqttService {
     } else if (rawValue is String) {
       value = double.tryParse(rawValue);
     } else {
-      Logger.debug('Sensor payload value missing/invalid, ignoring', tag: 'MQTT');
+      Logger.debug(
+        'Sensor payload value missing/invalid, ignoring',
+        tag: 'MQTT',
+      );
       return;
     }
 
@@ -449,7 +472,10 @@ class MqttService {
             isEnabled: running ?? false,
             lastUpdate: DateTime.now(),
           );
-          Logger.debug("Adding to deviceStatusController: ${device}", tag: 'MQTT');
+          Logger.debug(
+            "Adding to deviceStatusController: ${device}",
+            tag: 'MQTT',
+          );
           // Add to in-memory buffer for late subscribers (keep last 50)
           _deviceStatusBuffer.add(device);
           if (_deviceStatusBuffer.length > 50) {
@@ -533,14 +559,14 @@ class MqttService {
 
   void _onConnected() {
     Logger.info('MQTT client connected', tag: 'MQTT');
-  _lastConnectionStatus = 'connected';
-  _connectionController.add('connected');
+    _lastConnectionStatus = 'connected';
+    _connectionController.add('connected');
   }
 
   void _onDisconnected() {
     Logger.warning('MQTT client disconnected', tag: 'MQTT');
-  _lastConnectionStatus = 'disconnected';
-  _connectionController.add('disconnected');
+    _lastConnectionStatus = 'disconnected';
+    _connectionController.add('disconnected');
   }
 
   void _onAutoReconnect() {
@@ -549,8 +575,8 @@ class MqttService {
 
   void _onAutoReconnected() {
     Logger.info('MQTT client auto-reconnected successfully', tag: 'MQTT');
-  _lastConnectionStatus = 'reconnected';
-  _connectionController.add('reconnected');
+    _lastConnectionStatus = 'reconnected';
+    _connectionController.add('reconnected');
     // Re-subscribe to topics after reconnection
     _subscribeToTopics();
   }

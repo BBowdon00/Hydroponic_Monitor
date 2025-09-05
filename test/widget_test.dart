@@ -12,29 +12,29 @@ import 'package:hydroponic_monitor/presentation/app.dart';
 
 void main() {
   testWidgets('App starts and loads dashboard', (WidgetTester tester) async {
-  // Build our app and trigger a frame, then wait for async init to complete.
-  await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
-  // Avoid pumpAndSettle which can hang on ongoing animations; do short pumps
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
+    // Build our app and trigger a frame, then wait for async init to complete.
+    await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
+    // Avoid pumpAndSettle which can hang on ongoing animations; do short pumps
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-  // Verify that the app starts with the dashboard.
-  expect(find.text('Dashboard'), findsWidgets);
+    // Verify that the app starts with the dashboard.
+    expect(find.text('Dashboard'), findsWidgets);
     expect(find.text('Water Level'), findsOneWidget);
     expect(find.text('Temperature'), findsOneWidget);
   });
 
   testWidgets('Bottom navigation works', (WidgetTester tester) async {
-  await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
-  // Avoid pumpAndSettle which can hang on ongoing animations; do short pumps
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
+    await tester.pumpWidget(const ProviderScope(child: HydroponicMonitorApp()));
+    // Avoid pumpAndSettle which can hang on ongoing animations; do short pumps
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-  // Tap the devices tab
-  await tester.tap(find.text('Devices'));
-  // Advance the frame and allow brief async work without waiting indefinitely
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
+    // Tap the devices tab
+    await tester.tap(find.text('Devices'));
+    // Advance the frame and allow brief async work without waiting indefinitely
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     // Verify that we navigate to devices page
     expect(find.text('Devices'), findsWidgets);

@@ -88,7 +88,10 @@ void main() {
           builder.payload!,
         );
 
-        Logger.info('Published sensor data to topic: $topic', tag: 'Integration');
+        Logger.info(
+          'Published sensor data to topic: $topic',
+          tag: 'Integration',
+        );
         Logger.debug('Message: $messageJson', tag: 'Integration');
 
         // Wait for Telegraf to process and store in InfluxDB
@@ -138,7 +141,10 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      Logger.info('Published ${testDataList.length} sensor data points', tag: 'Integration');
+      Logger.info(
+        'Published ${testDataList.length} sensor data points',
+        tag: 'Integration',
+      );
 
       // Wait for processing
       await Future.delayed(const Duration(seconds: 3));
@@ -200,7 +206,10 @@ void main() {
           builder.payload!,
         );
 
-        Logger.info('Published actuator state to topic: $topic', tag: 'Integration');
+        Logger.info(
+          'Published actuator state to topic: $topic',
+          tag: 'Integration',
+        );
         Logger.debug('Payload: $payloadJson', tag: 'Integration');
 
         // Small delay between publishes
@@ -255,7 +264,10 @@ void main() {
           builder.payload!,
         );
 
-        Logger.info('Published device status to topic: $topic', tag: 'Integration');
+        Logger.info(
+          'Published device status to topic: $topic',
+          tag: 'Integration',
+        );
         Logger.debug('Payload: $payloadJson', tag: 'Integration');
 
         // Small delay between publishes
@@ -328,7 +340,10 @@ void main() {
           await Future.delayed(const Duration(milliseconds: 100));
         }
 
-        Logger.info('All comprehensive sensor data published', tag: 'Integration');
+        Logger.info(
+          'All comprehensive sensor data published',
+          tag: 'Integration',
+        );
 
         // Wait for processing
         await Future.delayed(const Duration(seconds: 3));
@@ -399,7 +414,10 @@ Future<void> _waitForInfluxDB() async {
         Logger.info('InfluxDB is ready', tag: 'Integration');
         return;
       }
-      Logger.debug('InfluxDB attempt ${i + 1}: status ${response.statusCode}', tag: 'Integration');
+      Logger.debug(
+        'InfluxDB attempt ${i + 1}: status ${response.statusCode}',
+        tag: 'Integration',
+      );
     } catch (e) {
       Logger.debug('InfluxDB attempt ${i + 1}: $e', tag: 'Integration');
     }
@@ -476,7 +494,10 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      Logger.debug('InfluxDB new format sensor query response: \n$csvData', tag: 'Integration');
+      Logger.debug(
+        'InfluxDB new format sensor query response: \n$csvData',
+        tag: 'Integration',
+      );
 
       // Check if response contains data with expected measurement and tags
       return csvData.contains('_value') &&
@@ -493,7 +514,11 @@ Future<bool> _queryInfluxForNewFormat(SensorData expectedData) async {
       return false;
     }
   } catch (e) {
-    Logger.error('Error querying InfluxDB for new format sensor data: $e', tag: 'Integration', error: e);
+    Logger.error(
+      'Error querying InfluxDB for new format sensor data: $e',
+      tag: 'Integration',
+      error: e,
+    );
     return false;
   }
 }
@@ -526,17 +551,20 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      Logger.debug('InfluxDB new format actuator query response: \n$csvData', tag: 'Integration');
+      Logger.debug(
+        'InfluxDB new format actuator query response: \n$csvData',
+        tag: 'Integration',
+      );
 
       // Check if we have any device state records
       // query response will return csv like: ,result,table,_start,_stop,_value\n,_result,0,2024-10-05T12:00:00Z,2024-10-05T12:01:00Z,returnCount
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
-    final returnCount =
-      int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
-    Logger.debug("Return Count: $returnCount", tag: 'Integration');
-    // Accept >= expected to be tolerant of duplicate/retained messages
-    return csvData.contains('_value') && returnCount >= expectedResultNum;
+      final returnCount =
+          int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
+      Logger.debug("Return Count: $returnCount", tag: 'Integration');
+      // Accept >= expected to be tolerant of duplicate/retained messages
+      return csvData.contains('_value') && returnCount >= expectedResultNum;
     } else {
       Logger.warning(
         'InfluxDB new format actuator query failed with status: ${response.statusCode}',
@@ -545,7 +573,11 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
       return false;
     }
   } catch (e) {
-    Logger.error('Error querying InfluxDB for new format actuator states: $e', tag: 'Integration', error: e);
+    Logger.error(
+      'Error querying InfluxDB for new format actuator states: $e',
+      tag: 'Integration',
+      error: e,
+    );
     return false;
   }
 }
@@ -578,17 +610,20 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
 
     if (response.statusCode == 200) {
       final csvData = response.body;
-      Logger.debug('InfluxDB device status query response: \n$csvData', tag: 'Integration');
+      Logger.debug(
+        'InfluxDB device status query response: \n$csvData',
+        tag: 'Integration',
+      );
 
       // Check if we have any device state records
       // query response will return csv like: ,result,table,_start,_stop,_value\n,_result,0,2024-10-05T12:00:00Z,2024-10-05T12:01:00Z,returnCount
       // check to see if count is equal to records published
       // parse out the returnCount value from the table
-    final returnCount =
-      int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
-    Logger.debug("Return Count: $returnCount", tag: 'Integration');
-    // Accept >= expected to be tolerant of duplicate/retained messages
-    return csvData.contains('_value') && returnCount >= expectedResultNum;
+      final returnCount =
+          int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
+      Logger.debug("Return Count: $returnCount", tag: 'Integration');
+      // Accept >= expected to be tolerant of duplicate/retained messages
+      return csvData.contains('_value') && returnCount >= expectedResultNum;
     } else {
       Logger.warning(
         'InfluxDB device state query failed with status: ${response.statusCode}',
@@ -597,7 +632,11 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
       return false;
     }
   } catch (e) {
-    Logger.error('Error querying InfluxDB for device states: $e', tag: 'Integration', error: e);
+    Logger.error(
+      'Error querying InfluxDB for device states: $e',
+      tag: 'Integration',
+      error: e,
+    );
     return false;
   }
 }

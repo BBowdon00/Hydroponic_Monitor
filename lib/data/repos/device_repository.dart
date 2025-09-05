@@ -50,7 +50,9 @@ class DeviceRepository {
   }
 
   /// Ensure repository and underlying services are initialized.
-  Future<Result<void>> ensureInitialized({Duration timeout = const Duration(seconds: 5)}) async {
+  Future<Result<void>> ensureInitialized({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     try {
       await mqttService.ensureInitialized(timeout: timeout);
       return const Success(null);
@@ -178,7 +180,7 @@ class DeviceRepository {
     try {
       Logger.info('Disposing device repository', tag: 'DeviceRepository');
       await _mqttSubscription?.cancel();
-  // No internal controller to close.
+      // No internal controller to close.
     } catch (e) {
       Logger.error(
         'Error disposing device repository: $e',
