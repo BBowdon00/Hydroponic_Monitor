@@ -285,7 +285,7 @@ flowchart TD
 - **Providers** (Riverpod) listen to streams and manage state.
 - **UI screens** and **tiles** subscribe to providers for real-time updates.
 
-> For more detail, see the architecture and operational instructions in `.github/`.
+> For more detail, see the architecture and operational instructions in `.github/copilot-instructions.MD`.
 
 ## License
 
