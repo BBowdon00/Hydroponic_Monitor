@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:hydroponic_monitor/core/errors.dart';
 import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
@@ -29,6 +30,14 @@ void main() {
     MqttServerClient? testPublisherClient;
 
     setUpAll(() async {
+      // Initialize DotEnv for the tests
+      // Try to load .env.test first, fallback to .env
+      try {
+        await dotenv.load(fileName: '.env.test');
+      } catch (_) {
+        await dotenv.load(fileName: '.env');
+      }
+
       // Set up test MQTT client for publishing test messages
       testPublisherClient = MqttServerClient(
         TestConfig.testMqttHost,
