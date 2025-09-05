@@ -8,7 +8,6 @@ This repository contains a fully functional Flutter hydroponic monitoring applic
 - `.github/copilot-instructions.md` - This file (operational instructions)
 - `.github/copilot-instructions-architecture.md` - Architecture and coding standards
 - `.github/workflows/ci.yml` - Complete CI/CD pipeline with unit and integration tests
-- `.github/workflows/copilot-end-steps.yml` - Test execution workflow for Copilot Agent
 - `lib/` - Complete Flutter application source code
 - `test/` - Comprehensive unit and integration test suite (80 unit tests + 5 integration tests)
 - `scripts/` - Test automation scripts for local and CI execution
@@ -18,16 +17,11 @@ This repository contains a fully functional Flutter hydroponic monitoring applic
 Follow steps in .github/workflows/copilot-setup-steps.yml
 
 ## Tests
-
-### Which Tests to Run
-**After every commit or task completion:**
-
-1. **Code analysis:** `flutter analyze` (must show "No issues found!")
-2. **Code formatting:** `dart format --set-exit-if-changed .`
-3. **Unit tests:** `flutter test --exclude-tags=integration --coverage --reporter=expanded`
-4. **Integration tests:** `./scripts/run-integration-tests.sh`
-5. **Application test**  `flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`
-6. **Report results and any fixes made** 
+### Running Tests:
+To run all tests (unit + integration) locally, execute:
+```bash
+./scripts/test-runner.sh --all --verbose
+```
 
 
 ### On Failure
@@ -36,10 +30,7 @@ Follow steps in .github/workflows/copilot-setup-steps.yml
 1. **Analyze the failure output** - Read error messages, stack traces, and failure logs
 2. **Check service logs** - For integration test failures, examine Docker service logs:
    ```bash
-   cd test/integration
-   docker compose logs influxdb --tail=100
-   docker compose logs mosquitto --tail=100  
-   docker compose logs telegraf --tail=100
+   cat test/logs/*.log
    ```
 3. **Identify root cause** - Distinguish between:
    - Code logic errors (fix in source code)
@@ -51,12 +42,12 @@ Follow steps in .github/workflows/copilot-setup-steps.yml
 6. **Run full test suite** - Ensure no regressions were introduced
 
 ## Project Structure
-
+See ..\README.md for detailed project background and backend infrastructure.
 ```
 [repo-root]/
 ├── .github/                 # GitHub configuration
 │   ├── workflows/
-│   │   └── copilot-end-steps.yml  # instructions for Copilot Agent
+│   │   └── copilot-setup-steps.yml  # instructions for Copilot Agent
 │   ├── copilot-instructions.md
 │   └── copilot-instructions-architecture.md
 ├── lib/                     # Flutter application source code
@@ -85,18 +76,6 @@ Follow steps in .github/workflows/copilot-setup-steps.yml
 
 **See `.github/copilot-instructions-architecture.md` for detailed coding standards and architecture guidelines.**
 
-## CI Integration
-
-The `.github/workflows/ci.yml` handles the complete CI/CD pipeline including:
-- Code formatting and analysis
-- Unit tests (80 tests)
-- Integration tests (5 tests) with Docker Compose services
-- Test result reporting and failure handling
-
-The `.github/workflows/copilot-end-steps.yml` documents a flow for testing for Copilot Agent:
-- Runs comprehensive test suite
-- Reports results
-
 ## Quick Command Reference
 
 **All commands tested and validated with exact timings:**
@@ -113,8 +92,6 @@ dart format --output none --set-exit-if-changed .    # 1s
 flutter analyze                                       # 13.5s (shows 5 style warnings)
 
 # Testing
-flutter test --exclude-tags=integration              # 18s (80 tests)
-./scripts/run-integration-tests.sh                   # 62s (5 tests)
 ./scripts/test-runner.sh --all --verbose             # 95s (85 total tests)
 
 # Building
