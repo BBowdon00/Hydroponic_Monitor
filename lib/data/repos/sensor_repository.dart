@@ -74,6 +74,20 @@ class SensorRepository {
     }
   }
 
+  /// Ensure repository and underlying services are initialized.
+  Future<Result<void>> ensureInitialized({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    try {
+      await mqttService.ensureInitialized(timeout: timeout);
+      return const Success(null);
+    } catch (e) {
+      final error = 'Error ensuring sensor repository initialized: $e';
+      Logger.warning(error, tag: 'SensorRepository');
+      return Failure(UnknownError(error));
+    }
+  }
+
   /// Get real-time sensor data stream from MQTT.
   Stream<SensorData> get realTimeSensorData => mqttService.sensorDataStream;
 

@@ -159,14 +159,10 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
 
     final sensorRepository = ref.read(sensorRepositoryProvider);
     final deviceRepository = ref.read(deviceRepositoryProvider);
-    final mqttService = ref.read(mqttServiceProvider);
 
-    // Initialize repositories (allow them to succeed even if underlying services fail)
+    // Initialize repositories using consistent ensureInitialized pattern
     try {
-      // Ensure MQTT and subscriptions are ready first
-      await mqttService.ensureInitialized();
-
-      final sensorResult = await sensorRepository.initialize();
+      final sensorResult = await sensorRepository.ensureInitialized();
       if (sensorResult is Failure) {
         Logger.warning(
           'Sensor repository initialization had issues: ${sensorResult.error}',
@@ -174,7 +170,7 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
         );
       } else {
         Logger.info(
-          'Sensor repository initialized successfully',
+          'Sensor repository ensured initialized',
           tag: 'DataProviders',
         );
       }
@@ -186,39 +182,15 @@ final dataServicesInitializationProvider = FutureProvider<void>((ref) async {
     }
 
     try {
-      // Prefer repository-level ensureInitialized if available
-      try {
-        if (deviceRepository is dynamic &&
-            (deviceRepository.ensureInitialized is Function)) {
-          final res = await deviceRepository.ensureInitialized();
-          if (res is Failure) {
-            Logger.warning(
-              'Device repository ensureInitialized had issues: ${res.error}',
-              tag: 'DataProviders',
-            );
-          } else {
-            Logger.info(
-              'Device repository ensured initialized',
-              tag: 'DataProviders',
-            );
-          }
-        } else {
-          final deviceResult = await deviceRepository.initialize();
-          if (deviceResult is Failure) {
-            Logger.warning(
-              'Device repository initialization had issues: ${deviceResult.error}',
-              tag: 'DataProviders',
-            );
-          } else {
-            Logger.info(
-              'Device repository initialized successfully',
-              tag: 'DataProviders',
-            );
-          }
-        }
-      } catch (inner) {
+      final deviceResult = await deviceRepository.ensureInitialized();
+      if (deviceResult is Failure) {
         Logger.warning(
-          'Exception during device repository initialization (continuing): $inner',
+          'Device repository initialization had issues: ${deviceResult.error}',
+          tag: 'DataProviders',
+        );
+      } else {
+        Logger.info(
+          'Device repository ensured initialized',
           tag: 'DataProviders',
         );
       }
