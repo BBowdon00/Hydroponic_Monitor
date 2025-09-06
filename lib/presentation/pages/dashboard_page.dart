@@ -4,9 +4,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../widgets/sensor_tile.dart';
 import '../../core/theme.dart';
 import '../../domain/entities/sensor_data.dart';
-import '../providers/sensor_aggregation_providers.dart';
 import '../providers/device_control_providers.dart';
 import '../providers/data_providers.dart';
+import '../providers/connection_status_provider.dart';
+import '../providers/sensor_providers.dart';
 
 /// Dashboard page showing overview of sensor data and system status.
 class DashboardPage extends ConsumerStatefulWidget {
@@ -19,8 +20,6 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   @override
   Widget build(BuildContext context) {
-    // Watch initialization status
-    final dataInitialization = ref.watch(dataServicesInitializationProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     return Scaffold(
@@ -41,42 +40,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Trigger data refresh
-              ref.invalidate(dataServicesInitializationProvider);
+              // Trigger data refresh by invalidating providers
+              ref.invalidate(realTimeSensorDataProvider);
+              ref.invalidate(latestSensorReadingsProvider);
             },
           ),
         ],
       ),
-      body: dataInitialization.when(
-        data: (_) => _buildDashboardContent(),
-        loading: () => const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: AppTheme.spaceMd),
-              Text('Initializing data services...'),
-            ],
-          ),
-        ),
-        error: (error, stackTrace) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: AppTheme.spaceMd),
-              Text('Failed to initialize: $error'),
-              const SizedBox(height: AppTheme.spaceMd),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(dataServicesInitializationProvider);
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: _buildDashboardContent(),
     );
   }
 
@@ -84,7 +55,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     return RefreshIndicator(
       onRefresh: () async {
         // Refresh data services
-        ref.invalidate(dataServicesInitializationProvider);
+        ref.invalidate(realTimeSensorDataProvider);
+        ref.invalidate(latestSensorReadingsProvider);
       },
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
@@ -185,10 +157,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     IconData icon,
     Color color,
   ) {
-    final sensorReading = ref.watch(latestSensorReadingProvider(sensorType));
+    // Try to get real-time data first, fall back to historical data
+    final realTimeData = ref.watch(latestSensorDataProvider(sensorType));
+    final historicalDataAsync = ref.watch(historicalLatestSensorDataProvider(sensorType));
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
-    if (!hasSensorData) {
+    // Determine which data to use
+    final sensorData = realTimeData ?? historicalDataAsync.asData?.value;
+    
+    if (!hasSensorData && sensorData == null) {
       return SensorTile(
         title: title,
         value: 'Waiting...',
@@ -199,7 +176,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       );
     }
 
-    if (sensorReading == null) {
+    if (sensorData == null) {
       return SensorTile(
         title: title,
         value: 'No Data',
@@ -214,33 +191,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     String formattedValue;
     switch (sensorType) {
       case SensorType.temperature:
-        formattedValue = '${sensorReading.value.toStringAsFixed(1)}°C';
+        formattedValue = '${sensorData.value.toStringAsFixed(1)}°C';
         break;
       case SensorType.humidity:
-        formattedValue = '${sensorReading.value.toStringAsFixed(0)}%';
+        formattedValue = '${sensorData.value.toStringAsFixed(0)}%';
         break;
       case SensorType.pH:
-        formattedValue = sensorReading.value.toStringAsFixed(2);
+        formattedValue = sensorData.value.toStringAsFixed(2);
         break;
       case SensorType.powerUsage:
-        if (sensorReading.value > 1000) {
+        if (sensorData.value > 1000) {
           formattedValue =
-              '${(sensorReading.value / 1000).toStringAsFixed(2)} kW';
+              '${(sensorData.value / 1000).toStringAsFixed(2)} kW';
         } else {
-          formattedValue = '${sensorReading.value.toStringAsFixed(1)} W';
+          formattedValue = '${sensorData.value.toStringAsFixed(1)} W';
         }
         break;
       default:
-        formattedValue = sensorReading.value.toStringAsFixed(1);
+        formattedValue = sensorData.value.toStringAsFixed(1);
     }
 
     return SensorTile(
       title: title,
       value: formattedValue,
-      unit: sensorReading.unit,
+      unit: sensorData.unit,
       icon: icon,
       color: color,
-      trend: _calculateTrend(sensorType, sensorReading.value),
+      trend: _calculateTrend(sensorType, sensorData.value),
     );
   }
 
@@ -394,8 +371,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   void _showConnectionStatus(BuildContext context) {
-    final mqttConnection = ref.read(mqttConnectionStatusProvider);
-    final influxConnection = ref.read(influxConnectionStatusProvider);
+    final connectionStatus = ref.read(connectionStatusProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     showDialog(
@@ -406,13 +382,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildConnectionRow(
-              'MQTT',
-              mqttConnection.asData?.value ?? 'unknown',
-            ),
-            _buildConnectionRow(
-              'InfluxDB',
-              influxConnection.asData?.value ?? 'unknown',
+            connectionStatus.when(
+              data: (status) => Column(
+                children: [
+                  _buildConnectionRow(
+                    'MQTT',
+                    status.mqttConnected ? 'connected' : 'disconnected',
+                  ),
+                  _buildConnectionRow(
+                    'InfluxDB',
+                    status.influxConnected ? 'connected' : 'disconnected',
+                  ),
+                ],
+              ),
+              loading: () => Column(
+                children: [
+                  _buildConnectionRow('MQTT', 'loading'),
+                  _buildConnectionRow('InfluxDB', 'loading'),
+                ],
+              ),
+              error: (_, __) => Column(
+                children: [
+                  _buildConnectionRow('MQTT', 'error'),
+                  _buildConnectionRow('InfluxDB', 'error'),
+                ],
+              ),
             ),
             _buildConnectionRow(
               'Sensor Data',
@@ -444,6 +438,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       case 'waiting':
         statusColor = Colors.orange;
         statusIcon = Icons.warning;
+        break;
+      case 'loading':
+        statusColor = Colors.blue;
+        statusIcon = Icons.sync;
         break;
       default:
         statusColor = Colors.red;
