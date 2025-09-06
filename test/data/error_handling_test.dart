@@ -95,19 +95,5 @@ void main() {
       expect((result as Failure).error, isA<InfluxError>());
     });
 
-    test('handles partial data corruption during storage', () async {
-      final corruptData = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.temperature,
-      );
-
-      when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
-        (_) async => const Failure(InfluxError('Data corruption detected')),
-      );
-
-      final result = await repository.storeSensorData(corruptData);
-
-      expect(result, isA<Failure>());
-      expect((result as Failure).error.message, contains('Data corruption'));
-    });
   });
 }

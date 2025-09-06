@@ -20,7 +20,7 @@ class SensorRepository {
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
 
-      // Initialize MQTT service (non-blocking - continue if it fails)
+      // Initialize MQTT service
       final mqttResult = await mqttService.connect();
       if (mqttResult is Failure) {
         Logger.warning(
@@ -32,7 +32,7 @@ class SensorRepository {
         Logger.info('MQTT connected successfully', tag: 'SensorRepository');
       }
 
-      // Initialize InfluxDB service (non-blocking - continue if it fails)
+      // Initialize InfluxDB service for reading historical data
       final influxResult = await influxService.initialize();
       if (influxResult is Failure) {
         Logger.warning(
@@ -44,24 +44,14 @@ class SensorRepository {
         Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
       }
 
-      // Subscribe to MQTT sensor stream and forward to InfluxDB
+      // Subscribe to MQTT sensor stream for real-time monitoring only
       _mqttSubscription = mqttService.sensorDataStream.listen(
-        (sensorData) async {
-          try {
-            final writeResult = await influxService.writeSensorData(sensorData);
-            if (writeResult is Failure) {
-              Logger.warning(
-                'Failed to write sensor data to InfluxDB: ${writeResult.error}',
-                tag: 'SensorRepository',
-              );
-            }
-          } catch (e) {
-            Logger.error(
-              'Exception while writing sensor data: $e',
-              tag: 'SensorRepository',
-              error: e,
-            );
-          }
+        (sensorData) {
+          Logger.debug(
+            'Received sensor data: ${sensorData.sensorType} = ${sensorData.value}',
+            tag: 'SensorRepository',
+          );
+          // Note: No longer writing to InfluxDB - data writing removed
         },
         onError: (e) {
           Logger.error(
@@ -126,16 +116,6 @@ class SensorRepository {
     );
   }
 
-  /// Manually store sensor data (for testing or backup).
-  Future<Result<void>> storeSensorData(SensorData data) async {
-    return influxService.writeSensorData(data);
-  }
-
-  /// Store multiple sensor data points.
-  Future<Result<void>> storeSensorDataBatch(List<SensorData> dataList) async {
-    return influxService.writeSensorDataBatch(dataList);
-  }
-
   /// Dispose of resources.
   Future<void> dispose() async {
     try {
@@ -152,3 +132,4 @@ class SensorRepository {
     }
   }
 }
+
