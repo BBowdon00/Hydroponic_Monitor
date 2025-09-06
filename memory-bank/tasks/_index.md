@@ -1,6 +1,8 @@
 # Tasks Index
 
 ## In Progress
+- [TASK002] Examine and Refactor Providers, Services, Streams, and Repositories
+- [TASK003] Integrate Testing Procedure into Memory Bank
 
 ## Pending
 
