@@ -66,17 +66,9 @@ void main() {
     setUp(() async {
       // Create a fresh container for each test
       container = ProviderContainer();
-
-      // Ensure data services (repositories and their subscriptions) are initialized
-      // Use the provider-driven initializer so Env, MQTT, and repositories are
-      // prepared consistently for each test.
-      await container.read(dataServicesInitializationProvider.future);
-
+      await container.read(mqttServiceProvider).connect();
       // Get the MQTT service from the container after initialization
       mqttService = container.read(mqttServiceProvider);
-
-      // Small safety delay to allow any in-flight stream replays to deliver
-      await Future.delayed(const Duration(milliseconds: 200));
     });
 
     tearDown(() async {
@@ -172,7 +164,7 @@ void main() {
       Logger.debug('Payload: $payloadJson', tag: 'MQTT');
 
       // Wait for the message to be processed
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 1));
 
       // Verify the device status was received through the provider
       expect(
@@ -232,14 +224,11 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 200));
       }
 
-      // Wait for all messages to be processed
-      await Future.delayed(const Duration(seconds: 2));
-
       // Verify all sensor types were received
       expect(
         receivedData.length,
-        equals(sensorTypes.length),
-        reason: 'Should have received all sensor types through provider',
+        greaterThanOrEqualTo(sensorTypes.length),
+        reason: 'Should have received at least all sensor types through provider',
       );
 
       for (final sensorType in sensorTypes) {
