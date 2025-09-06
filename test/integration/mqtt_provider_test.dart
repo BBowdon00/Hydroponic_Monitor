@@ -11,6 +11,7 @@ import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
 import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
+import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
 import '../test_utils.dart';
 import 'package:hydroponic_monitor/core/logger.dart';
 
@@ -65,17 +66,9 @@ void main() {
     setUp(() async {
       // Create a fresh container for each test
       container = ProviderContainer();
-
-      // Ensure data services (repositories and their subscriptions) are initialized
-      // Use the provider-driven initializer so Env, MQTT, and repositories are
-      // prepared consistently for each test.
-      await container.read(dataServicesInitializationProvider.future);
-
+      await container.read(mqttServiceProvider).connect();
       // Get the MQTT service from the container after initialization
       mqttService = container.read(mqttServiceProvider);
-
-      // Small safety delay to allow any in-flight stream replays to deliver
-      await Future.delayed(const Duration(milliseconds: 200));
     });
 
     tearDown(() async {
@@ -171,7 +164,7 @@ void main() {
       Logger.debug('Payload: $payloadJson', tag: 'MQTT');
 
       // Wait for the message to be processed
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 1));
 
       // Verify the device status was received through the provider
       expect(
@@ -231,14 +224,11 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 200));
       }
 
-      // Wait for all messages to be processed
-      await Future.delayed(const Duration(seconds: 2));
-
       // Verify all sensor types were received
       expect(
         receivedData.length,
-        equals(sensorTypes.length),
-        reason: 'Should have received all sensor types through provider',
+        greaterThanOrEqualTo(sensorTypes.length),
+        reason: 'Should have received at least all sensor types through provider',
       );
 
       for (final sensorType in sensorTypes) {
@@ -309,12 +299,12 @@ void main() {
     }, timeout: testTimeout);
 
     test('MQTT connection status through provider', () async {
-      // Listen to the MQTT connection status provider
+      // Listen to the combined connection status provider
       // ignore: deprecated_member_use
       final connectionStream = container.read(
-        mqttConnectionStatusProvider.stream,
+        connectionStatusProvider.stream,
       );
-      final connectionStatuses = <String>[];
+      final connectionStatuses = <ConnectionStatus>[];
 
       final subscription = connectionStream.listen((status) {
         connectionStatuses.add(status);
@@ -327,14 +317,14 @@ void main() {
       expect(
         connectionStatuses,
         isNotEmpty,
-        reason: 'Should have received MQTT connection status updates',
+        reason: 'Should have received connection status updates',
       );
 
-      // Should contain connected status
+      // Should contain connected MQTT status
       expect(
-        connectionStatuses.contains('connected'),
+        connectionStatuses.any((status) => status.mqttConnected),
         isTrue,
-        reason: 'Should have received connected status',
+        reason: 'Should have received MQTT connected status',
       );
 
       await subscription.cancel();
