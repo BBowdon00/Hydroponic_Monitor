@@ -292,6 +292,7 @@ stateDiagram-v2
 - **← Project Brief**: [projectbrief.md](./projectbrief.md) - Project scope and requirements
 - **← Product Context**: [productContext.md](./productContext.md) - User experience goals
 - **→ Tech Context**: [techContext.md](./techContext.md) - Technology implementation details
+- **→ Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Complete testing guide
 - **→ Active Context**: [activeContext.md](./activeContext.md) - Current implementation status
 
 ---
