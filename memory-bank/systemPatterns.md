@@ -173,7 +173,86 @@ sequenceDiagram
 - ✅ Clear boundaries and responsibilities
 - ❌ Initial complexity and boilerplate
 
+### Decision 5: Unified DataService Architecture (2025)
+
+**Context**: Original architecture had redundant connection monitoring and complex provider initialization  
+**Decision**: Create unified DataService to orchestrate all data sources and simplify provider architecture  
+**Rationale**:
+- Eliminate duplicate connection status tracking
+- Centralize service initialization and error handling
+- Improve separation of concerns between presentation and data layers
+- Add business logic validation in repositories
+
+**Consequences**:
+- ✅ Simplified connection management with single source of truth
+- ✅ Enhanced repository pattern with business logic and validation
+- ✅ Reduced code duplication and complexity
+- ✅ Better error handling and service coordination
+- ✅ Maintained backward compatibility with existing code
+
+**Implementation**:
+```mermaid
+flowchart TD
+    A[SystemProviders] --> B[DataService]
+    B --> C[MqttService]
+    B --> D[InfluxDbService]
+    B --> E[ConnectionState Management]
+    
+    F[SensorRepository] --> B
+    G[DeviceRepository] --> B
+    
+    H[Enhanced Business Logic] --> F
+    H --> G
+    
+    I[Legacy Providers] --> A
+```
+
+**Files Created/Modified**:
+- `lib/data/services/data_service.dart` - New unified service orchestration
+- `lib/presentation/providers/system_providers.dart` - New simplified provider architecture
+- Enhanced `SensorRepository` and `DeviceRepository` with business logic
+- Updated `ConnectionStatusProvider` to use unified connection state
+
 ## Integration Patterns
+
+### Repository Pattern (Enhanced 2025)
+
+The repository pattern has been enhanced to include business logic and validation rather than simple pass-through functionality:
+
+#### SensorRepository Features:
+- **Data Validation**: Range checking for sensor values based on sensor type
+- **Caching**: Latest readings by sensor type for quick access
+- **Business Logic**: Average value calculations, health checks
+- **Stream Processing**: Real-time data processing with error handling
+
+#### DeviceRepository Features:
+- **Command Validation**: Validates device commands based on device type and parameters
+- **Device Health Monitoring**: Tracks device responsiveness and status
+- **Business Rules**: Applies device-specific logic and timeout handling
+- **State Management**: Maintains device state cache with status tracking
+
+### Service Orchestration Pattern
+
+The DataService pattern centralizes all data source management:
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant DataService
+    participant MQTT
+    participant InfluxDB
+    
+    App->>DataService: initialize()
+    DataService->>MQTT: connect()
+    DataService->>InfluxDB: initialize()
+    DataService->>App: ConnectionState updates
+    
+    App->>DataService: sendDeviceCommand()
+    DataService->>MQTT: publishDeviceCommand()
+    
+    App->>DataService: getHistoricalData()
+    DataService->>InfluxDB: querySensorData()
+```
 
 ### MQTT Integration Pattern
 
@@ -295,4 +374,4 @@ stateDiagram-v2
 - **→ Active Context**: [activeContext.md](./activeContext.md) - Current implementation status
 
 ---
-*Last Updated: 2025-09-06*  
+*Last Updated: 2025-01-27*  

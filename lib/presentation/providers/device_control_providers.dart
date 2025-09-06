@@ -4,7 +4,7 @@ import 'dart:async';
 import '../../domain/entities/device.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
-import 'data_providers.dart';
+import 'system_providers.dart';
 
 /// Model for device control state with confirmation tracking.
 class DeviceControlState {
@@ -103,7 +103,7 @@ class DeviceControlsState {
   }
 }
 
-/// Provider for device control states with MQTT integration.
+/// Provider for device control states with simplified MQTT integration.
 final deviceControlsProvider =
     StateNotifierProvider<DeviceControlsNotifier, DeviceControlsState>((ref) {
       return DeviceControlsNotifier(ref);
@@ -115,93 +115,61 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   }
 
   final Ref ref;
-  ProviderSubscription? _deviceStatusSubscription;
+  ProviderSubscription? _deviceStatesSubscription;
   final Map<String, Timer> _pendingTimeouts = {};
 
   void _initialize() {
     Logger.info('Initializing device controls provider', tag: 'DeviceControls');
 
-    // Listen to device status updates from MQTT
-    _deviceStatusSubscription = ref.listen(deviceStatusUpdatesProvider, (
+    // Listen to device states from the repository
+    _deviceStatesSubscription = ref.listen(deviceStatesProvider, (
       previous,
       next,
     ) {
-      _onDeviceStatusUpdate(next);
+      _onDeviceStatesUpdate(next);
     });
-
-    // Initialize known devices with default states
-    _initializeKnownDevices();
   }
 
-  void _initializeKnownDevices() {
-    // Initialize common hydroponic devices
-    final knownDevices = {
-      'rpi_pump_1': DeviceType.pump,
-      'rpi_fan_1': DeviceType.fan,
-      'rpi_fan_2': DeviceType.fan,
-      'rpi_light_1': DeviceType.light,
-      'rpi_heater_1': DeviceType.heater,
-      'esp32_fan_3': DeviceType.fan,
-      'esp32_light_2': DeviceType.light,
-    };
+  void _onDeviceStatesUpdate(AsyncValue<Map<String, Device>> asyncDevices) {
+    asyncDevices.when(
+      data: (devices) {
+        final newControlStates = <String, DeviceControlState>{};
+        
+        for (final device in devices.values) {
+          final existingState = state.devices[device.id];
+          
+          newControlStates[device.id] = DeviceControlState(
+            deviceId: device.id,
+            deviceType: device.type,
+            isEnabled: device.isEnabled,
+            status: device.status,
+            isPending: existingState?.isPending ?? false,
+            lastCommand: existingState?.lastCommand,
+            lastCommandTime: existingState?.lastCommandTime,
+            intensity: existingState?.intensity,
+            pendingCommandId: existingState?.pendingCommandId,
+          );
+          
+          // Clear pending state if device status updated
+          if (existingState?.isPending == true) {
+            _clearPendingTimeout(device.id);
+          }
+        }
 
-    final newDevices = <String, DeviceControlState>{};
-    for (final entry in knownDevices.entries) {
-      newDevices[entry.key] = DeviceControlState(
-        deviceId: entry.key,
-        deviceType: entry.value,
-        isEnabled: false,
-        status: DeviceStatus.offline,
-      );
-    }
-
-    state = state.copyWith(devices: newDevices);
-  }
-
-  void _onDeviceStatusUpdate(AsyncValue<Device> asyncDevice) {
-    asyncDevice.when(
-      data: (device) {
-        _updateDeviceStatus(device);
+        state = state.copyWith(
+          devices: newControlStates,
+          lastUpdate: DateTime.now(),
+        );
       },
       loading: () {
         // Handle loading state if needed
       },
       error: (error, stackTrace) {
         Logger.error(
-          'Error processing device update: $error',
+          'Error processing device states update: $error',
           tag: 'DeviceControls',
         );
       },
-    );
-  }
-
-  void _updateDeviceStatus(Device device) {
-    final newDevices = Map<String, DeviceControlState>.from(state.devices);
-    final currentState = newDevices[device.id];
-
-    final updatedState =
-        (currentState ??
-                DeviceControlState(
-                  deviceId: device.id,
-                  deviceType: device.type,
-                  isEnabled: device.isEnabled,
-                  status: device.status,
-                ))
-            .copyWith(
-              isEnabled: device.isEnabled,
-              status: device.status,
-              isPending: false, // Status update means command completed
-            );
-
-    newDevices[device.id] = updatedState;
-    state = state.copyWith(devices: newDevices, lastUpdate: DateTime.now());
-
-    // Clear any pending timeout for this device
-    _clearPendingTimeout(device.id);
-
-    Logger.info(
-      'Updated device status: ${device.id} = ${device.status.displayName} (enabled: ${device.isEnabled})',
-      tag: 'DeviceControls',
     );
   }
 
@@ -347,7 +315,7 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
 
   @override
   void dispose() {
-    _deviceStatusSubscription?.close();
+    _deviceStatesSubscription?.close();
     for (final timer in _pendingTimeouts.values) {
       timer.cancel();
     }

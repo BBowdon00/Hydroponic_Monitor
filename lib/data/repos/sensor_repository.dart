@@ -3,59 +3,36 @@ import 'dart:async';
 import '../../core/errors.dart';
 import '../../core/logger.dart';
 import '../../domain/entities/sensor_data.dart';
-import '../mqtt/mqtt_service.dart';
-import '../influx/influx_service.dart';
+import '../services/data_service.dart';
 
-/// Repository for managing sensor data from MQTT and InfluxDB.
+/// Repository for sensor data operations and business logic.
+/// Provides sensor data access, validation, and aggregation functionality.
 class SensorRepository {
-  SensorRepository({required this.mqttService, required this.influxService});
+  SensorRepository({required this.dataService});
 
-  final MqttService mqttService;
-  final InfluxDbService influxService;
+  final DataService dataService;
 
-  StreamSubscription<SensorData>? _mqttSubscription;
+  // Cache for latest sensor readings by type
+  final Map<SensorType, SensorData> _latestReadingsByType = {};
+  final StreamController<Map<SensorType, SensorData>> _latestReadingsController =
+      StreamController<Map<SensorType, SensorData>>.broadcast();
 
-  /// Initialize the repository and start listening to MQTT data.
+  StreamSubscription<SensorData>? _sensorDataSubscription;
+
+  /// Initialize the repository and start processing sensor data.
   Future<Result<void>> initialize() async {
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
 
-      // Initialize MQTT service
-      final mqttResult = await mqttService.connect();
-      if (mqttResult is Failure) {
-        Logger.warning(
-          'MQTT connection failed during initialization: ${mqttResult.error}',
-          tag: 'SensorRepository',
-        );
-        return mqttResult;
-      } else {
-        Logger.info('MQTT connected successfully', tag: 'SensorRepository');
-      }
+      // Ensure data service is ready
+      await dataService.ensureInitialized();
 
-      // Initialize InfluxDB service for reading historical data
-      final influxResult = await influxService.initialize();
-      if (influxResult is Failure) {
-        Logger.warning(
-          'InfluxDB connection failed during initialization: ${influxResult.error}',
-          tag: 'SensorRepository',
-        );
-        return influxResult;
-      } else {
-        Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
-      }
-
-      // Subscribe to MQTT sensor stream for real-time monitoring only
-      _mqttSubscription = mqttService.sensorDataStream.listen(
-        (sensorData) {
-          Logger.debug(
-            'Received sensor data: ${sensorData.sensorType} = ${sensorData.value}',
-            tag: 'SensorRepository',
-          );
-          // Note: No longer writing to InfluxDB - data writing removed
-        },
+      // Subscribe to real-time sensor data for caching and processing
+      _sensorDataSubscription = dataService.sensorDataStream.listen(
+        _processSensorData,
         onError: (e) {
           Logger.error(
-            'MQTT sensor stream error: $e',
+            'Error processing sensor data: $e',
             tag: 'SensorRepository',
             error: e,
           );
@@ -74,8 +51,69 @@ class SensorRepository {
     }
   }
 
-  /// Get real-time sensor data stream from MQTT.
-  Stream<SensorData> get realTimeSensorData => mqttService.sensorDataStream;
+  /// Process incoming sensor data for caching and validation.
+  void _processSensorData(SensorData sensorData) {
+    try {
+      Logger.debug(
+        'Processing sensor data: ${sensorData.sensorType} = ${sensorData.value}',
+        tag: 'SensorRepository',
+      );
+
+      // Validate sensor data
+      if (_isValidSensorData(sensorData)) {
+        // Update cache with latest reading
+        _latestReadingsByType[sensorData.sensorType] = sensorData;
+
+        // Emit updated latest readings
+        _latestReadingsController.add(Map.from(_latestReadingsByType));
+      } else {
+        Logger.warning(
+          'Invalid sensor data received: ${sensorData.id}',
+          tag: 'SensorRepository',
+        );
+      }
+    } catch (e) {
+      Logger.error(
+        'Error processing sensor data: $e',
+        tag: 'SensorRepository',
+        error: e,
+      );
+    }
+  }
+
+  /// Validate sensor data based on business rules.
+  bool _isValidSensorData(SensorData data) {
+    // Check for reasonable value ranges based on sensor type
+    switch (data.sensorType) {
+      case SensorType.temperature:
+        return data.value >= -50.0 && data.value <= 80.0;
+      case SensorType.humidity:
+        return data.value >= 0.0 && data.value <= 100.0;
+      case SensorType.pH:
+        return data.value >= 0.0 && data.value <= 14.0;
+      case SensorType.waterLevel:
+        return data.value >= 0.0 && data.value <= 100.0;
+      case SensorType.electricalConductivity:
+        return data.value >= 0.0 && data.value <= 5000.0;
+      case SensorType.lightIntensity:
+        return data.value >= 0.0 && data.value <= 100000.0;
+      case SensorType.airQuality:
+        return data.value >= 0.0 && data.value <= 5000.0;
+      case SensorType.powerUsage:
+        return data.value >= 0.0 && data.value <= 10000.0;
+    }
+  }
+
+  /// Get real-time sensor data stream.
+  Stream<SensorData> get realTimeSensorData => dataService.sensorDataStream;
+
+  /// Stream of latest sensor readings by type.
+  Stream<Map<SensorType, SensorData>> get latestReadingsByType => _latestReadingsController.stream;
+
+  /// Get the latest reading for a specific sensor type.
+  SensorData? getLatestReading(SensorType sensorType) {
+    return _latestReadingsByType[sensorType];
+  }
 
   /// Get historical sensor data from InfluxDB.
   Future<Result<List<SensorData>>> getHistoricalData({
@@ -86,7 +124,7 @@ class SensorRepository {
     DateTime? end,
     int? limit,
   }) async {
-    return influxService.querySensorData(
+    return dataService.getHistoricalSensorData(
       sensorType: sensorType,
       sensorId: sensorId,
       deviceId: deviceId,
@@ -98,7 +136,7 @@ class SensorRepository {
 
   /// Get latest sensor readings for all sensors.
   Future<Result<List<SensorData>>> getLatestReadings() async {
-    return influxService.queryLatestSensorData();
+    return dataService.getLatestSensorReadings();
   }
 
   /// Get sensor data for a specific sensor type over time.
@@ -108,7 +146,7 @@ class SensorRepository {
     DateTime? end,
     int? limit,
   }) async {
-    return influxService.querySensorData(
+    return dataService.getHistoricalSensorData(
       sensorType: sensorType,
       start: start ?? DateTime.now().subtract(const Duration(hours: 24)),
       end: end ?? DateTime.now(),
@@ -116,13 +154,65 @@ class SensorRepository {
     );
   }
 
+  /// Get aggregated sensor readings for dashboard display.
+  Map<SensorType, SensorData> getLatestReadingsByType() {
+    return Map.from(_latestReadingsByType);
+  }
+
+  /// Calculate average value for a sensor type over time.
+  Future<Result<double?>> getAverageValue(
+    SensorType sensorType, {
+    Duration period = const Duration(hours: 1),
+  }) async {
+    try {
+      final end = DateTime.now();
+      final start = end.subtract(period);
+
+      final result = await getSensorTypeHistory(
+        sensorType,
+        start: start,
+        end: end,
+        limit: 100,
+      );
+
+      if (result is Success<List<SensorData>>) {
+        final data = (result as Success<List<SensorData>>).data;
+        if (data.isEmpty) return const Success(null);
+        
+        final sum = data.fold<double>(0.0, (sum, reading) => sum + reading.value);
+        final average = sum / data.length;
+        return Success(average);
+      } else {
+        return result as Failure<double?>;
+      }
+    } catch (e) {
+      final error = 'Error calculating average value: $e';
+      Logger.error(error, tag: 'SensorRepository', error: e);
+      return Failure(UnknownError(error));
+    }
+  }
+
+  /// Check if sensor readings are within acceptable ranges.
+  bool isSensorReadingNormal(SensorType sensorType, double value) {
+    return _isValidSensorData(
+      SensorData(
+        id: 'validation',
+        sensorType: sensorType,
+        value: value,
+        unit: sensorType.defaultUnit,
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+
   /// Dispose of resources.
   Future<void> dispose() async {
     try {
       Logger.info('Disposing sensor repository', tag: 'SensorRepository');
-      await _mqttSubscription?.cancel();
-      await mqttService.disconnect();
-      await influxService.close();
+      await _sensorDataSubscription?.cancel();
+      if (!_latestReadingsController.isClosed) {
+        await _latestReadingsController.close();
+      }
     } catch (e) {
       Logger.error(
         'Error disposing sensor repository: $e',
