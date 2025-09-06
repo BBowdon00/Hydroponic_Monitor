@@ -34,6 +34,7 @@ The Hydroponic Monitor is in **Development** state with some functionality imple
 - [x] **Integration Testing**: 5 end-to-end test scenarios
 - [x] **CI/CD Pipeline**: GitHub Actions with automated testing
 - [x] **Quality Gates**: Formatting, analysis, testing, build verification
+- [x] **Testing Procedure**: Comprehensive testing documentation and procedures
 
 #### Cross-platform Support
 - [x] **Web Application**: Primary platform
@@ -69,6 +70,7 @@ The Hydroponic Monitor is in **Development** state with some functionality imple
 - **← Product Context**: [productContext.md](./productContext.md) - User experience goals
 - **← System Patterns**: [systemPatterns.md](./systemPatterns.md) - Architecture patterns
 - **← Tech Context**: [techContext.md](./techContext.md) - Technology implementation
+- **← Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Complete testing guide
 - **← Active Context**: [activeContext.md](./activeContext.md) - Current development focus
 - **→ Tasks**: [tasks/](./tasks/) - Individual work items and detailed tracking
 

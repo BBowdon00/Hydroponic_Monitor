@@ -225,7 +225,7 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 
 ### Automated Testing
 ```yaml
-Unit Tests: 80+ tests covering business logic
+Unit Tests: 70+ tests covering business logic
 Widget Tests: UI component testing
 Integration Tests: 5+ end-to-end scenarios
 ```
@@ -248,6 +248,9 @@ Docker Services:
   - Mock video stream
   - Network simulation tools
 ```
+
+### Testing Procedure
+For complete testing instructions, procedures, and troubleshooting, see the **[Testing Procedure](./testing-procedure.md)** document.
 
 ## Deployment Architecture
 
@@ -279,6 +282,7 @@ flowchart LR
 ## Related Documents
 - **← Project Brief**: [projectbrief.md](./projectbrief.md) - Project scope and requirements
 - **← System Patterns**: [systemPatterns.md](./systemPatterns.md) - Architecture patterns
+- **→ Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Complete testing guide
 - **→ Active Context**: [activeContext.md](./activeContext.md) - Current development status
 - **→ Progress**: [progress.md](./progress.md) - Implementation roadmap
 
