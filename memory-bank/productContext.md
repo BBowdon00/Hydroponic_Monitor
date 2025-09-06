@@ -15,9 +15,6 @@ Hydroponic systems require continuous monitoring and control of multiple environ
 - **Accessibility**: System status not available when away from location
 - **Integration Gaps**: Disparate sensors and controllers lack unified interface
 
-### Market Opportunity
-Growing interest in sustainable agriculture, urban farming, and automated hydroponic systems creates demand for comprehensive monitoring solutions that combine ease-of-use with technical capability.
-
 ## Target Users
 
 ### Primary Users
@@ -29,28 +26,12 @@ Growing interest in sustainable agriculture, urban farming, and automated hydrop
 - **Usage Patterns**: Daily check-ins, occasional adjustments
 - **Pain Points**: Technical setup complexity, data interpretation
 
-#### Urban Farmers
-- **Profile**: Small commercial or serious hobby operations
-- **Technical Level**: Intermediate to advanced
-- **Primary Needs**: Comprehensive control, automation, optimization
-- **Usage Patterns**: Multiple daily interactions, system tuning
-- **Pain Points**: System reliability, scaling complexity
-
 #### Educational Institutions
 - **Profile**: Schools, universities with agricultural programs
 - **Technical Level**: Varies (students to researchers)
 - **Primary Needs**: Educational visibility, data collection, experimentation
 - **Usage Patterns**: Classroom demonstrations, research projects
 - **Pain Points**: System setup, student accessibility
-
-### Secondary Users
-
-#### System Integrators
-- **Profile**: Technical specialists setting up hydroponic systems
-- **Technical Level**: Advanced
-- **Primary Needs**: Configuration flexibility, troubleshooting tools
-- **Usage Patterns**: Initial setup, maintenance, support
-- **Pain Points**: Complex integrations, debugging capabilities
 
 ## User Experience Goals
 
@@ -73,12 +54,6 @@ Growing interest in sustainable agriculture, urban farming, and automated hydrop
 - **Adaptive Design**: Optimized for each platform's strengths
 - **State Synchronization**: Settings and preferences sync across devices
 - **Offline Graceful**: Maintain functionality during connectivity issues
-
-#### Accessibility & Inclusion
-- **Universal Design**: Usable by people with diverse abilities
-- **Semantic Navigation**: Screen reader compatibility
-- **Keyboard Support**: Full functionality without mouse/touch
-- **Visual Accessibility**: High contrast, scalable text, color-blind friendly
 
 ### User Journey Mapping
 
@@ -140,32 +115,6 @@ journey
 - **Export Capabilities**: Data download for external analysis
 - **Correlation Insights**: Relationship visualization between metrics
 
-## Success Metrics
-
-### User Satisfaction Metrics
-- **Net Promoter Score (NPS)**: Target > 50
-- **User Retention**: 90% daily active users after 30 days
-- **Task Completion Rate**: 95% success rate for common tasks
-- **Support Requests**: < 5% of users require setup assistance
-
-### Engagement Metrics
-- **Daily Active Users**: 80% of installed base
-- **Session Duration**: Average 5+ minutes per session
-- **Feature Adoption**: 70% users utilize historical charts
-- **Video Usage**: 60% users regularly check video feeds
-
-### Performance Metrics
-- **App Launch Time**: < 3 seconds to dashboard
-- **Data Freshness**: 95% of sensor readings < 30 seconds old
-- **Connection Reliability**: 99.5% uptime for MQTT connections
-- **Cross-platform Consistency**: Identical functionality scores across platforms
-
-### Business Impact Metrics
-- **Problem Resolution**: 90% reduction in manual monitoring time
-- **System Reliability**: 50% reduction in crop loss incidents
-- **User Efficiency**: 75% faster system management tasks
-- **Learning Curve**: New users productive within 30 minutes
-
 ## Design Philosophy
 
 ### Material 3 Design System
@@ -186,20 +135,6 @@ journey
 - **Status Coding**: Color, icons, and typography convey system state
 - **Comparative**: Enable easy comparison across time periods and metrics
 
-## Competitive Analysis
-
-### Direct Competitors
-- **Industrial SCADA Systems**: Complex, expensive, not user-friendly
-- **IoT Dashboards**: Generic, lack hydroponic-specific features
-- **Existing Hydroponic Apps**: Limited integration, poor UX design
-
-### Competitive Advantages
-- **Flutter Cross-platform**: Single codebase, native performance
-- **MQTT + InfluxDB**: Industrial-grade data infrastructure
-- **Open Source**: Community-driven development, no vendor lock-in
-- **Domain Expertise**: Built specifically for hydroponic use cases
-- **Modern UX**: Contemporary design principles and accessibility
-
 ---
 
 ## Related Documents
@@ -209,5 +144,4 @@ journey
 - **→ Active Context**: [activeContext.md](./activeContext.md) - Current development focus
 
 ---
-*Last Updated: 2025-01-27*  
-*Document Owner: Product Team*
+*Last Updated: 2025-09-06*

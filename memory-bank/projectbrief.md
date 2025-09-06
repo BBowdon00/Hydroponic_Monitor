@@ -13,11 +13,9 @@
 Build a comprehensive, cross-platform Flutter application to monitor and control hydroponic systems with real-time sensors, device controls, video feed, historical charts, and MQTT integration. Provide an intuitive dashboard for tracking water levels, temperature, humidity, pH, and electrical conductivity while enabling remote control of pumps, fans, lighting, and heating systems.
 
 ## Target Platforms
-- **Web**: Primary development and deployment target (WASM support)
-- **Android**: Mobile monitoring and control
-- **Windows**: Desktop management interface
-- **iOS**: Mobile app for iOS users
-- **Linux**: Desktop alternative for Linux users
+- **Web**
+- **Android**
+- Later, iOS support
 
 ## Core Requirements
 
@@ -25,13 +23,13 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 
 #### Real-time Monitoring
 - **Dashboard**: Live sensor readings with trend indicators
-- **Sensor Types**: Water level, temperature, humidity, pH, electrical conductivity, light intensity, air quality, power usage
-- **Data Sources**: ESP32 microcontrollers, Raspberry Pi nodes
+- **Sensor Types**: Water level, temperature, humidity, pH, electrical conductivity, light intensity, power usage
+- **Data Sources**: ESP32 microcontrollers, Raspberry Pi nodes through MQTT messages
 - **Update Frequency**: Real-time via MQTT streaming
 
 #### Device Control
-- **Actuators**: Water pumps, circulation fans, LED grow lights, heaters
-- **Control Types**: On/off, intensity adjustment, scheduling
+- **Actuators**: Water pumps, circulation fans, LED grow lights
+- **Control Types**: On/off,  scheduling (later)
 - **Feedback Loop**: Command confirmation and state verification
 - **Safety**: Timeout handling, retry logic, error reporting
 
@@ -48,7 +46,6 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 
 #### System Management
 - **Configuration**: MQTT, InfluxDB, video streams, app preferences
-- **Alerts**: Configurable alert rules and incident management
 - **Connectivity**: Connection status and offline handling
 - **Settings**: User preferences, theme selection, notification settings
 
@@ -56,9 +53,8 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 
 #### Performance
 - **Response Time**: < 100ms for UI interactions
-- **Data Latency**: Near real-time sensor updates (< 1s)
+- **Data Latency**: Near real-time sensor updates (< 5s)
 - **Memory Usage**: Efficient for mobile devices
-- **Battery**: Optimized for mobile battery life
 
 #### Reliability
 - **Uptime**: 99.9% application availability
@@ -68,8 +64,6 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 
 #### Security
 - **Authentication**: MQTT broker authentication
-- **Encryption**: TLS encryption for MQTT connections
-- **Configuration**: Secure storage of sensitive settings
 - **Access Control**: Device-specific permissions
 
 #### Scalability
@@ -83,7 +77,6 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 ### User Experience
 - **Intuitive Interface**: Easy navigation for non-technical users
 - **Responsive Design**: Consistent experience across all platforms
-- **Accessibility**: Full accessibility compliance (WCAG 2.1)
 - **Performance**: Smooth animations and interactions
 
 ### System Integration
@@ -110,7 +103,6 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 - **Budget**: Open source project with minimal external costs
 - **Timeline**: Iterative development with MVP approach
 - **Resources**: Limited to development team availability
-- **Licensing**: MIT license for public availability
 
 ### Assumptions
 - **Infrastructure**: Pre-existing MQTT broker and InfluxDB setup
@@ -140,5 +132,4 @@ flowchart TD
 - **Progress**: [progress.md](./progress.md) - Implementation status and roadmap
 
 ---
-*Last Updated: 2025-01-27*  
-*Document Owner: Development Team*
+*Last Updated: 2025-09-06*  

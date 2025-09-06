@@ -9,7 +9,7 @@
 #### Flutter 3.35.2+
 - **Language**: Dart 3.9.0+
 - **Rationale**: Cross-platform native performance with single codebase
-- **Platforms**: Web (primary), Android, Windows, iOS, Linux
+- **Platforms**: Web (primary), Android, Windows
 - **Architecture**: Widget-based reactive UI with hot reload
 
 #### Key Flutter Features Used
@@ -87,7 +87,6 @@
 #### Secure Storage
 - **Package**: flutter_secure_storage ^9.2.2
 - **Use Cases**: MQTT credentials, InfluxDB tokens
-- **Platforms**: Keychain (iOS), Keystore (Android), encrypted files (others)
 - **Security**: Platform-native secure storage mechanisms
 
 #### Environment Configuration
@@ -127,7 +126,6 @@ Git: Version control
 Web: Modern browser with WebAssembly support
 Android: Android SDK 21+ (Android 5.0+)
 Windows: Windows 10+ with Visual Studio Build Tools
-iOS: Xcode 12+ on macOS
 Linux: GTK 3.0+ development headers
 ```
 
@@ -177,7 +175,6 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 #### Memory Usage
 - **Mobile Devices**: Optimize for 2GB+ RAM devices
 - **Web Browsers**: Efficient memory management for long-running sessions
-- **Desktop**: Reasonable resource usage for background operation
 
 #### Network Bandwidth
 - **MQTT Messages**: Efficient payload sizes < 1KB per message
@@ -203,24 +200,6 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 - **Storage**: Platform-specific secure storage limitations
 - **Notifications**: Background notification capabilities
 
-#### Desktop Platforms
-- **Window Management**: Multi-window support considerations
-- **Native Integration**: Platform-specific feature access
-- **Distribution**: Packaging and deployment mechanisms
-
-### Security Constraints
-
-#### Network Security
-- **MQTT TLS**: Encrypted connections to MQTT broker
-- **Certificate Validation**: Custom certificate handling
-- **Authentication**: Username/password and token-based auth
-- **Network Isolation**: Local network vs internet considerations
-
-#### Data Security
-- **Credential Storage**: Secure storage of sensitive configuration
-- **Data Transmission**: Encrypted data in transit
-- **Local Storage**: Secure local data caching
-- **Audit Logging**: Security event logging
 
 ## Integration Constraints
 
@@ -249,7 +228,6 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 Unit Tests: 80+ tests covering business logic
 Widget Tests: UI component testing
 Integration Tests: 5+ end-to-end scenarios
-Performance Tests: Memory and CPU profiling
 ```
 
 ### CI/CD Pipeline
@@ -279,15 +257,9 @@ flowchart TD
     A[Source Code] --> B[Flutter Build]
     B --> C[Web Build]
     B --> D[Android APK]
-    B --> E[Windows Installer]
     B --> F[iOS IPA]
-    B --> G[Linux AppImage]
     
     C --> H[Web Server Deploy]
-    D --> I[Play Store]
-    E --> J[Windows Distribution]
-    F --> K[App Store]
-    G --> L[Linux Package]
 ```
 
 ### Infrastructure Dependencies
@@ -311,5 +283,4 @@ flowchart LR
 - **→ Progress**: [progress.md](./progress.md) - Implementation roadmap
 
 ---
-*Last Updated: 2025-01-27*  
-*Document Owner: Technical Team*
+*Last Updated: 2025-09-06*
