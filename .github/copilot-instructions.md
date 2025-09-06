@@ -193,20 +193,13 @@ The `_index.md` file maintains a structured record of all tasks sorted by status
 # Tasks Index
 
 ## In Progress
-- [TASK003] Implement user authentication - Working on OAuth integration
-- [TASK005] Create dashboard UI - Building main components
+- [TASK001] Finish implementing memory bank instruction
 
 ## Pending
-- [TASK006] Add export functionality - Planned for next sprint
-- [TASK007] Optimize database queries - Waiting for performance testing
 
 ## Completed
-- [TASK001] Project setup - Completed on 2025-03-15
-- [TASK002] Create database schema - Completed on 2025-03-17
-- [TASK004] Implement login page - Completed on 2025-03-20
 
 ## Abandoned
-- [TASK008] Integrate with legacy system - Abandoned due to API deprecation
 ```
 
 ### Individual Task Structure
