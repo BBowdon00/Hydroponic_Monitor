@@ -4,9 +4,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../widgets/sensor_tile.dart';
 import '../../core/theme.dart';
 import '../../domain/entities/sensor_data.dart';
-import '../providers/sensor_aggregation_providers.dart';
-import '../providers/device_control_providers.dart';
 import '../providers/data_providers.dart';
+import '../providers/device_control_providers.dart';
 
 /// Dashboard page showing overview of sensor data and system status.
 class DashboardPage extends ConsumerStatefulWidget {
