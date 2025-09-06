@@ -9,6 +9,7 @@ import 'package:hydroponic_monitor/core/errors.dart';
 import '../test_utils.dart';
 
 class MockMqttService extends Mock implements MqttService {}
+
 class MockInfluxDbService extends Mock implements InfluxDbService {}
 
 /// Tests for error handling scenarios that can occur during network operations.
@@ -33,8 +34,9 @@ void main() {
 
     test('handles MQTT connection timeout gracefully', () async {
       // Simulate connection timeout
-      when(() => mockMqttService.connect())
-          .thenAnswer((_) async => const Failure(MqttError('Connection timeout')));
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Failure(MqttError('Connection timeout')));
 
       final result = await repository.initialize();
 
@@ -43,42 +45,49 @@ void main() {
     });
 
     test('handles InfluxDB service unavailable gracefully', () async {
-      when(() => mockMqttService.connect())
-          .thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.initialize())
-          .thenAnswer((_) async => const Failure(InfluxError('Service unavailable')));
-      when(() => mockMqttService.sensorDataStream)
-          .thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Success(null));
+      when(() => mockInfluxService.initialize()).thenAnswer(
+        (_) async => const Failure(InfluxError('Service unavailable')),
+      );
+      when(
+        () => mockMqttService.sensorDataStream,
+      ).thenAnswer((_) => const Stream.empty());
 
       final result = await repository.initialize();
 
       expect(result, isA<Failure>());
-      expect((result as Failure).error.message, contains('Service unavailable'));
+      expect(
+        (result as Failure).error.message,
+        contains('Service unavailable'),
+      );
     });
 
     test('handles intermittent MQTT disconnections', () async {
       // Setup successful initial connection
-      when(() => mockMqttService.connect())
-          .thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.initialize())
-          .thenAnswer((_) async => const Success(null));
-      
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockInfluxService.initialize(),
+      ).thenAnswer((_) async => const Success(null));
+
       // Simulate MQTT stream with errors
-      when(() => mockMqttService.sensorDataStream)
-          .thenAnswer((_) => Stream.error('MQTT disconnection'));
+      when(
+        () => mockMqttService.sensorDataStream,
+      ).thenAnswer((_) => Stream.error('MQTT disconnection'));
 
       await repository.initialize();
 
       // Should handle stream errors gracefully without crashing
-      expect(
-        repository.realTimeSensorData,
-        emitsError(isA<String>()),
-      );
+      expect(repository.realTimeSensorData, emitsError(isA<String>()));
     });
 
     test('handles InfluxDB query failures', () async {
-      when(() => mockInfluxService.queryLatestSensorData())
-          .thenAnswer((_) async => const Failure(InfluxError('Query failed')));
+      when(
+        () => mockInfluxService.queryLatestSensorData(),
+      ).thenAnswer((_) async => const Failure(InfluxError('Query failed')));
 
       final result = await repository.getLatestReadings();
 
@@ -91,8 +100,9 @@ void main() {
         sensorType: SensorType.temperature,
       );
 
-      when(() => mockInfluxService.writeSensorData(any()))
-          .thenAnswer((_) async => const Failure(InfluxError('Data corruption detected')));
+      when(() => mockInfluxService.writeSensorData(any())).thenAnswer(
+        (_) async => const Failure(InfluxError('Data corruption detected')),
+      );
 
       final result = await repository.storeSensorData(corruptData);
 

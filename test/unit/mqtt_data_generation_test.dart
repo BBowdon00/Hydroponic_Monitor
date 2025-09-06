@@ -71,21 +71,24 @@ void main() {
   });
 
   group('Device Generation', () {
-    test('should generate devices with correct types and consistent naming', () {
-      for (final deviceType in DeviceType.values) {
-        final device = TestDataGenerator.generateDevice(type: deviceType);
-        expect(device.type, equals(deviceType));
-        expect(device.id, contains(deviceType.name));
-      }
-      
-      // Test consistent naming
-      final customDevice = TestDataGenerator.generateDevice(
-        id: 'pump_001',
-        type: DeviceType.pump,
-      );
-      expect(customDevice.name, contains('001'));
-      expect(customDevice.id, equals('pump_001'));
-    });
+    test(
+      'should generate devices with correct types and consistent naming',
+      () {
+        for (final deviceType in DeviceType.values) {
+          final device = TestDataGenerator.generateDevice(type: deviceType);
+          expect(device.type, equals(deviceType));
+          expect(device.id, contains(deviceType.name));
+        }
+
+        // Test consistent naming
+        final customDevice = TestDataGenerator.generateDevice(
+          id: 'pump_001',
+          type: DeviceType.pump,
+        );
+        expect(customDevice.name, contains('001'));
+        expect(customDevice.id, equals('pump_001'));
+      },
+    );
 
     test('should handle all device statuses', () {
       final statuses = <DeviceStatus>{};

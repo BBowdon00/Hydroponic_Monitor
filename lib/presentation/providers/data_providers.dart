@@ -13,8 +13,8 @@ import '../../core/env.dart';
 /// Provider for MQTT service configuration.
 final mqttServiceProvider = Provider<MqttService>((ref) {
   return MqttService(
-    host: Env.mqttHost,         // <-- MQTT broker host
-    port: Env.mqttPort,         // <-- MQTT broker port
+    host: Env.mqttHost, // <-- MQTT broker host
+    port: Env.mqttPort, // <-- MQTT broker port
     clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
     username: Env.mqttUsername.isNotEmpty ? Env.mqttUsername : null,
     password: Env.mqttPassword.isNotEmpty ? Env.mqttPassword : null,

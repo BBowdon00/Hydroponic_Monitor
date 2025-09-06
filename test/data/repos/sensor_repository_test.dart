@@ -209,7 +209,6 @@ void main() {
       });
     });
 
-
     group('disposal', () {
       test('properly disposes all resources', () async {
         when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
