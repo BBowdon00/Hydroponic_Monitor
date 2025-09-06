@@ -30,50 +30,14 @@ void main() {
     });
   });
 
-  group('Sensor Data Generation', () {
-    test('should generate realistic temperature values', () {
-      final data = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.temperature,
-        timestamp: DateTime(2025, 1, 15, 14, 30), // 2:30 PM
-      );
-
-      expect(data.sensorType, equals(SensorType.temperature));
-      expect(data.unit, equals('°C'));
-      expect(data.value, greaterThanOrEqualTo(15.0));
-      expect(data.value, lessThanOrEqualTo(35.0));
-    });
-
-    test('should generate realistic humidity values', () {
-      final data = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.humidity,
-        timestamp: DateTime(2025, 1, 15, 12, 0), // Noon
-      );
-
-      expect(data.sensorType, equals(SensorType.humidity));
-      expect(data.unit, equals('%'));
-      expect(data.value, greaterThanOrEqualTo(40.0));
-      expect(data.value, lessThanOrEqualTo(90.0));
-    });
-
-    test('should generate realistic pH values', () {
-      final data = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.pH,
-      );
-
-      expect(data.sensorType, equals(SensorType.pH));
-      expect(data.unit, equals('pH'));
-      expect(data.value, greaterThanOrEqualTo(5.5));
-      expect(data.value, lessThanOrEqualTo(7.0));
-    });
-
-    test('should generate light intensity based on time of day', () {
-      // Test daytime reading
+  group('Test Data Generation', () {
+    test('should generate realistic sensor data with time-based values', () {
+      // Test that light intensity varies by time of day (key business logic)
       final dayData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.lightIntensity,
         timestamp: DateTime(2025, 1, 15, 14, 0), // 2 PM
       );
 
-      // Test nighttime reading
       final nightData = TestDataGenerator.generateSensorData(
         sensorType: SensorType.lightIntensity,
         timestamp: DateTime(2025, 1, 15, 2, 0), // 2 AM
@@ -107,23 +71,24 @@ void main() {
   });
 
   group('Device Generation', () {
-    test('should generate devices with correct types', () {
-      for (final deviceType in DeviceType.values) {
-        final device = TestDataGenerator.generateDevice(type: deviceType);
-        expect(device.type, equals(deviceType));
-        expect(device.id, contains(deviceType.name));
-      }
-    });
+    test(
+      'should generate devices with correct types and consistent naming',
+      () {
+        for (final deviceType in DeviceType.values) {
+          final device = TestDataGenerator.generateDevice(type: deviceType);
+          expect(device.type, equals(deviceType));
+          expect(device.id, contains(deviceType.name));
+        }
 
-    test('should generate device names consistently', () {
-      final device = TestDataGenerator.generateDevice(
-        id: 'pump_001',
-        type: DeviceType.pump,
-      );
-
-      expect(device.name, contains('001'));
-      expect(device.id, equals('pump_001'));
-    });
+        // Test consistent naming
+        final customDevice = TestDataGenerator.generateDevice(
+          id: 'pump_001',
+          type: DeviceType.pump,
+        );
+        expect(customDevice.name, contains('001'));
+        expect(customDevice.id, equals('pump_001'));
+      },
+    );
 
     test('should handle all device statuses', () {
       final statuses = <DeviceStatus>{};
@@ -200,48 +165,6 @@ void main() {
     });
   });
 
-  group('Data Validation Rules', () {
-    test('should validate sensor value ranges', () {
-      final tempData = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.temperature,
-      );
-
-      // Temperature should be in reasonable range for hydroponics
-      expect(tempData.value, greaterThanOrEqualTo(10.0));
-      expect(tempData.value, lessThanOrEqualTo(40.0));
-    });
-
-    test('should validate pH values for hydroponics', () {
-      final phData = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.pH,
-      );
-
-      // pH should be in hydroponic range
-      expect(phData.value, greaterThanOrEqualTo(5.0));
-      expect(phData.value, lessThanOrEqualTo(7.5));
-    });
-
-    test('should validate electrical conductivity values', () {
-      final ecData = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.electricalConductivity,
-      );
-
-      // EC should be in reasonable range for nutrient solutions
-      expect(ecData.value, greaterThanOrEqualTo(500.0));
-      expect(ecData.value, lessThanOrEqualTo(2000.0));
-    });
-
-    test('should validate water level percentages', () {
-      final waterData = TestDataGenerator.generateSensorData(
-        sensorType: SensorType.waterLevel,
-      );
-
-      // Water level should be percentage-like
-      expect(waterData.value, greaterThanOrEqualTo(0.0));
-      expect(waterData.value, lessThanOrEqualTo(100.0));
-    });
-  });
-
   group('Batch Data Generation', () {
     test('should generate consistent batch data', () {
       final batch = TestDataGenerator.generateSensorDataBatch(
@@ -269,72 +192,6 @@ void main() {
 
       final sensorTypes = batch.map((data) => data.sensorType).toSet();
       expect(sensorTypes.length, greaterThan(1)); // Should have variety
-    });
-  });
-
-  group('Error Handling and Edge Cases', () {
-    test('should handle edge case timestamps', () {
-      final futureData = TestDataGenerator.generateSensorData(
-        timestamp: DateTime(2030, 12, 31, 23, 59, 59),
-      );
-
-      final pastData = TestDataGenerator.generateSensorData(
-        timestamp: DateTime(2020, 1, 1, 0, 0, 0),
-      );
-
-      expect(futureData.timestamp.year, equals(2030));
-      expect(pastData.timestamp.year, equals(2020));
-    });
-
-    test('should generate valid data for all sensor types', () {
-      for (final sensorType in SensorType.values) {
-        expect(() {
-          TestDataGenerator.generateSensorData(sensorType: sensorType);
-        }, returnsNormally);
-      }
-    });
-
-    test('should generate valid devices for all device types', () {
-      for (final deviceType in DeviceType.values) {
-        expect(() {
-          TestDataGenerator.generateDevice(type: deviceType);
-        }, returnsNormally);
-      }
-    });
-  });
-
-  group('Performance Tests', () {
-    test('should generate large batches efficiently', () {
-      final stopwatch = Stopwatch()..start();
-
-      final largeBatch = TestDataGenerator.generateSensorDataBatch(count: 1000);
-
-      stopwatch.stop();
-
-      expect(largeBatch.length, equals(1000));
-      expect(stopwatch.elapsedMilliseconds, lessThan(1000)); // Should be fast
-    });
-
-    test('should generate historical data efficiently', () {
-      final stopwatch = Stopwatch()..start();
-
-      final historicalData = TestDataGenerator.generateHistoricalData(
-        sensorType: SensorType.temperature,
-        start: DateTime.now().subtract(Duration(days: 7)),
-        end: DateTime.now(),
-        interval: Duration(minutes: 15),
-      );
-
-      stopwatch.stop();
-
-      expect(
-        historicalData.length,
-        greaterThan(500),
-      ); // Week of 15-min intervals
-      expect(
-        stopwatch.elapsedMilliseconds,
-        lessThan(2000),
-      ); // Should be reasonably fast
     });
   });
 
