@@ -27,6 +27,11 @@ class DataError extends AppError {
   const DataError(super.message);
 }
 
+/// Validation errors for commands or input.
+class ValidationError extends AppError {
+  const ValidationError(super.message);
+}
+
 /// Storage/persistence errors.
 class StorageError extends AppError {
   const StorageError(super.message);

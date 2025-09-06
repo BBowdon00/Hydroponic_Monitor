@@ -2,7 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../domain/entities/sensor_data.dart';
 import '../../core/logger.dart';
-import 'data_providers.dart';
+import 'system_providers.dart';
 
 /// Model for aggregated sensor readings by device/sensor type.
 class SensorReading {
@@ -86,7 +86,7 @@ class SensorAggregationState {
   }
 }
 
-/// Provider for aggregating and managing current sensor readings.
+/// Provider for aggregating sensor readings from the repository.
 final sensorAggregationProvider =
     StateNotifierProvider<SensorAggregationNotifier, SensorAggregationState>((
       ref,
@@ -100,7 +100,7 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
   }
 
   final Ref ref;
-  ProviderSubscription? _sensorSubscription;
+  ProviderSubscription? _sensorReadingsSubscription;
 
   void _initialize() {
     Logger.info(
@@ -108,61 +108,63 @@ class SensorAggregationNotifier extends StateNotifier<SensorAggregationState> {
       tag: 'SensorAggregation',
     );
 
-    // Listen to real-time sensor data
-    _sensorSubscription = ref.listen(realTimeSensorDataProvider, (
+    // Listen to latest sensor readings by type from repository
+    _sensorReadingsSubscription = ref.listen(latestSensorReadingsByTypeProvider, (
       previous,
       next,
     ) {
-      _onSensorData(next);
+      _onSensorReadingsUpdate(next);
     });
   }
 
-  void _onSensorData(AsyncValue<SensorData> asyncData) {
+  void _onSensorReadingsUpdate(AsyncValue<Map<SensorType, SensorData>> asyncData) {
     asyncData.when(
-      data: (sensorData) {
-        // Extract device node from sensor data
-        final deviceParts = sensorData.deviceId?.split('_') ?? ['unknown'];
-        final deviceNode = deviceParts.isNotEmpty ? deviceParts[0] : 'unknown';
+      data: (sensorDataByType) {
+        final newReadings = <String, SensorReading>{};
 
-        final reading = SensorReading(
-          sensorType: sensorData.sensorType,
-          deviceId: sensorData.deviceId ?? 'unknown',
-          deviceNode: deviceNode,
-          value: sensorData.value,
-          unit: sensorData.unit,
-          timestamp: sensorData.timestamp,
-          location: sensorData.location,
+        for (final sensorData in sensorDataByType.values) {
+          // Extract device node from sensor data
+          final deviceParts = sensorData.deviceId?.split('_') ?? ['unknown'];
+          final deviceNode = deviceParts.isNotEmpty ? deviceParts[0] : 'unknown';
+
+          final reading = SensorReading(
+            sensorType: sensorData.sensorType,
+            deviceId: sensorData.deviceId ?? 'unknown',
+            deviceNode: deviceNode,
+            value: sensorData.value,
+            unit: sensorData.unit,
+            timestamp: sensorData.timestamp,
+            location: sensorData.location,
+          );
+
+          newReadings[reading.key] = reading;
+        }
+
+        state = state.copyWith(
+          readings: newReadings,
+          lastUpdate: DateTime.now(),
         );
 
-        _updateReading(reading);
+        Logger.debug(
+          'Updated sensor aggregation with ${newReadings.length} readings',
+          tag: 'SensorAggregation',
+        );
       },
       loading: () {
         // Handle loading state if needed
       },
       error: (error, stackTrace) {
         Logger.error(
-          'Error processing sensor data: $error',
+          'Error processing sensor readings: $error',
           tag: 'SensorAggregation',
         );
       },
     );
   }
 
-  void _updateReading(SensorReading reading) {
-    final newReadings = Map<String, SensorReading>.from(state.readings);
-    newReadings[reading.key] = reading;
-
-    state = state.copyWith(readings: newReadings, lastUpdate: DateTime.now());
-
-    Logger.debug(
-      'Updated sensor reading: ${reading.sensorType.name} = ${reading.value}${reading.unit}',
-      tag: 'SensorAggregation',
-    );
-  }
-
   @override
   void dispose() {
-    _sensorSubscription?.close();
+    _sensorReadingsSubscription?.close();
     super.dispose();
   }
 }

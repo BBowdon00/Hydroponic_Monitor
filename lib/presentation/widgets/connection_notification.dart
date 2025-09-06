@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../providers/connection_status_provider.dart';
+import '../../data/services/data_service.dart' as data_service;
 
 /// A notification widget that shows connection status and disconnection timer.
 class ConnectionNotification extends ConsumerStatefulWidget {
@@ -96,7 +97,7 @@ class _ConnectionNotificationState
     );
   }
 
-  String _formatDurationForStatus(ConnectionStatus status) {
+  String _formatDurationForStatus(data_service.ConnectionState status) {
     final disconnectionTime = status.earliestDisconnection;
     if (disconnectionTime == null) return '';
 
