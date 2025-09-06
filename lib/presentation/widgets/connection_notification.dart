@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/theme.dart';
-import '../providers/connection_status_provider.dart';
+import '../providers/data_providers.dart';
 
 /// A notification widget that shows connection status and disconnection timer.
 class ConnectionNotification extends ConsumerStatefulWidget {
