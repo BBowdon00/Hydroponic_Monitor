@@ -11,6 +11,7 @@ import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
 import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
+import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
 import '../test_utils.dart';
 import 'package:hydroponic_monitor/core/logger.dart';
 
@@ -309,12 +310,12 @@ void main() {
     }, timeout: testTimeout);
 
     test('MQTT connection status through provider', () async {
-      // Listen to the MQTT connection status provider
+      // Listen to the combined connection status provider
       // ignore: deprecated_member_use
       final connectionStream = container.read(
-        mqttConnectionStatusProvider.stream,
+        connectionStatusProvider.stream,
       );
-      final connectionStatuses = <String>[];
+      final connectionStatuses = <ConnectionStatus>[];
 
       final subscription = connectionStream.listen((status) {
         connectionStatuses.add(status);
@@ -327,14 +328,14 @@ void main() {
       expect(
         connectionStatuses,
         isNotEmpty,
-        reason: 'Should have received MQTT connection status updates',
+        reason: 'Should have received connection status updates',
       );
 
-      // Should contain connected status
+      // Should contain connected MQTT status
       expect(
-        connectionStatuses.contains('connected'),
+        connectionStatuses.any((status) => status.mqttConnected),
         isTrue,
-        reason: 'Should have received connected status',
+        reason: 'Should have received MQTT connected status',
       );
 
       await subscription.cancel();

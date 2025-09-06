@@ -7,6 +7,7 @@ import '../../domain/entities/sensor_data.dart';
 import '../providers/sensor_aggregation_providers.dart';
 import '../providers/device_control_providers.dart';
 import '../providers/data_providers.dart';
+import '../providers/connection_status_provider.dart';
 
 /// Dashboard page showing overview of sensor data and system status.
 class DashboardPage extends ConsumerStatefulWidget {
@@ -394,8 +395,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   void _showConnectionStatus(BuildContext context) {
-    final mqttConnection = ref.read(mqttConnectionStatusProvider);
-    final influxConnection = ref.read(influxConnectionStatusProvider);
+    final connectionStatus = ref.read(connectionStatusProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     showDialog(
@@ -406,13 +406,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildConnectionRow(
-              'MQTT',
-              mqttConnection.asData?.value ?? 'unknown',
-            ),
-            _buildConnectionRow(
-              'InfluxDB',
-              influxConnection.asData?.value ?? 'unknown',
+            connectionStatus.when(
+              data: (status) => Column(
+                children: [
+                  _buildConnectionRow(
+                    'MQTT',
+                    status.mqttConnected ? 'connected' : 'disconnected',
+                  ),
+                  _buildConnectionRow(
+                    'InfluxDB',
+                    status.influxConnected ? 'connected' : 'disconnected',
+                  ),
+                ],
+              ),
+              loading: () => Column(
+                children: [
+                  _buildConnectionRow('MQTT', 'loading'),
+                  _buildConnectionRow('InfluxDB', 'loading'),
+                ],
+              ),
+              error: (_, __) => Column(
+                children: [
+                  _buildConnectionRow('MQTT', 'error'),
+                  _buildConnectionRow('InfluxDB', 'error'),
+                ],
+              ),
             ),
             _buildConnectionRow(
               'Sensor Data',
@@ -444,6 +462,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       case 'waiting':
         statusColor = Colors.orange;
         statusIcon = Icons.warning;
+        break;
+      case 'loading':
+        statusColor = Colors.blue;
+        statusIcon = Icons.sync;
         break;
       default:
         statusColor = Colors.red;

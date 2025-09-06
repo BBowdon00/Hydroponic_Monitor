@@ -167,17 +167,7 @@ final deviceStatusUpdatesProvider = StreamProvider<Device>((ref) {
   return deviceRepository.deviceStatusUpdates;
 });
 
-/// Provider for MQTT connection status stream.
-final mqttConnectionStatusProvider = StreamProvider<String>((ref) {
-  final mqttService = ref.read(mqttServiceProvider);
-  return mqttService.connectionStream;
-});
-
-/// Provider for InfluxDB connection status stream.
-final influxConnectionStatusProvider = StreamProvider<String>((ref) {
-  final influxService = ref.read(influxServiceProvider);
-  return influxService.connectionStream;
-});
+// Individual connection status providers removed - use connectionStatusProvider instead
 
 /// Provider for latest sensor readings.
 final latestSensorReadingsProvider = FutureProvider<List<SensorData>>((
