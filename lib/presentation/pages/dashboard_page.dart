@@ -4,10 +4,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../widgets/sensor_tile.dart';
 import '../../core/theme.dart';
 import '../../domain/entities/sensor_data.dart';
-import '../providers/sensor_aggregation_providers.dart';
 import '../providers/device_control_providers.dart';
 import '../providers/data_providers.dart';
 import '../providers/connection_status_provider.dart';
+import '../providers/sensor_providers.dart';
 
 /// Dashboard page showing overview of sensor data and system status.
 class DashboardPage extends ConsumerStatefulWidget {
@@ -186,10 +186,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     IconData icon,
     Color color,
   ) {
-    final sensorReading = ref.watch(latestSensorReadingProvider(sensorType));
+    // Try to get real-time data first, fall back to historical data
+    final realTimeData = ref.watch(latestSensorDataProvider(sensorType));
+    final historicalDataAsync = ref.watch(historicalLatestSensorDataProvider(sensorType));
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
-    if (!hasSensorData) {
+    // Determine which data to use
+    final sensorData = realTimeData ?? historicalDataAsync.asData?.value;
+    
+    if (!hasSensorData && sensorData == null) {
       return SensorTile(
         title: title,
         value: 'Waiting...',
@@ -200,7 +205,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       );
     }
 
-    if (sensorReading == null) {
+    if (sensorData == null) {
       return SensorTile(
         title: title,
         value: 'No Data',
@@ -215,33 +220,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     String formattedValue;
     switch (sensorType) {
       case SensorType.temperature:
-        formattedValue = '${sensorReading.value.toStringAsFixed(1)}°C';
+        formattedValue = '${sensorData.value.toStringAsFixed(1)}°C';
         break;
       case SensorType.humidity:
-        formattedValue = '${sensorReading.value.toStringAsFixed(0)}%';
+        formattedValue = '${sensorData.value.toStringAsFixed(0)}%';
         break;
       case SensorType.pH:
-        formattedValue = sensorReading.value.toStringAsFixed(2);
+        formattedValue = sensorData.value.toStringAsFixed(2);
         break;
       case SensorType.powerUsage:
-        if (sensorReading.value > 1000) {
+        if (sensorData.value > 1000) {
           formattedValue =
-              '${(sensorReading.value / 1000).toStringAsFixed(2)} kW';
+              '${(sensorData.value / 1000).toStringAsFixed(2)} kW';
         } else {
-          formattedValue = '${sensorReading.value.toStringAsFixed(1)} W';
+          formattedValue = '${sensorData.value.toStringAsFixed(1)} W';
         }
         break;
       default:
-        formattedValue = sensorReading.value.toStringAsFixed(1);
+        formattedValue = sensorData.value.toStringAsFixed(1);
     }
 
     return SensorTile(
       title: title,
       value: formattedValue,
-      unit: sensorReading.unit,
+      unit: sensorData.unit,
       icon: icon,
       color: color,
-      trend: _calculateTrend(sensorType, sensorReading.value),
+      trend: _calculateTrend(sensorType, sensorData.value),
     );
   }
 
