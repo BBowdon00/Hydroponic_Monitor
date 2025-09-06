@@ -20,8 +20,6 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   @override
   Widget build(BuildContext context) {
-    // Watch initialization status
-    final dataInitialization = ref.watch(dataServicesInitializationProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     return Scaffold(
@@ -42,42 +40,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Trigger data refresh
-              ref.invalidate(dataServicesInitializationProvider);
+              // Trigger data refresh by invalidating providers
+              ref.invalidate(realTimeSensorDataProvider);
+              ref.invalidate(latestSensorReadingsProvider);
             },
           ),
         ],
       ),
-      body: dataInitialization.when(
-        data: (_) => _buildDashboardContent(),
-        loading: () => const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: AppTheme.spaceMd),
-              Text('Initializing data services...'),
-            ],
-          ),
-        ),
-        error: (error, stackTrace) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: AppTheme.spaceMd),
-              Text('Failed to initialize: $error'),
-              const SizedBox(height: AppTheme.spaceMd),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(dataServicesInitializationProvider);
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: _buildDashboardContent(),
     );
   }
 
@@ -85,7 +55,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     return RefreshIndicator(
       onRefresh: () async {
         // Refresh data services
-        ref.invalidate(dataServicesInitializationProvider);
+        ref.invalidate(realTimeSensorDataProvider);
+        ref.invalidate(latestSensorReadingsProvider);
       },
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
