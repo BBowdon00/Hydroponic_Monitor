@@ -402,7 +402,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   _buildConnectionRow('InfluxDB', 'loading'),
                 ],
               ),
-              error: (_, __) => Column(
+              error: (_, stackTrace) => Column(
                 children: [
                   _buildConnectionRow('MQTT', 'error'),
                   _buildConnectionRow('InfluxDB', 'error'),

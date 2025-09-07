@@ -181,8 +181,9 @@ class MqttService {
       // Set up connection message with proper authentication
       final connMess = MqttConnectMessage()
           .withClientIdentifier(clientId)
-          .startClean()
-          .keepAliveFor(20);
+          .startClean();
+
+      _client!.keepAlivePeriod = 20;
 
       if (username != null && password != null) {
         connMess.authenticateAs(username!, password!);
@@ -211,8 +212,9 @@ class MqttService {
         }
         await _subscribeToTopics();
         // Mark as initialized once subscriptions have been requested
-        if (!_initializedCompleter.isCompleted)
+        if (!_initializedCompleter.isCompleted) {
           _initializedCompleter.complete();
+        }
         return const Success(null);
       } else {
         _isConnecting = false;
@@ -286,17 +288,9 @@ class MqttService {
     if (isConnected) {
       final builder = MqttClientPayloadBuilder();
       builder.addString(payload);
-      final pubResult = _client!.publishMessage(
-        topic,
-        MqttQos.atLeastOnce,
-        builder.payload!,
-      );
+      _client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
 
-      if (pubResult != null) {
-        Logger.debug('Published to topic $topic: $payload', tag: 'MQTT');
-      } else {
-        Logger.warning('Failed to publish to topic $topic', tag: 'MQTT');
-      }
+      Logger.debug('Published to topic $topic: $payload', tag: 'MQTT');
     } else {
       Logger.warning('Cannot publish - MQTT client not connected', tag: 'MQTT');
     }
@@ -342,15 +336,15 @@ class MqttService {
           switch (deviceCategory) {
             case 'sensor':
               _handleSensorData(topic, payload);
-              Logger.debug("Category: Sensor", tag: 'MQTT');
+              Logger.debug('Category: Sensor', tag: 'MQTT');
               break;
             case 'actuator':
               _handleDeviceStatus(topic, payload);
-              Logger.debug("Category: Actuator", tag: 'MQTT');
+              Logger.debug('Category: Actuator', tag: 'MQTT');
               break;
             case 'device':
               _handleDeviceStatus(topic, payload);
-              Logger.debug("Category: Device", tag: 'MQTT');
+              Logger.debug('Category: Device', tag: 'MQTT');
               break;
           }
         }
@@ -431,7 +425,7 @@ class MqttService {
     final sensorType = _parseSensorType(deviceType);
 
     final sensorData = SensorData(
-      id: '${deviceNode}_$deviceType\_$deviceID',
+      id: '${deviceNode}_${deviceType}_$deviceID',
       sensorType: sensorType,
       value: value,
       unit: sensorType.defaultUnit,
@@ -447,7 +441,7 @@ class MqttService {
   void _handleDeviceStatus(String topic, String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      Logger.debug("Parsing device status payload", tag: 'MQTT');
+      Logger.debug('Parsing device status payload', tag: 'MQTT');
       // Parse new topic format: grow/{deviceNode}/{actuator|device}
       final topicParts = topic.split('/');
       if (topicParts.length == 3) {
@@ -473,7 +467,7 @@ class MqttService {
             lastUpdate: DateTime.now(),
           );
           Logger.debug(
-            "Adding to deviceStatusController: ${device}",
+            'Adding to deviceStatusController: $device',
             tag: 'MQTT',
           );
           // Add to in-memory buffer for late subscribers (keep last 50)

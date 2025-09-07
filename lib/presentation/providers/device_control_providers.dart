@@ -94,10 +94,12 @@ class DeviceControlsState {
 
     if (statuses.contains(DeviceStatus.error)) return DeviceStatus.error;
     if (statuses.contains(DeviceStatus.pending)) return DeviceStatus.pending;
-    if (statuses.every((s) => s == DeviceStatus.offline))
+    if (statuses.every((s) => s == DeviceStatus.offline)) {
       return DeviceStatus.offline;
-    if (statuses.every((s) => s == DeviceStatus.online))
+    }
+    if (statuses.every((s) => s == DeviceStatus.online)) {
       return DeviceStatus.online;
+    }
 
     return DeviceStatus.online; // Mixed states, consider online
   }

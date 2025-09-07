@@ -30,7 +30,7 @@ final latestSensorDataProvider = Provider.family<SensorData?, SensorType>((
       return null;
     },
     loading: () => null,
-    error: (_, __) => null,
+    error: (_, stackTrace) => null,
   );
 });
 

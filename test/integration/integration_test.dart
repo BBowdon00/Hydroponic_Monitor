@@ -562,7 +562,7 @@ Future<bool> _queryInfluxForActuatorStatesNew(int expectedResultNum) async {
       // parse out the returnCount value from the table
       final returnCount =
           int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
-      Logger.debug("Return Count: $returnCount", tag: 'Integration');
+      Logger.debug('Return Count: $returnCount', tag: 'Integration');
       // Accept >= expected to be tolerant of duplicate/retained messages
       return csvData.contains('_value') && returnCount >= expectedResultNum;
     } else {
@@ -621,7 +621,7 @@ Future<bool> _queryInfluxForDeviceStatesNew(int expectedResultNum) async {
       // parse out the returnCount value from the table
       final returnCount =
           int.tryParse(csvData.split('\n')[1].split(',')[5]) ?? 0;
-      Logger.debug("Return Count: $returnCount", tag: 'Integration');
+      Logger.debug('Return Count: $returnCount', tag: 'Integration');
       // Accept >= expected to be tolerant of duplicate/retained messages
       return csvData.contains('_value') && returnCount >= expectedResultNum;
     } else {
