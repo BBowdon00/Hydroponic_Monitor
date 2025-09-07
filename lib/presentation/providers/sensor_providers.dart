@@ -17,15 +17,19 @@ final hasSensorDataProvider = Provider<bool>((ref) {
 
 /// Provider that maintains the latest reading for each sensor type from real-time stream.
 /// This accumulates sensor data by type so all sensor types can display current values.
-final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorData>>((ref) async* {
-  // Wait for repository initialization to complete
-  final repository = await ref.watch(sensorRepositoryInitProvider.future);
+final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorData>>((ref) {
+  final repository = ref.read(sensorRepositoryProvider);
+  
+  // Trigger initialization but don't wait for it to complete
+  repository.initialize().then((_) {
+    Logger.debug('Repository initialization completed for sensor map', tag: 'SensorProviders');
+  });
   
   // Create a map to store the latest reading for each sensor type
   final Map<SensorType, SensorData> sensorDataByType = {};
   
   // Transform the single sensor stream into a map of sensor types
-  yield* repository.realTimeSensorData.map((sensorData) {
+  return repository.realTimeSensorData.map((sensorData) {
     // Update the map with the new reading for this sensor type
     sensorDataByType[sensorData.sensorType] = sensorData;
     
