@@ -6,26 +6,45 @@ import 'data_providers.dart';
 
 /// Provider for checking if sensor data is available (not waiting).
 final hasSensorDataProvider = Provider<bool>((ref) {
-  // Check if the real-time sensor data stream has provided any data
-  final realTimeDataAsync = ref.watch(realTimeSensorDataProvider);
-  return realTimeDataAsync.hasValue && !realTimeDataAsync.isLoading;
+  // Check if the accumulated real-time sensor data has provided any data
+  final realTimeDataByTypeAsync = ref.watch(realTimeSensorDataByTypeProvider);
+  return realTimeDataByTypeAsync.when(
+    data: (sensorDataByType) => sensorDataByType.isNotEmpty,
+    loading: () => false,
+    error: (_, __) => false,
+  );
+});
+
+/// Provider that maintains the latest reading for each sensor type from real-time stream.
+/// This accumulates sensor data by type so all sensor types can display current values.
+final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorData>>((ref) async* {
+  // Wait for repository initialization to complete
+  final repository = await ref.watch(sensorRepositoryInitProvider.future);
+  
+  // Create a map to store the latest reading for each sensor type
+  final Map<SensorType, SensorData> sensorDataByType = {};
+  
+  // Transform the single sensor stream into a map of sensor types
+  yield* repository.realTimeSensorData.map((sensorData) {
+    // Update the map with the new reading for this sensor type
+    sensorDataByType[sensorData.sensorType] = sensorData;
+    
+    // Return a copy of the current state
+    return Map<SensorType, SensorData>.from(sensorDataByType);
+  });
 });
 
 /// Provider for getting the latest reading of a specific sensor type from real-time stream.
-/// This uses the most recent data from the real-time stream, falling back to historical data.
+/// This uses the most recent data from the accumulated real-time stream, falling back to historical data.
 final latestSensorDataProvider = Provider.family<SensorData?, SensorType>(
   (ref, sensorType) {
-    // Get the most recent data from the real-time stream
-    final realTimeDataAsync = ref.watch(realTimeSensorDataProvider);
+    // Get the accumulated real-time data by type
+    final realTimeDataByTypeAsync = ref.watch(realTimeSensorDataByTypeProvider);
     
-    return realTimeDataAsync.when(
-      data: (sensorData) {
-        // Return the data if it matches the requested sensor type
-        if (sensorData.sensorType == sensorType) {
-          return sensorData;
-        }
-        // If the real-time data doesn't match, we don't have current data for this type
-        return null;
+    return realTimeDataByTypeAsync.when(
+      data: (sensorDataByType) {
+        // Return the latest data for the requested sensor type
+        return sensorDataByType[sensorType];
       },
       loading: () => null,
       error: (_, __) => null,
