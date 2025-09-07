@@ -241,7 +241,8 @@ void main() {
         expect(
           receivedData.length,
           greaterThanOrEqualTo(sensorTypes.length),
-          reason: 'Should have received at least all sensor types through provider',
+          reason:
+              'Should have received at least all sensor types through provider',
         );
 
         for (final sensorType in sensorTypes) {

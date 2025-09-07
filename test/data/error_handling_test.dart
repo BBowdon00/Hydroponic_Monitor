@@ -94,6 +94,5 @@ void main() {
       expect(result, isA<Failure>());
       expect((result as Failure).error, isA<InfluxError>());
     });
-
   });
 }
