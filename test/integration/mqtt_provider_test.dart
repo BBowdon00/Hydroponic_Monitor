@@ -81,15 +81,10 @@ void main() {
       'Sensor data publish and receive through provider',
       tags: ['integration'], // Added integration tag
       () async {
-        // Create test sensor data
-        final testData = TestDataGenerator.generateSensorData(
-          sensorType: SensorType.temperature,
-          sensorId: 'provider_test_temp_001',
-          deviceId: 'test_device_001',
-          location: 'provider_test_zone',
-        );
+        // Wait for repository initialization
+        await container.read(sensorRepositoryInitProvider.future);
 
-        // Listen to the real-time sensor data provider
+        // Set up provider listener BEFORE publishing data
         // ignore: deprecated_member_use
         final sensorStream = container.read(realTimeSensorDataProvider.stream);
         final receivedData = <SensorData>[];
@@ -97,6 +92,17 @@ void main() {
         final subscription = sensorStream.listen((data) {
           receivedData.add(data);
         });
+
+        // Small delay to ensure subscription is active
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Create test sensor data
+        final testData = TestDataGenerator.generateSensorData(
+          sensorType: SensorType.temperature,
+          sensorId: 'provider_test_temp_001',
+          deviceId: 'test_device_001',
+          location: 'provider_test_zone',
+        );
 
         // Publish sensor data using test MQTT client
         final topic = TestMqttTopics.sensorTopicFor('rpi');
@@ -115,7 +121,12 @@ void main() {
         Logger.debug('Message: $messageJson');
 
         // Wait for the message to be processed
-        await Future.delayed(const Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 3));
+
+        Logger.info('Received ${receivedData.length} sensor data points');
+        for (final data in receivedData) {
+          Logger.debug('Received: ${data.sensorType} = ${data.value}');
+        }
 
         // Verify the data was received through the provider
         expect(
@@ -197,6 +208,9 @@ void main() {
       'Multiple sensor types through provider',
       tags: ['integration'], // Added integration tag
       () async {
+        // Wait for repository initialization
+        await container.read(sensorRepositoryInitProvider.future);
+
         final sensorTypes = [
           SensorType.temperature,
           SensorType.humidity,
@@ -204,13 +218,16 @@ void main() {
         ];
         final receivedData = <SensorData>[];
 
-        // Listen to the real-time sensor data provider
+        // Set up provider listener BEFORE publishing data
         // ignore: deprecated_member_use
         final sensorStream = container.read(realTimeSensorDataProvider.stream);
 
         final subscription = sensorStream.listen((data) {
           receivedData.add(data);
         });
+
+        // Small delay to ensure subscription is active
+        await Future.delayed(const Duration(milliseconds: 200));
 
         // Publish multiple sensor types
         for (final sensorType in sensorTypes) {
@@ -235,6 +252,14 @@ void main() {
 
           // Small delay between publishes
           await Future.delayed(const Duration(milliseconds: 200));
+        }
+
+        // Wait for all messages to be processed
+        await Future.delayed(const Duration(seconds: 3));
+
+        Logger.info('Received ${receivedData.length} sensor data points');
+        for (final data in receivedData) {
+          Logger.debug('Received: ${data.sensorType} = ${data.value}');
         }
 
         // Verify all sensor types were received
@@ -359,6 +384,10 @@ void main() {
       'Provider handles malformed MQTT messages gracefully',
       tags: ['integration'], // Added integration tag
       () async {
+        // Wait for repository initialization
+        await container.read(sensorRepositoryInitProvider.future);
+
+        // Set up provider listener BEFORE publishing data
         // ignore: deprecated_member_use
         final sensorStream = container.read(realTimeSensorDataProvider.stream);
         final receivedData = <SensorData>[];
@@ -366,6 +395,9 @@ void main() {
         final subscription = sensorStream.listen((data) {
           receivedData.add(data);
         });
+
+        // Small delay to ensure subscription is active
+        await Future.delayed(const Duration(milliseconds: 200));
 
         // Publish malformed JSON
         final topic = TestMqttTopics.sensorTopicFor('rpi');

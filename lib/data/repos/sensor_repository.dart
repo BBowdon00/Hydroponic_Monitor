@@ -8,6 +8,8 @@ import '../influx/influx_service.dart';
 
 /// Repository for managing sensor data from MQTT and InfluxDB.
 class SensorRepository {
+  // Memoization flag for initialization
+  bool _initialized = false;
   SensorRepository({required this.mqttService, required this.influxService});
 
   final MqttService mqttService;
@@ -15,10 +17,15 @@ class SensorRepository {
 
   StreamSubscription<SensorData>? _mqttSubscription;
 
-  /// Initialize the repository and start listening to MQTT data.
+  /// Memoized initialization method
   Future<Result<void>> initialize() async {
+    if (_initialized) {
+      Logger.debug('SensorRepository already initialized', tag: 'SensorRepository');
+      return const Success<void>(null);
+    }
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
+      _initialized = true;
 
       // Initialize MQTT service
       final mqttResult = await mqttService.connect();
@@ -27,6 +34,7 @@ class SensorRepository {
           'MQTT connection failed during initialization: ${mqttResult.error}',
           tag: 'SensorRepository',
         );
+        _initialized = false;
         return mqttResult;
       } else {
         Logger.info('MQTT connected successfully', tag: 'SensorRepository');
@@ -39,6 +47,7 @@ class SensorRepository {
           'InfluxDB connection failed during initialization: ${influxResult.error}',
           tag: 'SensorRepository',
         );
+        _initialized = false;
         return influxResult;
       } else {
         Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
@@ -66,8 +75,9 @@ class SensorRepository {
         'Sensor repository initialized successfully',
         tag: 'SensorRepository',
       );
-      return const Success(null);
+      return const Success<void>(null);
     } catch (e) {
+      _initialized = false;
       final error = 'Error initializing sensor repository: $e';
       Logger.error(error, tag: 'SensorRepository', error: e);
       return Failure(UnknownError(error));
