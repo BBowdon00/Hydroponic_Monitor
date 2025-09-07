@@ -1,9 +1,10 @@
 # Tasks Index
 
 ## In Progress
-- [TASK002] Examine and Refactor Providers, Services, Streams, and Repositories
+- [TASK004] Integrate Real-Time Sensor Updates into Dashboard
 
 ## Pending
+
 
 ## Completed
 - [TASK001] Implementing memory bank instruction
