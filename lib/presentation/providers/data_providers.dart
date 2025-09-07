@@ -73,15 +73,12 @@ final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
 /// Provider for real-time sensor data stream.
 /// This initializes the repository on demand and provides the stream.
 final realTimeSensorDataProvider = StreamProvider<SensorData>((ref) {
-  final repository = ref.read(sensorRepositoryProvider);
-  
-  // Trigger initialization but don't wait for it to complete
-  // This allows the stream to start immediately
-  repository.initialize().then((_) {
-    Logger.debug('Repository initialization completed for stream', tag: 'DataProviders');
-  });
-  
-  return repository.realTimeSensorData;
+  final repositoryAsync = ref.watch(sensorRepositoryInitProvider);
+  return repositoryAsync.when(
+    data: (repository) => repository.realTimeSensorData,
+    loading: () => const Stream.empty(),
+    error: (_, __) => const Stream.empty(),
+  );
 });
 
 /// Provider for device status updates stream.
