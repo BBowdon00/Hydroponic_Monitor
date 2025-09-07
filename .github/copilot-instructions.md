@@ -234,7 +234,7 @@ Each task file follows this format:
 | 1.1 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
 | 1.2 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
 | 1.3 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
-
+| TEST | Testing Run | [Complete and Passing/ All Failed/ % Passed] | [Date] | Follow testing procedure in memory-bank/testing-procedure every task |
 ## Progress Log
 ### [Date]
 - Updated subtask 1.1 status to Complete

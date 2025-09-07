@@ -73,6 +73,7 @@
 - **← Product Context**: [productContext.md](./productContext.md) - User experience goals
 - **← System Patterns**: [systemPatterns.md](./systemPatterns.md) - Architecture patterns  
 - **← Tech Context**: [techContext.md](./techContext.md) - Technology implementation
+- **← Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Complete testing guide
 - **→ Progress**: [progress.md](./progress.md) - Current status and roadmap
 - **→ Tasks**: [tasks/](./tasks/) - Individual work items and tracking
 
