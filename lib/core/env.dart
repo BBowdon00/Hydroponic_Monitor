@@ -53,8 +53,9 @@ class Env {
     final platformFlag =
         Platform.environment['FLUTTER_TEST'] ??
         Platform.environment['DART_TEST'];
-    if (platformFlag != null && platformFlag.toLowerCase() == 'true')
+    if (platformFlag != null && platformFlag.toLowerCase() == 'true') {
       return true;
+    }
     return false;
   }
 }

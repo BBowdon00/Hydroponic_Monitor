@@ -11,7 +11,7 @@ void main() {
 
     test('creates valid sensor data with all properties', () {
       Logger.info(
-        "Testing sensor data creation with all properties",
+        'Testing sensor data creation with all properties',
         tag: 'SensorDataTest',
       );
 
@@ -27,7 +27,7 @@ void main() {
       );
 
       Logger.debug(
-        "Created sensor data: ${sensorData.sensorType.name} = ${sensorData.value} ${sensorData.unit}",
+        'Created sensor data: ${sensorData.sensorType.name} = ${sensorData.value} ${sensorData.unit}',
         tag: 'SensorDataTest',
       );
 
@@ -40,14 +40,14 @@ void main() {
       expect(sensorData.location, equals('greenhouse_a'));
 
       Logger.info(
-        "Sensor data creation with all properties test passed",
+        'Sensor data creation with all properties test passed',
         tag: 'SensorDataTest',
       );
     });
 
     test('creates valid sensor data with minimal properties', () {
       Logger.info(
-        "Testing sensor data creation with minimal properties",
+        'Testing sensor data creation with minimal properties',
         tag: 'SensorDataTest',
       );
 
@@ -61,7 +61,7 @@ void main() {
       );
 
       Logger.debug(
-        "Created minimal sensor data: ${sensorData.sensorType.name} = ${sensorData.value}%",
+        'Created minimal sensor data: ${sensorData.sensorType.name} = ${sensorData.value}%',
         tag: 'SensorDataTest',
       );
 
@@ -74,14 +74,14 @@ void main() {
       expect(sensorData.location, isNull);
 
       Logger.info(
-        "Sensor data creation with minimal properties test passed",
+        'Sensor data creation with minimal properties test passed',
         tag: 'SensorDataTest',
       );
     });
 
     test('equality works correctly', () {
       Logger.info(
-        "Testing sensor data equality comparison",
+        'Testing sensor data equality comparison',
         tag: 'SensorDataTest',
       );
 
@@ -111,7 +111,7 @@ void main() {
       );
 
       Logger.debug(
-        "Comparing sensor data: ${sensorData1.id} vs ${sensorData2.id} vs ${sensorData3.id}",
+        'Comparing sensor data: ${sensorData1.id} vs ${sensorData2.id} vs ${sensorData3.id}',
         tag: 'SensorDataTest',
       );
 
@@ -120,14 +120,14 @@ void main() {
       expect(sensorData1.hashCode, equals(sensorData2.hashCode));
 
       Logger.info(
-        "Sensor data equality comparison test passed",
+        'Sensor data equality comparison test passed',
         tag: 'SensorDataTest',
       );
     });
 
     test('toString provides useful information', () {
       Logger.info(
-        "Testing sensor data toString representation",
+        'Testing sensor data toString representation',
         tag: 'SensorDataTest',
       );
 
@@ -143,7 +143,7 @@ void main() {
       final stringRepresentation = sensorData.toString();
 
       Logger.debug(
-        "Sensor data string representation: $stringRepresentation",
+        'Sensor data string representation: $stringRepresentation',
         tag: 'SensorDataTest',
       );
 
@@ -153,7 +153,7 @@ void main() {
       expect(stringRepresentation, contains('°C'));
 
       Logger.info(
-        "Sensor data toString representation test passed",
+        'Sensor data toString representation test passed',
         tag: 'SensorDataTest',
       );
     });
@@ -165,7 +165,7 @@ void main() {
     });
 
     test('display names are correct', () {
-      Logger.info("Testing SensorType display names", tag: 'SensorDataTest');
+      Logger.info('Testing SensorType display names', tag: 'SensorDataTest');
 
       final displayNames = {
         SensorType.temperature: 'Temperature',
@@ -180,20 +180,20 @@ void main() {
 
       for (final entry in displayNames.entries) {
         Logger.debug(
-          "${entry.key.name} -> ${entry.value}",
+          '${entry.key.name} -> ${entry.value}',
           tag: 'SensorDataTest',
         );
         expect(entry.key.displayName, equals(entry.value));
       }
 
       Logger.info(
-        "SensorType display names test passed",
+        'SensorType display names test passed',
         tag: 'SensorDataTest',
       );
     });
 
     test('default units are correct', () {
-      Logger.info("Testing SensorType default units", tag: 'SensorDataTest');
+      Logger.info('Testing SensorType default units', tag: 'SensorDataTest');
 
       final defaultUnits = {
         SensorType.temperature: '°C',
@@ -208,14 +208,14 @@ void main() {
 
       for (final entry in defaultUnits.entries) {
         Logger.debug(
-          "${entry.key.name} -> ${entry.value}",
+          '${entry.key.name} -> ${entry.value}',
           tag: 'SensorDataTest',
         );
         expect(entry.key.defaultUnit, equals(entry.value));
       }
 
       Logger.info(
-        "SensorType default units test passed",
+        'SensorType default units test passed',
         tag: 'SensorDataTest',
       );
     });

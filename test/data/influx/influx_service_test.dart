@@ -14,7 +14,7 @@ void main() {
 
     setUp(() {
       Logger.init(isTest: true);
-      Logger.info("Setting up InfluxDbService test", tag: 'InfluxTest');
+      Logger.info('Setting up InfluxDbService test', tag: 'InfluxTest');
 
       influxService = InfluxDbService(
         url: 'http://localhost:8086',
@@ -25,7 +25,7 @@ void main() {
     });
 
     test('initializes with correct configuration', () {
-      Logger.info("Testing InfluxDB service initialization", tag: 'InfluxTest');
+      Logger.info('Testing InfluxDB service initialization', tag: 'InfluxTest');
 
       expect(influxService.url, equals('http://localhost:8086'));
       expect(influxService.token, equals('test-token'));
@@ -33,13 +33,13 @@ void main() {
       expect(influxService.bucket, equals('test-bucket'));
 
       Logger.info(
-        "InfluxDB configuration validation passed",
+        'InfluxDB configuration validation passed',
         tag: 'InfluxTest',
       );
     });
 
     test('generates realistic dummy sensor data', () async {
-      Logger.info("Testing dummy sensor data generation", tag: 'InfluxTest');
+      Logger.info('Testing dummy sensor data generation', tag: 'InfluxTest');
 
       // The service gracefully falls back to dummy data when not initialized
       // This ensures the app remains functional even without a real InfluxDB connection
@@ -49,7 +49,7 @@ void main() {
       final data = (result as Success<List<SensorData>>).data;
 
       Logger.debug(
-        "Generated ${data.length} sensor data points",
+        'Generated ${data.length} sensor data points',
         tag: 'InfluxTest',
       );
 
@@ -72,20 +72,20 @@ void main() {
         expect(sensorData.timestamp, isNotNull);
 
         Logger.debug(
-          "${sensorData.sensorType.name}: ${sensorData.value} ${sensorData.unit}",
+          '${sensorData.sensorType.name}: ${sensorData.value} ${sensorData.unit}',
           tag: 'InfluxTest',
         );
       }
 
       Logger.info(
-        "Dummy sensor data generation test completed successfully",
+        'Dummy sensor data generation test completed successfully',
         tag: 'InfluxTest',
       );
     });
 
     test('generates historical data with time progression', () async {
       Logger.info(
-        "Testing historical data generation with time progression",
+        'Testing historical data generation with time progression',
         tag: 'InfluxTest',
       );
 
@@ -93,7 +93,7 @@ void main() {
       final end = DateTime.now();
 
       Logger.debug(
-        "Querying historical data from $start to $end",
+        'Querying historical data from $start to $end',
         tag: 'InfluxTest',
       );
 
@@ -110,7 +110,7 @@ void main() {
       expect(data.length, equals(10));
 
       Logger.debug(
-        "Generated ${data.length} historical data points",
+        'Generated ${data.length} historical data points',
         tag: 'InfluxTest',
       );
 
@@ -121,7 +121,7 @@ void main() {
         if (i < 3) {
           // Log first few for debugging
           Logger.debug(
-            "Data point $i: ${data[i].timestamp} - ${data[i].value}°C",
+            'Data point $i: ${data[i].timestamp} - ${data[i].value}°C',
             tag: 'InfluxTest',
           );
         }
@@ -140,14 +140,14 @@ void main() {
       );
 
       Logger.info(
-        "Historical data time progression test completed successfully",
+        'Historical data time progression test completed successfully',
         tag: 'InfluxTest',
       );
     });
 
     test('handles day/night cycle for light intensity', () async {
       Logger.info(
-        "Testing light intensity day/night cycle simulation",
+        'Testing light intensity day/night cycle simulation',
         tag: 'InfluxTest',
       );
 
@@ -178,7 +178,7 @@ void main() {
       final data = (result as Success<List<SensorData>>).data;
 
       Logger.debug(
-        "Generated ${data.length} light intensity data points for 24-hour cycle",
+        'Generated ${data.length} light intensity data points for 24-hour cycle',
         tag: 'InfluxTest',
       );
 
@@ -192,13 +192,13 @@ void main() {
       }
 
       Logger.info(
-        "Day/night cycle simulation test completed successfully",
+        'Day/night cycle simulation test completed successfully',
         tag: 'InfluxTest',
       );
     });
 
     tearDown(() async {
-      Logger.info("Tearing down InfluxDB service test", tag: 'InfluxTest');
+      Logger.info('Tearing down InfluxDB service test', tag: 'InfluxTest');
       await influxService.close();
     });
   });
@@ -209,7 +209,7 @@ void main() {
     setUp(() {
       Logger.init(isTest: true);
       Logger.info(
-        "Setting up InfluxDB mock integration test",
+        'Setting up InfluxDB mock integration test',
         tag: 'InfluxMockTest',
       );
       mockInfluxService = MockInfluxDbService();
@@ -217,7 +217,7 @@ void main() {
 
     test('mock service can simulate initialization success', () async {
       Logger.info(
-        "Testing mock service initialization success",
+        'Testing mock service initialization success',
         tag: 'InfluxMockTest',
       );
 
@@ -230,14 +230,14 @@ void main() {
 
       verify(() => mockInfluxService.initialize()).called(1);
       Logger.info(
-        "Mock initialization success test passed",
+        'Mock initialization success test passed',
         tag: 'InfluxMockTest',
       );
     });
 
     test('mock service can simulate initialization failure', () async {
       Logger.info(
-        "Testing mock service initialization failure",
+        'Testing mock service initialization failure',
         tag: 'InfluxMockTest',
       );
 
@@ -251,14 +251,14 @@ void main() {
 
       verify(() => mockInfluxService.initialize()).called(1);
       Logger.info(
-        "Mock initialization failure test passed",
+        'Mock initialization failure test passed',
         tag: 'InfluxMockTest',
       );
     });
 
     test('mock service can simulate data query', () async {
       Logger.info(
-        "Testing mock service data query simulation",
+        'Testing mock service data query simulation',
         tag: 'InfluxMockTest',
       );
 
@@ -280,7 +280,7 @@ void main() {
       ];
 
       Logger.debug(
-        "Mock test data: ${testData.length} sensor readings",
+        'Mock test data: ${testData.length} sensor readings',
         tag: 'InfluxMockTest',
       );
 
@@ -294,7 +294,7 @@ void main() {
 
       verify(() => mockInfluxService.queryLatestSensorData()).called(1);
       Logger.info(
-        "Mock data query simulation test passed",
+        'Mock data query simulation test passed',
         tag: 'InfluxMockTest',
       );
     });

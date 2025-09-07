@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:hydroponic_monitor/data/repos/sensor_repository.dart';
 import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 import 'package:hydroponic_monitor/data/influx/influx_service.dart';
-import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
 import 'package:hydroponic_monitor/core/errors.dart';
 import '../test_utils.dart';
 
@@ -94,6 +93,5 @@ void main() {
       expect(result, isA<Failure>());
       expect((result as Failure).error, isA<InfluxError>());
     });
-
   });
 }

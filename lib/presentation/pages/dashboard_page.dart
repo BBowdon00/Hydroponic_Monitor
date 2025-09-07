@@ -159,12 +159,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   ) {
     // Try to get real-time data first, fall back to historical data
     final realTimeData = ref.watch(latestSensorDataProvider(sensorType));
-    final historicalDataAsync = ref.watch(historicalLatestSensorDataProvider(sensorType));
+    final historicalDataAsync = ref.watch(
+      historicalLatestSensorDataProvider(sensorType),
+    );
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     // Determine which data to use
     final sensorData = realTimeData ?? historicalDataAsync.asData?.value;
-    
+
     if (!hasSensorData && sensorData == null) {
       return SensorTile(
         title: title,
@@ -201,8 +203,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         break;
       case SensorType.powerUsage:
         if (sensorData.value > 1000) {
-          formattedValue =
-              '${(sensorData.value / 1000).toStringAsFixed(2)} kW';
+          formattedValue = '${(sensorData.value / 1000).toStringAsFixed(2)} kW';
         } else {
           formattedValue = '${sensorData.value.toStringAsFixed(1)} W';
         }
@@ -401,7 +402,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   _buildConnectionRow('InfluxDB', 'loading'),
                 ],
               ),
-              error: (_, __) => Column(
+              error: (_, stackTrace) => Column(
                 children: [
                   _buildConnectionRow('MQTT', 'error'),
                   _buildConnectionRow('InfluxDB', 'error'),
