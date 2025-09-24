@@ -60,76 +60,101 @@ class ConnectionStatus {
 
 /// Provider that tracks connection status for both MQTT and InfluxDB services.
 final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
-  final mqttService = ref.read(mqttServiceProvider);
-  final influxService = ref.read(influxServiceProvider);
+  // Watch the sensor repository init provider to ensure services are initialized
+  final repositoryAsync = ref.watch(sensorRepositoryInitProvider);
+  
+  return repositoryAsync.when(
+    data: (repository) {
+      final mqttService = ref.read(mqttServiceProvider);
+      final influxService = ref.read(influxServiceProvider);
 
-  // Initial state - both disconnected with current time
-  final now = DateTime.now();
-  var currentStatus = ConnectionStatus(
-    mqttConnected: false,
-    influxConnected: false,
-    mqttDisconnectedSince: now,
-    influxDisconnectedSince: now,
-  );
+      // Initial state - both disconnected with current time
+      final now = DateTime.now();
+      var currentStatus = ConnectionStatus(
+        mqttConnected: false,
+        influxConnected: false,
+        mqttDisconnectedSince: now,
+        influxDisconnectedSince: now,
+      );
 
-  final controller = StreamController<ConnectionStatus>();
+      final controller = StreamController<ConnectionStatus>();
 
-  // Subscribe to MQTT connection stream
-  StreamSubscription<String>? mqttSubscription;
-  StreamSubscription<String>? influxSubscription;
+      // Subscribe to MQTT connection stream
+      StreamSubscription<String>? mqttSubscription;
+      StreamSubscription<String>? influxSubscription;
 
-  void updateMqttStatus(String status) {
-    final isConnected = status == 'connected';
-    final now = DateTime.now();
+      void updateMqttStatus(String status) {
+        final isConnected = status == 'connected';
+        final now = DateTime.now();
 
-    currentStatus = currentStatus.copyWith(
-      mqttConnected: isConnected,
-      mqttDisconnectedSince: isConnected
-          ? null
-          : (currentStatus.mqttDisconnectedSince ??
-                now), // Only set if not already set
-    );
-    controller.add(currentStatus);
-  }
+        currentStatus = currentStatus.copyWith(
+          mqttConnected: isConnected,
+          mqttDisconnectedSince: isConnected
+              ? null
+              : (currentStatus.mqttDisconnectedSince ??
+                    now), // Only set if not already set
+        );
+        controller.add(currentStatus);
+      }
 
-  void updateInfluxStatus(String status) {
-    final isConnected = status == 'connected';
-    final now = DateTime.now();
+      void updateInfluxStatus(String status) {
+        final isConnected = status == 'connected';
+        final now = DateTime.now();
 
-    currentStatus = currentStatus.copyWith(
-      influxConnected: isConnected,
-      influxDisconnectedSince: isConnected
-          ? null
-          : (currentStatus.influxDisconnectedSince ??
-                now), // Only set if not already set
-    );
-    controller.add(currentStatus);
-  }
+        currentStatus = currentStatus.copyWith(
+          influxConnected: isConnected,
+          influxDisconnectedSince: isConnected
+              ? null
+              : (currentStatus.influxDisconnectedSince ??
+                    now), // Only set if not already set
+        );
+        controller.add(currentStatus);
+      }
 
-  // Set up subscriptions
-  mqttSubscription = mqttService.connectionStream.listen(
-    updateMqttStatus,
-    onError: (error) {
-      updateMqttStatus('disconnected');
+      // Set up subscriptions
+      mqttSubscription = mqttService.connectionStream.listen(
+        updateMqttStatus,
+        onError: (error) {
+          updateMqttStatus('disconnected');
+        },
+      );
+
+      influxSubscription = influxService.connectionStream.listen(
+        updateInfluxStatus,
+        onError: (error) {
+          updateInfluxStatus('disconnected');
+        },
+      );
+
+      // Emit initial state
+      controller.add(currentStatus);
+
+      // Cleanup function
+      ref.onDispose(() {
+        mqttSubscription?.cancel();
+        influxSubscription?.cancel();
+        controller.close();
+      });
+
+      return controller.stream;
+    },
+    loading: () {
+      // While loading, return a stream with loading state
+      return Stream.value(ConnectionStatus(
+        mqttConnected: false,
+        influxConnected: false,
+        mqttDisconnectedSince: DateTime.now(),
+        influxDisconnectedSince: DateTime.now(),
+      ));
+    },
+    error: (error, stack) {
+      // On error, return a stream with error state
+      return Stream.value(ConnectionStatus(
+        mqttConnected: false,
+        influxConnected: false,
+        mqttDisconnectedSince: DateTime.now(),
+        influxDisconnectedSince: DateTime.now(),
+      ));
     },
   );
-
-  influxSubscription = influxService.connectionStream.listen(
-    updateInfluxStatus,
-    onError: (error) {
-      updateInfluxStatus('disconnected');
-    },
-  );
-
-  // Emit initial state
-  controller.add(currentStatus);
-
-  // Cleanup function
-  ref.onDispose(() {
-    mqttSubscription?.cancel();
-    influxSubscription?.cancel();
-    controller.close();
-  });
-
-  return controller.stream;
 });

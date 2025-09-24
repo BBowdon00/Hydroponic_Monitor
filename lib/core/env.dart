@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 
 /// Environment configuration helper.
@@ -12,20 +13,28 @@ class Env {
 
   // Prefer explicit OS environment variables (set by CI or test runner)
   // so tests can inject tokens/urls without modifying .env file.
-  static String get influxUrl =>
-      Platform.environment['INFLUX_URL'] ??
-      dotenv.env['INFLUX_URL'] ??
-      'http://localhost:8086';
-  static String get influxToken =>
-      Platform.environment['INFLUX_TOKEN'] ?? dotenv.env['INFLUX_TOKEN'] ?? '';
-  static String get influxOrg =>
-      Platform.environment['INFLUX_ORG'] ??
-      dotenv.env['INFLUX_ORG'] ??
-      'hydroponic-monitor';
-  static String get influxBucket =>
-      Platform.environment['INFLUX_BUCKET'] ??
-      dotenv.env['INFLUX_BUCKET'] ??
-      'sensors';
+  // Note: Platform.environment is not available on web, so use dotenv only
+  static String get influxUrl => kIsWeb
+      ? dotenv.env['INFLUX_URL'] ?? 'http://localhost:8086'
+      : Platform.environment['INFLUX_URL'] ??
+          dotenv.env['INFLUX_URL'] ??
+          'http://localhost:8086';
+          
+  static String get influxToken => kIsWeb
+      ? dotenv.env['INFLUX_TOKEN'] ?? ''
+      : Platform.environment['INFLUX_TOKEN'] ?? dotenv.env['INFLUX_TOKEN'] ?? '';
+      
+  static String get influxOrg => kIsWeb
+      ? dotenv.env['INFLUX_ORG'] ?? 'hydroponic-monitor'
+      : Platform.environment['INFLUX_ORG'] ??
+          dotenv.env['INFLUX_ORG'] ??
+          'hydroponic-monitor';
+          
+  static String get influxBucket => kIsWeb
+      ? dotenv.env['INFLUX_BUCKET'] ?? 'sensors'
+      : Platform.environment['INFLUX_BUCKET'] ??
+          dotenv.env['INFLUX_BUCKET'] ??
+          'sensors';
 
   static String get mjpegUrl =>
       dotenv.env['MJPEG_URL'] ?? 'http://localhost:8080/stream';
@@ -49,12 +58,15 @@ class Env {
   static bool get isTest {
     final envFlag = dotenv.env['TEST_ENV'];
     if (envFlag != null && envFlag.toLowerCase() == 'true') return true;
+    
     // Some test runners set FLUTTER_TEST or DART_TEST environment variables
-    final platformFlag =
-        Platform.environment['FLUTTER_TEST'] ??
-        Platform.environment['DART_TEST'];
-    if (platformFlag != null && platformFlag.toLowerCase() == 'true') {
-      return true;
+    // Note: Platform.environment is not available on web, so skip this check on web
+    if (!kIsWeb) {
+      final platformFlag =
+          Platform.environment['FLUTTER_TEST'] ??
+          Platform.environment['DART_TEST'];
+      if (platformFlag != null && platformFlag.toLowerCase() == 'true')
+        return true;
     }
     return false;
   }

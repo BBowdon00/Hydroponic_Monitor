@@ -42,6 +42,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             onPressed: () {
               // Trigger data refresh by invalidating providers
               ref.invalidate(realTimeSensorDataProvider);
+              ref.invalidate(realTimeSensorDataByTypeProvider);
               ref.invalidate(latestSensorReadingsProvider);
             },
           ),
@@ -56,6 +57,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       onRefresh: () async {
         // Refresh data services
         ref.invalidate(realTimeSensorDataProvider);
+        ref.invalidate(realTimeSensorDataByTypeProvider);
         ref.invalidate(latestSensorReadingsProvider);
       },
       child: Padding(
@@ -372,7 +374,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   void _showConnectionStatus(BuildContext context) {
-    final connectionStatus = ref.read(connectionStatusProvider);
+    final connectionStatus = ref.watch(connectionStatusProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     showDialog(

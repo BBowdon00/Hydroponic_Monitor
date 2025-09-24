@@ -109,25 +109,12 @@ journey
 - **Safety Mechanisms**: Prevent dangerous configuration combinations
 - **Scheduling**: Time-based automation with visual feedback
 
-#### Rich Historical Context
-- **Multiple Timescales**: From minutes to months of historical data
-- **Comparative Analysis**: Side-by-side period comparisons
-- **Export Capabilities**: Data download for external analysis
-- **Correlation Insights**: Relationship visualization between metrics
-
 ## Design Philosophy
 
 ### Material 3 Design System
 - **Adaptive Theming**: Dynamic color schemes
 - **8-Point Grid**: Consistent spatial relationships
 - **Component Library**: Reusable, accessible UI elements
-- **Motion Design**: Meaningful animations and transitions
-
-### Information Architecture
-- **Task-Oriented**: Organized around user goals, not system features
-- **Hierarchical**: Clear navigation structure with logical groupings
-- **Contextual**: Related information grouped and cross-linked
-- **Searchable**: Quick access to specific sensors or controls
 
 ### Data Presentation
 - **Visual First**: Charts and graphs preferred over raw numbers
@@ -142,6 +129,7 @@ journey
 - **→ System Patterns**: [systemPatterns.md](./systemPatterns.md) - Technical architecture
 - **→ Tech Context**: [techContext.md](./techContext.md) - Technology choices
 - **→ Active Context**: [activeContext.md](./activeContext.md) - Current development focus
+- **→ Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Testing workflow & verification requirements
 
 ---
-*Last Updated: 2025-09-06*
+*Last Updated: 2025-09-24*

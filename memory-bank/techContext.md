@@ -170,22 +170,6 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 
 ## Technical Constraints
 
-### Performance Constraints
-
-#### Memory Usage
-- **Mobile Devices**: Optimize for 2GB+ RAM devices
-- **Web Browsers**: Efficient memory management for long-running sessions
-
-#### Network Bandwidth
-- **MQTT Messages**: Efficient payload sizes < 1KB per message
-- **Video Streams**: Adaptive quality based on connection speed
-- **Historical Queries**: Pagination and data aggregation
-
-#### Battery Life
-- **Background Processing**: Minimize CPU usage when backgrounded
-- **Network Efficiency**: Batch operations and connection pooling
-- **Screen Updates**: Efficient widget rebuilding
-
 ### Platform Constraints
 
 #### Web Platform
@@ -199,27 +183,6 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 - **Permissions**: Network access permissions
 - **Storage**: Platform-specific secure storage limitations
 - **Notifications**: Background notification capabilities
-
-
-## Integration Constraints
-
-### MQTT Protocol Limitations
-- **Message Size**: 256MB theoretical, 64KB practical limit
-- **QoS Overhead**: Higher QoS levels increase latency
-- **Connection Limits**: Broker-dependent concurrent connections
-- **Topic Restrictions**: Character set and length limitations
-
-### InfluxDB Limitations
-- **Query Complexity**: Flux query performance considerations
-- **Data Volume**: Storage and query performance at scale
-- **Connection Pooling**: Limited concurrent query connections
-- **Retention Policies**: Automatic data lifecycle management
-
-### Flutter Framework Limitations
-- **Platform Differences**: Feature availability varies by platform
-- **Plugin Compatibility**: Third-party plugin platform support
-- **Performance**: Rendering performance on low-end devices
-- **Memory**: Garbage collection impact on real-time updates
 
 ## Testing Infrastructure
 
@@ -287,4 +250,4 @@ flowchart LR
 - **→ Progress**: [progress.md](./progress.md) - Implementation roadmap
 
 ---
-*Last Updated: 2025-09-06*
+*Last Updated: 2025-09-24*

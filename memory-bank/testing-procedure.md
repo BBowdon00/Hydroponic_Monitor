@@ -25,6 +25,18 @@ flutter test --exclude-tags=integration
 ```bash
 flutter test test/presentation/
 ```
+
+### 5. Run Real-Time Data Integration Tests
+```bash
+# MQTT Provider Integration Tests (validates end-to-end real-time data flow)
+flutter test test/integration/mqtt_provider_test.dart
+
+# Dashboard Widget Tests (validates UI responsiveness to real-time data)
+flutter test test/presentation/pages/dashboard_page_test.dart
+
+# Error Handling Tests (validates system resilience)
+flutter test test/data/error_handling_test.dart
+```
 ---
 
 ## Prerequisites
@@ -121,4 +133,4 @@ TASK IS NOT FINISHED UNTIL ALL TESTS PASS. DO NOT MARK AS COMPLETE.
 
 ---
 
-*Last Updated: 2025-09-06*
+*Last Updated: 2025-09-24*

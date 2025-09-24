@@ -44,6 +44,27 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
   );
 });
 
+/// Provider that ensures sensor repository initialization and provides initialization status.
+final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((ref) async {
+  final repository = ref.read(sensorRepositoryProvider);
+  
+  Logger.info('Starting sensor repository initialization...', tag: 'DataProviders');
+  
+  // Initialize the repository
+  final result = await repository.initialize();
+  
+  return result.when(
+    success: (_) {
+      Logger.info('Sensor repository initialized successfully', tag: 'DataProviders');
+      return repository;
+    },
+    failure: (error) {
+      Logger.error('Failed to initialize sensor repository: $error', tag: 'DataProviders');
+      throw Exception('Failed to initialize sensor repository: $error');
+    },
+  );
+});
+
 /// Provider for device repository.
 final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
   final mqttService = ref.read(mqttServiceProvider);
@@ -52,10 +73,14 @@ final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
 });
 
 /// Provider for real-time sensor data stream.
-/// The repository will handle its own initialization when the stream is accessed.
+/// This initializes the repository on demand and provides the stream.
 final realTimeSensorDataProvider = StreamProvider<SensorData>((ref) {
-  final sensorRepository = ref.read(sensorRepositoryProvider);
-  return sensorRepository.realTimeSensorData;
+  final repositoryAsync = ref.watch(sensorRepositoryInitProvider);
+  return repositoryAsync.when(
+    data: (repository) => repository.realTimeSensorData,
+    loading: () => const Stream.empty(),
+    error: (_, __) => const Stream.empty(),
+  );
 });
 
 /// Provider for device status updates stream.

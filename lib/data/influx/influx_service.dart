@@ -26,9 +26,30 @@ class InfluxDbService {
   QueryService? _queryApi;
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
+  String? _lastConnectionStatus;
 
   /// Stream of connection status changes.
-  Stream<String> get connectionStream => _connectionController.stream;
+  Stream<String> get connectionStream {
+    // Return a broadcast stream that first replays the last status
+    // then forwards live updates from the controller.
+    return Stream.multi((controller) {
+      // Replay last status to new subscribers first
+      if (_lastConnectionStatus != null) {
+        controller.add(_lastConnectionStatus!);
+      }
+
+      // Forward live updates
+      final sub = _connectionController.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+
+      controller.onCancel = () {
+        sub.cancel();
+      };
+    }, isBroadcast: true);
+  }
 
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
@@ -47,11 +68,13 @@ class InfluxDbService {
       _queryApi = _client!.getQueryService();
 
       Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
+      _lastConnectionStatus = 'connected';
       _connectionController.add('connected');
       return Success(null); // remove `const` unless Success has a const ctor
     } catch (e) {
       final error = 'Error initializing InfluxDB client: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _lastConnectionStatus = 'disconnected';
       _connectionController.add('disconnected');
       return Failure(InfluxError(error)); // remove `const` unless allowed
     }
@@ -89,6 +112,7 @@ class InfluxDbService {
     } catch (e) {
       final error = 'Error writing sensor data to InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _lastConnectionStatus = 'disconnected';
       _connectionController.add('disconnected');
       return Failure(InfluxError(error));
     }
@@ -174,16 +198,16 @@ class InfluxDbService {
 
       if (sensorType != null) {
         filters.add(
-          '|> filter(fn: (r) => r["sensor_type"] == "${sensorType.name}")',
+          '|> filter(fn: (r) => r["deviceType"] == "${sensorType.name}")',
         );
       }
 
       if (sensorId != null) {
-        filters.add('|> filter(fn: (r) => r["sensor_id"] == "$sensorId")');
+        filters.add('|> filter(fn: (r) => r["deviceID"] == "$sensorId")');
       }
 
       if (deviceId != null) {
-        filters.add('|> filter(fn: (r) => r["device_id"] == "$deviceId")');
+        filters.add('|> filter(fn: (r) => r["deviceNode"] == "$deviceId")');
       }
 
       final filtersString = filters.join('\n  ');
@@ -192,7 +216,7 @@ class InfluxDbService {
           '''
 from(bucket: "$bucket")
   |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${endTime.toUtc().toIso8601String()})
-  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
   |> filter(fn: (r) => r["_field"] == "value")
   $filtersString
   |> sort(columns: ["_time"], desc: true)
@@ -252,13 +276,14 @@ from(bucket: "$bucket")
       Logger.info('Querying latest sensor data from InfluxDB', tag: 'InfluxDB');
 
       // Query for latest reading of each sensor type
+      // Updated to match actual Telegraf data structure
       final query =
           '''
 from(bucket: "$bucket")
   |> range(start: -24h)
-  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
   |> filter(fn: (r) => r["_field"] == "value")
-  |> group(columns: ["sensor_type", "sensor_id"])
+  |> group(columns: ["deviceType", "deviceID"])
   |> last()
   |> yield()
 ''';
@@ -325,15 +350,28 @@ from(bucket: "$bucket")
   SensorData? _parseFluxRecord(FluxRecord record) {
     try {
       // Extract required fields from the flux record using correct API
-      final timestamp = record['_time'] as DateTime?;
+      final timestampRaw = record['_time'];
       final value = record['_value'];
-      final sensorId = record['sensor_id'];
-      final sensorTypeStr = record['sensor_type'];
+      final sensorId = record['deviceID'];
+      final sensorTypeStr = record['deviceType'];
 
-      if (timestamp == null ||
+      if (timestampRaw == null ||
           value == null ||
           sensorId == null ||
           sensorTypeStr == null) {
+        return null;
+      }
+
+      // Parse timestamp - handle both String and DateTime types
+      DateTime? timestamp;
+      if (timestampRaw is DateTime) {
+        timestamp = timestampRaw;
+      } else if (timestampRaw is String) {
+        timestamp = DateTime.tryParse(timestampRaw);
+      }
+      
+      if (timestamp == null) {
+        Logger.error('Failed to parse timestamp: $timestampRaw', tag: 'InfluxDB');
         return null;
       }
 
@@ -356,7 +394,7 @@ from(bucket: "$bucket")
 
       // Extract optional fields
       final unit = record['unit']?.toString();
-      final deviceId = record['device_id']?.toString();
+      final deviceId = record['deviceNode']?.toString();
       final location = record['location']?.toString();
 
       return SensorData(

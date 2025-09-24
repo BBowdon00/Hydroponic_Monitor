@@ -130,6 +130,7 @@ flowchart TD
 - **Tech Context**: [techContext.md](./techContext.md) - Technology stack and constraints
 - **Active Context**: [activeContext.md](./activeContext.md) - Current development focus
 - **Progress**: [progress.md](./progress.md) - Implementation status and roadmap
+- **Testing Procedure**: [testing-procedure.md](./testing-procedure.md) - Canonical testing workflow & completion criteria
 
 ---
-*Last Updated: 2025-09-06*  
+*Last Updated: 2025-09-24*  
