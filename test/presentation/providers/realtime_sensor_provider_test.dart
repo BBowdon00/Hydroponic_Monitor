@@ -14,7 +14,9 @@ import 'package:hydroponic_monitor/presentation/providers/sensor_providers.dart'
 
 // Mock classes
 class MockMqttService extends Mock implements MqttService {}
+
 class MockInfluxDbService extends Mock implements InfluxDbService {}
+
 class MockSensorRepository extends Mock implements SensorRepository {}
 
 void main() {
@@ -23,7 +25,11 @@ void main() {
   });
 
   // Helper to wait for provider value with timeout
-  Future<SensorData?> waitForProvider(ProviderContainer container, Provider<SensorData?> provider, {Duration timeout = const Duration(seconds: 5)}) async {
+  Future<SensorData?> waitForProvider(
+    ProviderContainer container,
+    Provider<SensorData?> provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     final end = DateTime.now().add(timeout);
     SensorData? data;
     while (DateTime.now().isBefore(end)) {
@@ -40,22 +46,25 @@ void main() {
     late ProviderContainer container;
     late StreamController<SensorData> sensorDataController;
 
-  setUp(() {
+    setUp(() {
       mockMqttService = MockMqttService();
       mockInfluxService = MockInfluxDbService();
       sensorDataController = StreamController<SensorData>.broadcast();
 
       // Mock MQTT service stream
-      when(() => mockMqttService.sensorDataStream)
-          .thenAnswer((_) => sensorDataController.stream);
-      
+      when(
+        () => mockMqttService.sensorDataStream,
+      ).thenAnswer((_) => sensorDataController.stream);
+
       // Mock MQTT service connection
-      when(() => mockMqttService.connect())
-          .thenAnswer((_) async => const Success<void>(null));
-      
-      // Mock InfluxDB service initialization  
-      when(() => mockInfluxService.initialize())
-          .thenAnswer((_) async => const Success<void>(null));
+      when(
+        () => mockMqttService.connect(),
+      ).thenAnswer((_) async => const Success<void>(null));
+
+      // Mock InfluxDB service initialization
+      when(
+        () => mockInfluxService.initialize(),
+      ).thenAnswer((_) async => const Success<void>(null));
 
       // Create container with mocked services
       container = ProviderContainer(
@@ -70,14 +79,16 @@ void main() {
       });
     });
 
-  // Removed tearDown; now handled by addTearDown in setUp
+    // Removed tearDown; now handled by addTearDown in setUp
 
     test('Repository initialization completes successfully', () async {
-      final repositoryFuture = container.read(sensorRepositoryInitProvider.future);
-      
+      final repositoryFuture = container.read(
+        sensorRepositoryInitProvider.future,
+      );
+
       // Wait for initialization to complete
       final repository = await repositoryFuture;
-      
+
       expect(repository, isA<SensorRepository>());
       verify(() => mockMqttService.connect()).called(1);
       verify(() => mockInfluxService.initialize()).called(1);
@@ -142,93 +153,101 @@ void main() {
       }
 
       print('Final receivedData: $receivedData');
-      expect(receivedData, isNotNull, reason: 'Provider should have emitted sensor data');
+      expect(
+        receivedData,
+        isNotNull,
+        reason: 'Provider should have emitted sensor data',
+      );
       expect(receivedData![SensorType.temperature]?.value, equals(25.0));
       expect(receivedData![SensorType.humidity]?.value, equals(60.0));
-      
+
       sub.close();
     });
 
-    test('Latest sensor data provider returns correct values for each sensor type', () async {
+    test(
+      'Latest sensor data provider returns correct values for each sensor type',
+      () async {
+        // Wait for repository initialization
+        await container.read(sensorRepositoryInitProvider.future);
+
+        // Set up listeners BEFORE emitting data
+        SensorData? tempData;
+        SensorData? humidityData;
+        SensorData? phData;
+
+        // Listen for temperature data
+        final tempSub = container.listen<SensorData?>(
+          latestSensorDataProvider(SensorType.temperature),
+          (prev, next) {
+            tempData = next;
+          },
+          fireImmediately: true,
+        );
+        // Listen for humidity data
+        final humiditySub = container.listen<SensorData?>(
+          latestSensorDataProvider(SensorType.humidity),
+          (prev, next) {
+            humidityData = next;
+          },
+          fireImmediately: true,
+        );
+
+        // Small delay to ensure subscriptions are active
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Create test sensor data
+        final tempSensor = SensorData(
+          id: 'temp_1',
+          sensorType: SensorType.temperature,
+          value: 22.5,
+          unit: '°C',
+          timestamp: DateTime.now(),
+          deviceId: 'node_1',
+          location: 'greenhouse',
+        );
+
+        final humiditySensor = SensorData(
+          id: 'humidity_1',
+          sensorType: SensorType.humidity,
+          value: 65.0,
+          unit: '%',
+          timestamp: DateTime.now(),
+          deviceId: 'node_1',
+          location: 'greenhouse',
+        );
+
+        // Emit sensor data
+        sensorDataController.add(tempSensor);
+        print('Emitted tempSensor');
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        sensorDataController.add(humiditySensor);
+        print('Emitted humiditySensor');
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // Wait for provider updates
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        expect(tempData?.value, equals(22.5));
+        expect(tempData?.sensorType, equals(SensorType.temperature));
+        expect(humidityData?.value, equals(65.0));
+        expect(humidityData?.sensorType, equals(SensorType.humidity));
+
+        // pH sensor data was never sent, should be null
+        phData = container.read(latestSensorDataProvider(SensorType.pH));
+        expect(phData, isNull);
+
+        tempSub.close();
+        humiditySub.close();
+      },
+    );
+    test('Has sensor data provider reports correct status', () async {
       // Wait for repository initialization
       await container.read(sensorRepositoryInitProvider.future);
 
-      // Set up listeners BEFORE emitting data
-      SensorData? tempData;
-      SensorData? humidityData;
-      SensorData? phData;
-
-      // Listen for temperature data
-      final tempSub = container.listen<SensorData?>(
-        latestSensorDataProvider(SensorType.temperature),
-        (prev, next) {
-          tempData = next;
-        },
-        fireImmediately: true,
-      );
-      // Listen for humidity data
-      final humiditySub = container.listen<SensorData?>(
-        latestSensorDataProvider(SensorType.humidity),
-        (prev, next) {
-          humidityData = next;
-        },
-        fireImmediately: true,
-      );
-
-      // Small delay to ensure subscriptions are active
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Create test sensor data
-      final tempSensor = SensorData(
-        id: 'temp_1',
-        sensorType: SensorType.temperature,
-        value: 22.5,
-        unit: '°C',
-        timestamp: DateTime.now(),
-        deviceId: 'node_1',
-        location: 'greenhouse',
-      );
-
-      final humiditySensor = SensorData(
-        id: 'humidity_1',
-        sensorType: SensorType.humidity,
-        value: 65.0,
-        unit: '%',
-        timestamp: DateTime.now(),
-        deviceId: 'node_1',
-        location: 'greenhouse',
-      );
-
-      // Emit sensor data
-      sensorDataController.add(tempSensor);
-      print('Emitted tempSensor');
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      sensorDataController.add(humiditySensor);
-      print('Emitted humiditySensor');
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Wait for provider updates
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      expect(tempData?.value, equals(22.5));
-      expect(tempData?.sensorType, equals(SensorType.temperature));
-      expect(humidityData?.value, equals(65.0));
-      expect(humidityData?.sensorType, equals(SensorType.humidity));
-
-      // pH sensor data was never sent, should be null
-      phData = container.read(latestSensorDataProvider(SensorType.pH));
-      expect(phData, isNull);
-
-      tempSub.close();
-      humiditySub.close();
-    });    test('Has sensor data provider reports correct status', () async {
-      // Wait for repository initialization
-      await container.read(sensorRepositoryInitProvider.future);
-      
       // Initially should have no sensor data
       expect(container.read(hasSensorDataProvider), isFalse);
-      
+
       // Add sensor data
       final tempSensor = SensorData(
         id: 'temp_1',
@@ -239,35 +258,39 @@ void main() {
         deviceId: 'node_1',
         location: 'greenhouse',
       );
-      
-  sensorDataController.add(tempSensor);
-  print('Emitted tempSensor');
-  await Future.delayed(const Duration(milliseconds: 300));
-      
+
+      sensorDataController.add(tempSensor);
+      print('Emitted tempSensor');
+      await Future.delayed(const Duration(milliseconds: 300));
+
       // Now should have sensor data
       expect(container.read(hasSensorDataProvider), isTrue);
     });
 
-    test('Provider handles repository initialization errors gracefully', () async {
-      // Create a new container with failing MQTT service
-      final failingMqttService = MockMqttService();
-      when(() => failingMqttService.connect())
-          .thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));
-      
-      final failingContainer = ProviderContainer(
-        overrides: [
-          mqttServiceProvider.overrideWithValue(failingMqttService),
-          influxServiceProvider.overrideWithValue(mockInfluxService),
-        ],
-      );
-      
-      // Repository initialization should fail
-      expect(
-        () => failingContainer.read(sensorRepositoryInitProvider.future),
-        throwsA(isA<Exception>()),
-      );
-      
-      failingContainer.dispose();
-    });
+    test(
+      'Provider handles repository initialization errors gracefully',
+      () async {
+        // Create a new container with failing MQTT service
+        final failingMqttService = MockMqttService();
+        when(
+          () => failingMqttService.connect(),
+        ).thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));
+
+        final failingContainer = ProviderContainer(
+          overrides: [
+            mqttServiceProvider.overrideWithValue(failingMqttService),
+            influxServiceProvider.overrideWithValue(mockInfluxService),
+          ],
+        );
+
+        // Repository initialization should fail
+        expect(
+          () => failingContainer.read(sensorRepositoryInitProvider.future),
+          throwsA(isA<Exception>()),
+        );
+
+        failingContainer.dispose();
+      },
+    );
   });
 }

@@ -20,7 +20,10 @@ class SensorRepository {
   /// Memoized initialization method
   Future<Result<void>> initialize() async {
     if (_initialized) {
-      Logger.debug('SensorRepository already initialized', tag: 'SensorRepository');
+      Logger.debug(
+        'SensorRepository already initialized',
+        tag: 'SensorRepository',
+      );
       return const Success<void>(null);
     }
     try {

@@ -62,7 +62,7 @@ class ConnectionStatus {
 final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
   // Watch the sensor repository init provider to ensure services are initialized
   final repositoryAsync = ref.watch(sensorRepositoryInitProvider);
-  
+
   return repositoryAsync.when(
     data: (repository) {
       final mqttService = ref.read(mqttServiceProvider);
@@ -140,21 +140,25 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
     },
     loading: () {
       // While loading, return a stream with loading state
-      return Stream.value(ConnectionStatus(
-        mqttConnected: false,
-        influxConnected: false,
-        mqttDisconnectedSince: DateTime.now(),
-        influxDisconnectedSince: DateTime.now(),
-      ));
+      return Stream.value(
+        ConnectionStatus(
+          mqttConnected: false,
+          influxConnected: false,
+          mqttDisconnectedSince: DateTime.now(),
+          influxDisconnectedSince: DateTime.now(),
+        ),
+      );
     },
     error: (error, stack) {
       // On error, return a stream with error state
-      return Stream.value(ConnectionStatus(
-        mqttConnected: false,
-        influxConnected: false,
-        mqttDisconnectedSince: DateTime.now(),
-        influxDisconnectedSince: DateTime.now(),
-      ));
+      return Stream.value(
+        ConnectionStatus(
+          mqttConnected: false,
+          influxConnected: false,
+          mqttDisconnectedSince: DateTime.now(),
+          influxDisconnectedSince: DateTime.now(),
+        ),
+      );
     },
   );
 });

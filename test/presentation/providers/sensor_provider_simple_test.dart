@@ -31,24 +31,28 @@ void main() {
 
     test('hasSensorDataProvider returns false initially', () {
       final container = ProviderContainer();
-      
+
       // Initially should have no sensor data
       final hasSensorData = container.read(hasSensorDataProvider);
       expect(hasSensorData, isFalse);
-      
+
       container.dispose();
     });
 
     test('latestSensorDataProvider returns null initially', () {
       final container = ProviderContainer();
-      
+
       // Should return null for any sensor type initially
-      final tempData = container.read(latestSensorDataProvider(SensorType.temperature));
+      final tempData = container.read(
+        latestSensorDataProvider(SensorType.temperature),
+      );
       expect(tempData, isNull);
-      
-      final humidityData = container.read(latestSensorDataProvider(SensorType.humidity));
+
+      final humidityData = container.read(
+        latestSensorDataProvider(SensorType.humidity),
+      );
       expect(humidityData, isNull);
-      
+
       container.dispose();
     });
   });
