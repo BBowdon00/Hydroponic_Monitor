@@ -198,16 +198,16 @@ class InfluxDbService {
 
       if (sensorType != null) {
         filters.add(
-          '|> filter(fn: (r) => r["sensor_type"] == "${sensorType.name}")',
+          '|> filter(fn: (r) => r["deviceType"] == "${sensorType.name}")',
         );
       }
 
       if (sensorId != null) {
-        filters.add('|> filter(fn: (r) => r["sensor_id"] == "$sensorId")');
+        filters.add('|> filter(fn: (r) => r["deviceID"] == "$sensorId")');
       }
 
       if (deviceId != null) {
-        filters.add('|> filter(fn: (r) => r["device_id"] == "$deviceId")');
+        filters.add('|> filter(fn: (r) => r["deviceNode"] == "$deviceId")');
       }
 
       final filtersString = filters.join('\n  ');
@@ -216,7 +216,7 @@ class InfluxDbService {
           '''
 from(bucket: "$bucket")
   |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${endTime.toUtc().toIso8601String()})
-  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
   |> filter(fn: (r) => r["_field"] == "value")
   $filtersString
   |> sort(columns: ["_time"], desc: true)
@@ -276,13 +276,14 @@ from(bucket: "$bucket")
       Logger.info('Querying latest sensor data from InfluxDB', tag: 'InfluxDB');
 
       // Query for latest reading of each sensor type
+      // Updated to match actual Telegraf data structure
       final query =
           '''
 from(bucket: "$bucket")
   |> range(start: -24h)
-  |> filter(fn: (r) => r["_measurement"] == "sensor_data")
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
   |> filter(fn: (r) => r["_field"] == "value")
-  |> group(columns: ["sensor_type", "sensor_id"])
+  |> group(columns: ["deviceType", "deviceID"])
   |> last()
   |> yield()
 ''';
@@ -349,15 +350,28 @@ from(bucket: "$bucket")
   SensorData? _parseFluxRecord(FluxRecord record) {
     try {
       // Extract required fields from the flux record using correct API
-      final timestamp = record['_time'] as DateTime?;
+      final timestampRaw = record['_time'];
       final value = record['_value'];
-      final sensorId = record['sensor_id'];
-      final sensorTypeStr = record['sensor_type'];
+      final sensorId = record['deviceID'];
+      final sensorTypeStr = record['deviceType'];
 
-      if (timestamp == null ||
+      if (timestampRaw == null ||
           value == null ||
           sensorId == null ||
           sensorTypeStr == null) {
+        return null;
+      }
+
+      // Parse timestamp - handle both String and DateTime types
+      DateTime? timestamp;
+      if (timestampRaw is DateTime) {
+        timestamp = timestampRaw;
+      } else if (timestampRaw is String) {
+        timestamp = DateTime.tryParse(timestampRaw);
+      }
+      
+      if (timestamp == null) {
+        Logger.error('Failed to parse timestamp: $timestampRaw', tag: 'InfluxDB');
         return null;
       }
 
@@ -380,7 +394,7 @@ from(bucket: "$bucket")
 
       // Extract optional fields
       final unit = record['unit']?.toString();
-      final deviceId = record['device_id']?.toString();
+      final deviceId = record['deviceNode']?.toString();
       final location = record['location']?.toString();
 
       return SensorData(
