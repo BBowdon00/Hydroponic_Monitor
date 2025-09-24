@@ -47,21 +47,21 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Web Application**: Primary platform
 - [x] **Android Application**: Native mobile experience
 
-### Features In Development 🚧 IN PROGRESS
+### Features In Development 🧱 IN PROGRESS
 
-#### Historical Data Analytics (Next Priority)
+#### Actuator Control System (Active)
+- [ ] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
+- [ ] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
+- [ ] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges
+- [ ] **Safety Systems**: Command pending -> timeout -> error handling
+- [ ] **Testing**: Unit/provider tests for command/state transitions and node aggregation
+
+#### Historical Data Analytics (Next)
 - [ ] **Time-Series Charts**: Interactive charts using fl_chart package
-- [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges  
+- [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges
 - [ ] **Data Aggregation**: Multiple aggregation functions for different time scales
 - [ ] **Time Range Controls**: User selectable ranges (1h, 24h, 7d, 30d)
 - [ ] **Chart Widgets**: Dashboard integration with historical visualization
-
-#### Actuator Control System (Future)
-- [ ] **MQTT Commands**: Send control commands to devices via MQTT
-- [ ] **State Confirmation**: Verify actuator state changes via status feedback
-- [ ] **Control Interface**: Dashboard widgets for device control
-- [ ] **Safety Systems**: Timeout handling and error recovery
-- [ ] **Command History**: Logging and audit trail for control actions
 
 #### Advanced Features (Future)
 - [ ] **MJPEG Stream Testing**: Complete video integration testing
@@ -94,13 +94,13 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - **Architecture Compliance**: Clean Architecture principles maintained
 - **Dependency Management**: All packages up-to-date and secure
 
-## Future Roadmap
+### Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
-2. **Actuator Control System**: MQTT command sending with state confirmation feedback
+1. **Actuator Control System**: MQTT command sending with state confirmation feedback
+2. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
 3. **MJPEG Camera Streaming Test**: Robust testing for the MJPEG video feed
-3. **Enhanced Testing**: Playwright automation for full-stack validation
+4. **Enhanced Testing**: Playwright automation for full-stack validation
 
   
 ---
