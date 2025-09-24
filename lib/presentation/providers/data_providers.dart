@@ -45,21 +45,32 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
 });
 
 /// Provider that ensures sensor repository initialization and provides initialization status.
-final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((ref) async {
+final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
+  ref,
+) async {
   final repository = ref.read(sensorRepositoryProvider);
-  
-  Logger.info('Starting sensor repository initialization...', tag: 'DataProviders');
-  
+
+  Logger.info(
+    'Starting sensor repository initialization...',
+    tag: 'DataProviders',
+  );
+
   // Initialize the repository
   final result = await repository.initialize();
-  
+
   return result.when(
     success: (_) {
-      Logger.info('Sensor repository initialized successfully', tag: 'DataProviders');
+      Logger.info(
+        'Sensor repository initialized successfully',
+        tag: 'DataProviders',
+      );
       return repository;
     },
     failure: (error) {
-      Logger.error('Failed to initialize sensor repository: $error', tag: 'DataProviders');
+      Logger.error(
+        'Failed to initialize sensor repository: $error',
+        tag: 'DataProviders',
+      );
       throw Exception('Failed to initialize sensor repository: $error');
     },
   );

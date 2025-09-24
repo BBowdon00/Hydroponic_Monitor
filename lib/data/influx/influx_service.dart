@@ -369,9 +369,12 @@ from(bucket: "$bucket")
       } else if (timestampRaw is String) {
         timestamp = DateTime.tryParse(timestampRaw);
       }
-      
+
       if (timestamp == null) {
-        Logger.error('Failed to parse timestamp: $timestampRaw', tag: 'InfluxDB');
+        Logger.error(
+          'Failed to parse timestamp: $timestampRaw',
+          tag: 'InfluxDB',
+        );
         return null;
       }
 

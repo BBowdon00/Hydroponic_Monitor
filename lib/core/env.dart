@@ -17,24 +17,26 @@ class Env {
   static String get influxUrl => kIsWeb
       ? dotenv.env['INFLUX_URL'] ?? 'http://localhost:8086'
       : Platform.environment['INFLUX_URL'] ??
-          dotenv.env['INFLUX_URL'] ??
-          'http://localhost:8086';
-          
+            dotenv.env['INFLUX_URL'] ??
+            'http://localhost:8086';
+
   static String get influxToken => kIsWeb
       ? dotenv.env['INFLUX_TOKEN'] ?? ''
-      : Platform.environment['INFLUX_TOKEN'] ?? dotenv.env['INFLUX_TOKEN'] ?? '';
-      
+      : Platform.environment['INFLUX_TOKEN'] ??
+            dotenv.env['INFLUX_TOKEN'] ??
+            '';
+
   static String get influxOrg => kIsWeb
       ? dotenv.env['INFLUX_ORG'] ?? 'hydroponic-monitor'
       : Platform.environment['INFLUX_ORG'] ??
-          dotenv.env['INFLUX_ORG'] ??
-          'hydroponic-monitor';
-          
+            dotenv.env['INFLUX_ORG'] ??
+            'hydroponic-monitor';
+
   static String get influxBucket => kIsWeb
       ? dotenv.env['INFLUX_BUCKET'] ?? 'sensors'
       : Platform.environment['INFLUX_BUCKET'] ??
-          dotenv.env['INFLUX_BUCKET'] ??
-          'sensors';
+            dotenv.env['INFLUX_BUCKET'] ??
+            'sensors';
 
   static String get mjpegUrl =>
       dotenv.env['MJPEG_URL'] ?? 'http://localhost:8080/stream';
@@ -58,7 +60,7 @@ class Env {
   static bool get isTest {
     final envFlag = dotenv.env['TEST_ENV'];
     if (envFlag != null && envFlag.toLowerCase() == 'true') return true;
-    
+
     // Some test runners set FLUTTER_TEST or DART_TEST environment variables
     // Note: Platform.environment is not available on web, so skip this check on web
     if (!kIsWeb) {

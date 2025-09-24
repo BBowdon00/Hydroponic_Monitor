@@ -19,48 +19,64 @@ final hasSensorDataProvider = Provider<bool>((ref) {
 
 /// Provider that maintains the latest reading for each sensor type from real-time stream.
 /// This accumulates sensor data by type so all sensor types can display current values.
-final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorData>>((ref) {
-  Logger.info('realTimeSensorDataByTypeProvider accessed', tag: 'SensorProviders');
-  
-  return ref.watch(sensorRepositoryInitProvider).when(
-    data: (repository) {
-      Logger.info('Repository initialized, creating sensor data stream', tag: 'SensorProviders');
-      final Map<SensorType, SensorData> sensorDataByType = {};
-      
-      // Transform the repository stream to accumulate data by type
-      return repository.realTimeSensorData.map((sensorData) {
-        sensorDataByType[sensorData.sensorType] = sensorData;
-        return Map<SensorType, SensorData>.from(sensorDataByType);
-      });
-    },
-    loading: () {
-      Logger.info('Repository still loading...', tag: 'SensorProviders');
-      return const Stream.empty();
-    },
-    error: (error, stack) {
-      Logger.error('Repository initialization failed: $error', tag: 'SensorProviders');
-      return Stream.error(error, stack);
-    },
-  );
-});
+final realTimeSensorDataByTypeProvider =
+    StreamProvider<Map<SensorType, SensorData>>((ref) {
+      Logger.info(
+        'realTimeSensorDataByTypeProvider accessed',
+        tag: 'SensorProviders',
+      );
+
+      return ref
+          .watch(sensorRepositoryInitProvider)
+          .when(
+            data: (repository) {
+              Logger.info(
+                'Repository initialized, creating sensor data stream',
+                tag: 'SensorProviders',
+              );
+              final Map<SensorType, SensorData> sensorDataByType = {};
+
+              // Transform the repository stream to accumulate data by type
+              return repository.realTimeSensorData.map((sensorData) {
+                sensorDataByType[sensorData.sensorType] = sensorData;
+                return Map<SensorType, SensorData>.from(sensorDataByType);
+              });
+            },
+            loading: () {
+              Logger.info(
+                'Repository still loading...',
+                tag: 'SensorProviders',
+              );
+              return const Stream.empty();
+            },
+            error: (error, stack) {
+              Logger.error(
+                'Repository initialization failed: $error',
+                tag: 'SensorProviders',
+              );
+              return Stream.error(error, stack);
+            },
+          );
+    });
 
 /// Provider for getting the latest reading of a specific sensor type from real-time stream.
 /// This uses the most recent data from the accumulated real-time stream, falling back to historical data.
-final latestSensorDataProvider = Provider.family<SensorData?, SensorType>(
-  (ref, sensorType) {
-    // Get the accumulated real-time data by type
-    final realTimeDataByTypeAsync = ref.watch(realTimeSensorDataByTypeProvider);
-    
-    return realTimeDataByTypeAsync.when(
-      data: (sensorDataByType) {
-        // Return the latest data for the requested sensor type
-        return sensorDataByType[sensorType];
-      },
-      loading: () => null,
-      error: (_, __) => null,
-    );
-  },
-);
+final latestSensorDataProvider = Provider.family<SensorData?, SensorType>((
+  ref,
+  sensorType,
+) {
+  // Get the accumulated real-time data by type
+  final realTimeDataByTypeAsync = ref.watch(realTimeSensorDataByTypeProvider);
+
+  return realTimeDataByTypeAsync.when(
+    data: (sensorDataByType) {
+      // Return the latest data for the requested sensor type
+      return sensorDataByType[sensorType];
+    },
+    loading: () => null,
+    error: (_, __) => null,
+  );
+});
 
 /// Provider for getting historical latest readings for all sensor types.
 /// This provides a comprehensive view of the latest data for each sensor type.
