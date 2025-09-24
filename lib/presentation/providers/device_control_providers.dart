@@ -389,3 +389,67 @@ final systemStatusProvider = Provider<DeviceStatus>((ref) {
   final controls = ref.watch(deviceControlsProvider);
   return controls.systemStatus;
 });
+
+/// Helper function to extract node name from device ID.
+String _extractNodeFromDeviceId(String deviceId) {
+  final parts = deviceId.split('_');
+  return parts.isNotEmpty ? parts[0] : 'unknown';
+}
+
+/// Provider for devices grouped by node.
+final devicesByNodeProvider = Provider<Map<String, List<DeviceControlState>>>((ref) {
+  final controls = ref.watch(deviceControlsProvider);
+  final devicesByNode = <String, List<DeviceControlState>>{};
+  
+  for (final device in controls.devices.values) {
+    final node = _extractNodeFromDeviceId(device.deviceId);
+    devicesByNode.putIfAbsent(node, () => []).add(device);
+  }
+  
+  return devicesByNode;
+});
+
+/// Provider for node status (aggregated from devices on that node).
+final nodeStatusProvider = Provider<Map<String, DeviceStatus>>((ref) {
+  final devicesByNode = ref.watch(devicesByNodeProvider);
+  final nodeStatuses = <String, DeviceStatus>{};
+  
+  for (final entry in devicesByNode.entries) {
+    final node = entry.key;
+    final devices = entry.value;
+    
+    if (devices.isEmpty) {
+      nodeStatuses[node] = DeviceStatus.offline;
+      continue;
+    }
+    
+    // Determine node status based on device statuses
+    final statuses = devices.map((d) => d.status).toSet();
+    
+    if (statuses.contains(DeviceStatus.error)) {
+      nodeStatuses[node] = DeviceStatus.error;
+    } else if (statuses.contains(DeviceStatus.pending)) {
+      nodeStatuses[node] = DeviceStatus.pending;
+    } else if (statuses.every((s) => s == DeviceStatus.offline)) {
+      nodeStatuses[node] = DeviceStatus.offline;
+    } else if (statuses.contains(DeviceStatus.online)) {
+      nodeStatuses[node] = DeviceStatus.online;
+    } else {
+      nodeStatuses[node] = DeviceStatus.offline;
+    }
+  }
+  
+  return nodeStatuses;
+});
+
+/// Provider for devices on a specific node.
+final devicesForNodeProvider = Provider.family<List<DeviceControlState>, String>((ref, node) {
+  final devicesByNode = ref.watch(devicesByNodeProvider);
+  return devicesByNode[node] ?? [];
+});
+
+/// Provider for status of a specific node.
+final nodeStatusForProvider = Provider.family<DeviceStatus, String>((ref, node) {
+  final nodeStatuses = ref.watch(nodeStatusProvider);
+  return nodeStatuses[node] ?? DeviceStatus.offline;
+});
