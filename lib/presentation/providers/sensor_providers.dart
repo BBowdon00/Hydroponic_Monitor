@@ -7,6 +7,7 @@ import 'data_providers.dart';
 
 /// Provider for checking if sensor data is available (not waiting).
 final hasSensorDataProvider = Provider<bool>((ref) {
+  Logger.info('hasSensorDataProvider accessed', tag: 'SensorProviders');
   // Check if the accumulated real-time sensor data has provided any data
   final realTimeDataByTypeAsync = ref.watch(realTimeSensorDataByTypeProvider);
   return realTimeDataByTypeAsync.when(
@@ -19,8 +20,11 @@ final hasSensorDataProvider = Provider<bool>((ref) {
 /// Provider that maintains the latest reading for each sensor type from real-time stream.
 /// This accumulates sensor data by type so all sensor types can display current values.
 final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorData>>((ref) {
+  Logger.info('realTimeSensorDataByTypeProvider accessed', tag: 'SensorProviders');
+  
   return ref.watch(sensorRepositoryInitProvider).when(
     data: (repository) {
+      Logger.info('Repository initialized, creating sensor data stream', tag: 'SensorProviders');
       final Map<SensorType, SensorData> sensorDataByType = {};
       
       // Transform the repository stream to accumulate data by type
@@ -29,8 +33,14 @@ final realTimeSensorDataByTypeProvider = StreamProvider<Map<SensorType, SensorDa
         return Map<SensorType, SensorData>.from(sensorDataByType);
       });
     },
-    loading: () => const Stream.empty(),
-    error: (error, stack) => Stream.error(error, stack),
+    loading: () {
+      Logger.info('Repository still loading...', tag: 'SensorProviders');
+      return const Stream.empty();
+    },
+    error: (error, stack) {
+      Logger.error('Repository initialization failed: $error', tag: 'SensorProviders');
+      return Stream.error(error, stack);
+    },
   );
 });
 

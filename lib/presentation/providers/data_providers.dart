@@ -48,6 +48,8 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
 final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((ref) async {
   final repository = ref.read(sensorRepositoryProvider);
   
+  Logger.info('Starting sensor repository initialization...', tag: 'DataProviders');
+  
   // Initialize the repository
   final result = await repository.initialize();
   

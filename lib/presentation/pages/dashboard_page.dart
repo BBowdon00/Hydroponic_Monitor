@@ -373,7 +373,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   void _showConnectionStatus(BuildContext context) {
-    final connectionStatus = ref.read(connectionStatusProvider);
+    final connectionStatus = ref.watch(connectionStatusProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     showDialog(

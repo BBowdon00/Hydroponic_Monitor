@@ -26,9 +26,30 @@ class InfluxDbService {
   QueryService? _queryApi;
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
+  String? _lastConnectionStatus;
 
   /// Stream of connection status changes.
-  Stream<String> get connectionStream => _connectionController.stream;
+  Stream<String> get connectionStream {
+    // Return a broadcast stream that first replays the last status
+    // then forwards live updates from the controller.
+    return Stream.multi((controller) {
+      // Replay last status to new subscribers first
+      if (_lastConnectionStatus != null) {
+        controller.add(_lastConnectionStatus!);
+      }
+
+      // Forward live updates
+      final sub = _connectionController.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+
+      controller.onCancel = () {
+        sub.cancel();
+      };
+    }, isBroadcast: true);
+  }
 
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
@@ -47,11 +68,13 @@ class InfluxDbService {
       _queryApi = _client!.getQueryService();
 
       Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
+      _lastConnectionStatus = 'connected';
       _connectionController.add('connected');
       return Success(null); // remove `const` unless Success has a const ctor
     } catch (e) {
       final error = 'Error initializing InfluxDB client: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _lastConnectionStatus = 'disconnected';
       _connectionController.add('disconnected');
       return Failure(InfluxError(error)); // remove `const` unless allowed
     }
@@ -89,6 +112,7 @@ class InfluxDbService {
     } catch (e) {
       final error = 'Error writing sensor data to InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      _lastConnectionStatus = 'disconnected';
       _connectionController.add('disconnected');
       return Failure(InfluxError(error));
     }
