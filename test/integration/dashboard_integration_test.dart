@@ -36,21 +36,30 @@ class ConnectionTestHelper {
   }) async {
     try {
       Logger.info('Checking MQTT broker availability at $host:$port');
-      
-      final socket = await Socket.connect(host, port)
-          .timeout(timeout, onTimeout: () => throw TimeoutException('MQTT connection timeout', timeout));
-      
+
+      final socket = await Socket.connect(host, port).timeout(
+        timeout,
+        onTimeout: () =>
+            throw TimeoutException('MQTT connection timeout', timeout),
+      );
+
       await socket.close();
       Logger.info('✅ MQTT broker is available at $host:$port');
       return true;
     } on SocketException catch (e) {
-      Logger.warning('❌ MQTT broker not available at $host:$port - ${e.message}');
+      Logger.warning(
+        '❌ MQTT broker not available at $host:$port - ${e.message}',
+      );
       return false;
     } on TimeoutException catch (e) {
-      Logger.warning('❌ MQTT broker connection timeout at $host:$port - ${e.message}');
+      Logger.warning(
+        '❌ MQTT broker connection timeout at $host:$port - ${e.message}',
+      );
       return false;
     } catch (e) {
-      Logger.warning('❌ Unexpected error checking MQTT broker at $host:$port - $e');
+      Logger.warning(
+        '❌ Unexpected error checking MQTT broker at $host:$port - $e',
+      );
       return false;
     }
   }
@@ -63,10 +72,13 @@ class ConnectionTestHelper {
   }) async {
     try {
       Logger.info('Checking InfluxDB availability at $host:$port');
-      
-      final socket = await Socket.connect(host, port)
-          .timeout(timeout, onTimeout: () => throw TimeoutException('InfluxDB connection timeout', timeout));
-      
+
+      final socket = await Socket.connect(host, port).timeout(
+        timeout,
+        onTimeout: () =>
+            throw TimeoutException('InfluxDB connection timeout', timeout),
+      );
+
       await socket.close();
       Logger.info('✅ InfluxDB is available at $host:$port');
       return true;
@@ -74,10 +86,14 @@ class ConnectionTestHelper {
       Logger.warning('❌ InfluxDB not available at $host:$port - ${e.message}');
       return false;
     } on TimeoutException catch (e) {
-      Logger.warning('❌ InfluxDB connection timeout at $host:$port - ${e.message}');
+      Logger.warning(
+        '❌ InfluxDB connection timeout at $host:$port - ${e.message}',
+      );
       return false;
     } catch (e) {
-      Logger.warning('❌ Unexpected error checking InfluxDB at $host:$port - $e');
+      Logger.warning(
+        '❌ Unexpected error checking InfluxDB at $host:$port - $e',
+      );
       return false;
     }
   }
@@ -91,20 +107,25 @@ class ConnectionTestHelper {
   }) async {
     try {
       Logger.info('Creating MQTT client for $clientId at $host:$port');
-      
+
       final client = MqttServerClient(host, clientId);
       client.port = port;
       client.keepAlivePeriod = 20;
       client.autoReconnect = true;
 
-      final connectionResult = await client.connect()
-          .timeout(timeout, onTimeout: () => throw TimeoutException('MQTT client connection timeout', timeout));
+      final connectionResult = await client.connect().timeout(
+        timeout,
+        onTimeout: () =>
+            throw TimeoutException('MQTT client connection timeout', timeout),
+      );
 
       if (connectionResult?.state == MqttConnectionState.connected) {
         Logger.info('✅ MQTT client successfully connected');
         return client;
       } else {
-        Logger.warning('❌ MQTT client connection failed: ${connectionResult?.state}');
+        Logger.warning(
+          '❌ MQTT client connection failed: ${connectionResult?.state}',
+        );
         client.disconnect();
         return null;
       }
@@ -170,14 +191,17 @@ class ConnectionTestHelper {
       buffer.writeln('   $additionalInfo');
       buffer.writeln('');
     }
-    buffer.writeln('💡 TIP: Integration tests require real services to be available.');
+    buffer.writeln(
+      '💡 TIP: Integration tests require real services to be available.',
+    );
     buffer.writeln('    Use unit tests for isolated component testing.');
     buffer.writeln('');
     buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     return buffer.toString();
   }
 }
+
 void main() {
   group('Dashboard Real-time Integration', () {
     const testTimeout = Timeout(Duration(minutes: 2)); // Reduced from 3 minutes
@@ -199,9 +223,9 @@ void main() {
       // Check service availability before attempting connections
       final mqttHost = TestConfig.testMqttHost;
       final mqttPort = TestConfig.testMqttPort;
-      
+
       Logger.info('Checking service availability before starting tests...');
-      
+
       // Check MQTT broker availability
       mqttBrokerAvailable = await ConnectionTestHelper.isMqttBrokerAvailable(
         host: mqttHost,
@@ -222,9 +246,11 @@ void main() {
             port: mqttPort,
             clientId: 'dashboard_test_publisher',
           );
-          
+
           if (testPublisherClient == null) {
-            Logger.error('Failed to create MQTT client despite broker being available');
+            Logger.error(
+              'Failed to create MQTT client despite broker being available',
+            );
             mqttBrokerAvailable = false;
           } else {
             Logger.info('✅ Test MQTT publisher client ready');
@@ -241,15 +267,20 @@ void main() {
             host: mqttHost,
             port: mqttPort,
             serviceType: 'MQTT',
-            additionalInfo: 'Tests requiring MQTT will be skipped or marked as inconclusive',
+            additionalInfo:
+                'Tests requiring MQTT will be skipped or marked as inconclusive',
           ),
         );
       }
 
       // Log final service availability status
       Logger.info('Service availability summary:');
-      Logger.info('  MQTT Broker: ${mqttBrokerAvailable ? "✅ Available" : "❌ Not Available"}');
-      Logger.info('  InfluxDB: ${influxDbAvailable ? "✅ Available" : "❌ Not Available"}');
+      Logger.info(
+        '  MQTT Broker: ${mqttBrokerAvailable ? "✅ Available" : "❌ Not Available"}',
+      );
+      Logger.info(
+        '  InfluxDB: ${influxDbAvailable ? "✅ Available" : "❌ Not Available"}',
+      );
     });
 
     tearDownAll(() async {
@@ -342,7 +373,9 @@ void main() {
             await tester.pump(const Duration(milliseconds: 100));
 
             // Wait for services to initialize (this is where MQTT connection happens)
-            await Future.delayed(const Duration(seconds: 2)); // Reduced from 3 seconds
+            await Future.delayed(
+              const Duration(seconds: 2),
+            ); // Reduced from 3 seconds
             await tester.pump();
 
             // Find the connection status button in the AppBar (wifi icon)
@@ -359,21 +392,24 @@ void main() {
             final hasConnectionButton =
                 appBarWifiOff.evaluate().isNotEmpty ||
                 appBarWifi.evaluate().isNotEmpty;
-            
+
             if (!hasConnectionButton) {
               // If no connection button found, this might indicate a UI issue
               Logger.warning('No connection status button found in AppBar');
               expect(
                 hasConnectionButton,
                 isTrue,
-                reason: 'Should have a connection status button (wifi or wifi_off) in AppBar',
+                reason:
+                    'Should have a connection status button (wifi or wifi_off) in AppBar',
               );
             }
 
             // Tap the connection status button
             if (appBarWifiOff.evaluate().isNotEmpty) {
               await tester.tap(appBarWifiOff);
-              Logger.info('Tapped wifi_off button (services likely disconnected)');
+              Logger.info(
+                'Tapped wifi_off button (services likely disconnected)',
+              );
             } else {
               await tester.tap(appBarWifi);
               Logger.info('Tapped wifi button (services likely connected)');
@@ -389,8 +425,14 @@ void main() {
             expect(mqttConnectedFinder, findsAtLeastNWidgets(1));
 
             // Check for connection status text - be flexible about the exact status
-            final hasConnectedText = find.text('connected').evaluate().isNotEmpty;
-            final hasDisconnectedText = find.text('disconnected').evaluate().isNotEmpty;
+            final hasConnectedText = find
+                .text('connected')
+                .evaluate()
+                .isNotEmpty;
+            final hasDisconnectedText = find
+                .text('disconnected')
+                .evaluate()
+                .isNotEmpty;
             final hasLoadingText = find.text('loading').evaluate().isNotEmpty;
             final hasErrorText = find.text('error').evaluate().isNotEmpty;
 
@@ -434,21 +476,22 @@ void main() {
           });
         } catch (e, stackTrace) {
           // Provide detailed error information for connection issues
-          final errorMessage = ConnectionTestHelper.generateConnectionErrorMessage(
-            testName: 'Dashboard connection status button test',
-            host: TestConfig.testMqttHost,
-            port: TestConfig.testMqttPort,
-            serviceType: 'MQTT/InfluxDB',
-            additionalInfo: 'Error: $e',
-          );
-          
+          final errorMessage =
+              ConnectionTestHelper.generateConnectionErrorMessage(
+                testName: 'Dashboard connection status button test',
+                host: TestConfig.testMqttHost,
+                port: TestConfig.testMqttPort,
+                serviceType: 'MQTT/InfluxDB',
+                additionalInfo: 'Error: $e',
+              );
+
           Logger.error(errorMessage);
           Logger.error('Stack trace: $stackTrace');
-          
+
           // Re-throw with more context
           throw Exception(
             'Connection status test failed due to service connectivity issues. '
-            'Check logs above for detailed troubleshooting steps. Original error: $e'
+            'Check logs above for detailed troubleshooting steps. Original error: $e',
           );
         }
       },
@@ -463,16 +506,19 @@ void main() {
         if (!mqttBrokerAvailable || testPublisherClient == null) {
           Logger.warning(
             ConnectionTestHelper.generateConnectionErrorMessage(
-              testName: 'Dashboard displays real-time temperature data from MQTT',
+              testName:
+                  'Dashboard displays real-time temperature data from MQTT',
               host: TestConfig.testMqttHost,
               port: TestConfig.testMqttPort,
               serviceType: 'MQTT',
               additionalInfo: 'Test skipped due to MQTT broker unavailability',
             ),
           );
-          
+
           // Use markTestSkipped to clearly indicate this test was skipped
-          printOnFailure('Test skipped: MQTT broker not available for real-time data testing');
+          printOnFailure(
+            'Test skipped: MQTT broker not available for real-time data testing',
+          );
           return;
         }
 
@@ -501,17 +547,24 @@ void main() {
             // Wait for repository initialization with timeout
             bool repositoryInitialized = false;
             try {
-              await container.read(sensorRepositoryInitProvider.future)
-                  .timeout(const Duration(seconds: 15)); // Reduced from 30 seconds
+              await container
+                  .read(sensorRepositoryInitProvider.future)
+                  .timeout(
+                    const Duration(seconds: 15),
+                  ); // Reduced from 30 seconds
               repositoryInitialized = true;
               Logger.info('Repository initialization completed successfully');
             } catch (e) {
-              Logger.warning('Repository initialization failed or timed out: $e');
+              Logger.warning(
+                'Repository initialization failed or timed out: $e',
+              );
               // Continue test even if initialization fails - we can still test UI behavior
             }
 
             // Give additional time for subscriptions to be active
-            await Future.delayed(const Duration(milliseconds: 1000)); // Reduced from 2 seconds
+            await Future.delayed(
+              const Duration(milliseconds: 1000),
+            ); // Reduced from 2 seconds
 
             // Generate realistic temperature sensor data
             const testTemp = 23.5;
@@ -543,7 +596,9 @@ void main() {
             }
 
             // Wait for data to be processed and UI to update
-            await Future.delayed(const Duration(seconds: 3)); // Reduced from 6 seconds
+            await Future.delayed(
+              const Duration(seconds: 3),
+            ); // Reduced from 6 seconds
             await tester.pumpAndSettle();
           }); // End of runAsync
 
@@ -590,24 +645,26 @@ void main() {
           }
         } catch (e, stackTrace) {
           // Provide detailed error information for debugging
-          final errorMessage = ConnectionTestHelper.generateConnectionErrorMessage(
-            testName: 'Dashboard displays real-time temperature data from MQTT',
-            host: TestConfig.testMqttHost,
-            port: TestConfig.testMqttPort,
-            serviceType: 'MQTT',
-            additionalInfo: 'Error during test execution: $e',
-          );
-          
+          final errorMessage =
+              ConnectionTestHelper.generateConnectionErrorMessage(
+                testName:
+                    'Dashboard displays real-time temperature data from MQTT',
+                host: TestConfig.testMqttHost,
+                port: TestConfig.testMqttPort,
+                serviceType: 'MQTT',
+                additionalInfo: 'Error during test execution: $e',
+              );
+
           Logger.error(errorMessage);
           Logger.error('Stack trace: $stackTrace');
-          
+
           // Re-throw with more context but still allow test to fail gracefully
           throw Exception(
             'Real-time temperature data test failed. This indicates either:\n'
             '1. MQTT broker connection issues\n'
             '2. Data processing pipeline problems\n'
             '3. UI update mechanism failures\n'
-            'Check logs above for detailed troubleshooting steps. Original error: $e'
+            'Check logs above for detailed troubleshooting steps. Original error: $e',
           );
         }
       },
@@ -620,8 +677,12 @@ void main() {
       (WidgetTester tester) async {
         // Skip this test if MQTT broker is not available
         if (!mqttBrokerAvailable || testPublisherClient == null) {
-          Logger.warning('Multi-sensor test skipped: MQTT broker not available');
-          printOnFailure('Test skipped: MQTT broker not available for multi-sensor testing');
+          Logger.warning(
+            'Multi-sensor test skipped: MQTT broker not available',
+          );
+          printOnFailure(
+            'Test skipped: MQTT broker not available for multi-sensor testing',
+          );
           return;
         }
 
@@ -645,15 +706,22 @@ void main() {
 
             // Wait for repository initialization with timeout
             try {
-              await container.read(sensorRepositoryInitProvider.future)
-                  .timeout(const Duration(seconds: 15)); // Reduced from 30 seconds
-              Logger.info('Repository initialization completed for multi-sensor test');
+              await container
+                  .read(sensorRepositoryInitProvider.future)
+                  .timeout(
+                    const Duration(seconds: 15),
+                  ); // Reduced from 30 seconds
+              Logger.info(
+                'Repository initialization completed for multi-sensor test',
+              );
             } catch (e) {
               Logger.warning('Repository initialization issue: $e');
             }
 
             // Give additional time for subscriptions
-            await Future.delayed(const Duration(milliseconds: 1000)); // Reduced from 2 seconds
+            await Future.delayed(
+              const Duration(milliseconds: 1000),
+            ); // Reduced from 2 seconds
 
             // Test multiple sensor types with realistic values
             final sensorTestData = [
@@ -701,16 +769,26 @@ void main() {
                   builder.payload!,
                 );
 
-                Logger.info('Published ${sensorData['type']} data: $messageJson');
-                await Future.delayed(const Duration(milliseconds: 400)); // Reduced from 800ms
+                Logger.info(
+                  'Published ${sensorData['type']} data: $messageJson',
+                );
+                await Future.delayed(
+                  const Duration(milliseconds: 400),
+                ); // Reduced from 800ms
               } catch (e) {
-                Logger.error('Failed to publish ${sensorData['type']} data: $e');
-                throw Exception('MQTT publish failed for ${sensorData['type']}: $e');
+                Logger.error(
+                  'Failed to publish ${sensorData['type']} data: $e',
+                );
+                throw Exception(
+                  'MQTT publish failed for ${sensorData['type']}: $e',
+                );
               }
             }
 
             // Wait for all data to be processed and UI to update
-            await Future.delayed(const Duration(seconds: 4)); // Reduced from 8 seconds
+            await Future.delayed(
+              const Duration(seconds: 4),
+            ); // Reduced from 8 seconds
             await tester.pumpAndSettle();
           }); // End of runAsync
 
@@ -724,18 +802,9 @@ void main() {
           final allTextWidgets = find.byType(Text);
           final foundValues = <String, String>{};
           final sensorTestData = [
-            {
-              'type': 'temperature',
-              'pattern': r'(\d+(?:\.\d+)?)°C',
-            },
-            {
-              'type': 'humidity',
-              'pattern': r'(\d+(?:\.\d+)?)%',
-            },
-            {
-              'type': 'waterLevel',
-              'pattern': r'(\d+(?:\.\d+)?)\s*cm',
-            },
+            {'type': 'temperature', 'pattern': r'(\d+(?:\.\d+)?)°C'},
+            {'type': 'humidity', 'pattern': r'(\d+(?:\.\d+)?)%'},
+            {'type': 'waterLevel', 'pattern': r'(\d+(?:\.\d+)?)\s*cm'},
           ];
 
           for (int i = 0; i < allTextWidgets.evaluate().length; i++) {
@@ -775,20 +844,19 @@ void main() {
           expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
           Logger.info('Multi-sensor integration test completed');
         } catch (e, stackTrace) {
-          final errorMessage = ConnectionTestHelper.generateConnectionErrorMessage(
-            testName: 'Dashboard displays multiple sensor types from MQTT',
-            host: TestConfig.testMqttHost,
-            port: TestConfig.testMqttPort,
-            serviceType: 'MQTT',
-            additionalInfo: 'Multi-sensor test error: $e',
-          );
-          
+          final errorMessage =
+              ConnectionTestHelper.generateConnectionErrorMessage(
+                testName: 'Dashboard displays multiple sensor types from MQTT',
+                host: TestConfig.testMqttHost,
+                port: TestConfig.testMqttPort,
+                serviceType: 'MQTT',
+                additionalInfo: 'Multi-sensor test error: $e',
+              );
+
           Logger.error(errorMessage);
           Logger.error('Stack trace: $stackTrace');
-          
-          throw Exception(
-            'Multi-sensor MQTT test failed. Original error: $e'
-          );
+
+          throw Exception('Multi-sensor MQTT test failed. Original error: $e');
         }
       },
       timeout: testTimeout,
@@ -800,8 +868,12 @@ void main() {
       (WidgetTester tester) async {
         // Skip this test if MQTT broker is not available
         if (!mqttBrokerAvailable || testPublisherClient == null) {
-          Logger.warning('Dashboard update test skipped: MQTT broker not available');
-          printOnFailure('Test skipped: MQTT broker not available for update testing');
+          Logger.warning(
+            'Dashboard update test skipped: MQTT broker not available',
+          );
+          printOnFailure(
+            'Test skipped: MQTT broker not available for update testing',
+          );
           return;
         }
 
@@ -825,15 +897,22 @@ void main() {
 
             // Wait for repository initialization with timeout
             try {
-              await container.read(sensorRepositoryInitProvider.future)
-                  .timeout(const Duration(seconds: 15)); // Reduced from 30 seconds
-              Logger.info('Repository initialization completed for update test');
+              await container
+                  .read(sensorRepositoryInitProvider.future)
+                  .timeout(
+                    const Duration(seconds: 15),
+                  ); // Reduced from 30 seconds
+              Logger.info(
+                'Repository initialization completed for update test',
+              );
             } catch (e) {
               Logger.warning('Repository initialization issue: $e');
             }
 
             // Give additional time for subscriptions
-            await Future.delayed(const Duration(milliseconds: 1000)); // Reduced from 2 seconds
+            await Future.delayed(
+              const Duration(milliseconds: 1000),
+            ); // Reduced from 2 seconds
 
             final topic = TestMqttTopics.sensorTopicFor('rpi');
 
@@ -865,7 +944,9 @@ void main() {
             }
 
             // Wait for first update
-            await Future.delayed(const Duration(seconds: 2)); // Reduced from 5 seconds
+            await Future.delayed(
+              const Duration(seconds: 2),
+            ); // Reduced from 5 seconds
             await tester.pumpAndSettle();
 
             // Send second temperature reading with different value
@@ -896,7 +977,9 @@ void main() {
             }
 
             // Wait for second update
-            await Future.delayed(const Duration(seconds: 2)); // Reduced from 5 seconds
+            await Future.delayed(
+              const Duration(seconds: 2),
+            ); // Reduced from 5 seconds
             await tester.pumpAndSettle();
           }); // End of runAsync
 
@@ -923,9 +1006,7 @@ void main() {
 
           // Log update test results
           if (firstFoundValue != null) {
-            Logger.info(
-              '✅ Temperature value found in UI: $firstFoundValue',
-            );
+            Logger.info('✅ Temperature value found in UI: $firstFoundValue');
           } else {
             Logger.info(
               '⚠️ Temperature value not found in UI, but dashboard is functional',
@@ -934,20 +1015,20 @@ void main() {
 
           Logger.info('Dashboard update test completed');
         } catch (e, stackTrace) {
-          final errorMessage = ConnectionTestHelper.generateConnectionErrorMessage(
-            testName: 'Dashboard updates sensor values when new MQTT data arrives',
-            host: TestConfig.testMqttHost,
-            port: TestConfig.testMqttPort,
-            serviceType: 'MQTT',
-            additionalInfo: 'Update test error: $e',
-          );
-          
+          final errorMessage =
+              ConnectionTestHelper.generateConnectionErrorMessage(
+                testName:
+                    'Dashboard updates sensor values when new MQTT data arrives',
+                host: TestConfig.testMqttHost,
+                port: TestConfig.testMqttPort,
+                serviceType: 'MQTT',
+                additionalInfo: 'Update test error: $e',
+              );
+
           Logger.error(errorMessage);
           Logger.error('Stack trace: $stackTrace');
-          
-          throw Exception(
-            'Dashboard update test failed. Original error: $e'
-          );
+
+          throw Exception('Dashboard update test failed. Original error: $e');
         }
       },
       timeout: testTimeout,

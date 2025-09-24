@@ -70,16 +70,16 @@ void main() {
         expect(sensorData.value, greaterThan(0));
         expect(sensorData.unit, equals(sensorData.sensorType.defaultUnit));
         expect(sensorData.timestamp, isNotNull);
-        
+
         // Validate new structure fields
         expect(sensorData.deviceId, equals('1')); // Default deviceID
         expect(sensorData.location, equals('tent')); // Default location
         expect(sensorData.deviceNode, isNotNull); // Should have deviceNode
-        
+
         // Validate deviceNode assignments match expected patterns
         final expectedNodes = ['rpi', 'esp32_1', 'esp32_2'];
         expect(expectedNodes.contains(sensorData.deviceNode), isTrue);
-        
+
         // Validate ID format: sensorType_deviceID
         expect(sensorData.id, equals('${sensorData.sensorType.name}_1'));
 
@@ -249,11 +249,11 @@ void main() {
         expect(result, isA<Success<List<SensorData>>>());
         final data = (result as Success<List<SensorData>>).data;
         expect(data.length, equals(1));
-        
+
         final sensorData = data.first;
         expect(sensorData.deviceNode, equals(entry.value));
         expect(sensorData.sensorType, equals(entry.key));
-        
+
         Logger.debug(
           '${entry.key.name} assigned to ${entry.value} ✓',
           tag: 'InfluxTest',

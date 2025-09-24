@@ -91,7 +91,10 @@ class InfluxDbService {
       // Use 'sensor' measurement with proper tag structure
       final point = Point('sensor')
           .addTag('deviceType', data.sensorType.name)
-          .addTag('deviceID', data.deviceId ?? '1') // Default to '1' if not specified
+          .addTag(
+            'deviceID',
+            data.deviceId ?? '1',
+          ) // Default to '1' if not specified
           .addTag('location', data.location ?? 'tent') // Default location
           .addTag('project', 'hydroponic_monitor') // Project identifier
           .addField('value', data.value)
@@ -129,7 +132,10 @@ class InfluxDbService {
         // Use 'sensor' measurement with proper tag structure
         final p = Point('sensor')
             .addTag('deviceType', data.sensorType.name)
-            .addTag('deviceID', data.deviceId ?? '1') // Default to '1' if not specified
+            .addTag(
+              'deviceID',
+              data.deviceId ?? '1',
+            ) // Default to '1' if not specified
             .addTag('location', data.location ?? 'tent') // Default location
             .addTag('project', 'hydroponic_monitor') // Project identifier
             .addField('value', data.value)
@@ -399,7 +405,8 @@ from(bucket: "$bucket")
       // Extract optional fields using new tag structure
       final deviceNode = record['deviceNode']?.toString();
       final location = record['location']?.toString();
-      final project = record['project']?.toString(); // Available but not currently used
+      final project = record['project']
+          ?.toString(); // Available but not currently used
 
       return SensorData(
         id: '${sensorType.name}_$sensorId', // Construct ID from type and deviceID
