@@ -7,6 +7,7 @@ class SensorData {
     required this.unit,
     required this.timestamp,
     this.deviceId,
+    this.deviceNode,
     this.location,
   });
 
@@ -16,6 +17,7 @@ class SensorData {
   final String unit;
   final DateTime timestamp;
   final String? deviceId;
+  final String? deviceNode;
   final String? location;
 
   @override
@@ -29,6 +31,7 @@ class SensorData {
           unit == other.unit &&
           timestamp == other.timestamp &&
           deviceId == other.deviceId &&
+          deviceNode == other.deviceNode &&
           location == other.location;
 
   @override
@@ -39,11 +42,12 @@ class SensorData {
       unit.hashCode ^
       timestamp.hashCode ^
       deviceId.hashCode ^
+      deviceNode.hashCode ^
       location.hashCode;
 
   @override
   String toString() =>
-      'SensorData(id: $id, type: $sensorType, value: $value$unit, timestamp: $timestamp)';
+      'SensorData(id: $id, type: $sensorType, value: $value$unit, timestamp: $timestamp, node: $deviceNode)';
 }
 
 /// Types of sensors supported by the system.

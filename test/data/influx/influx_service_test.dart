@@ -65,14 +65,26 @@ void main() {
         tag: 'InfluxTest',
       );
 
-      // Verify realistic data values
+      // Verify proper data structure aligned with MQTT patterns
       for (final sensorData in data) {
         expect(sensorData.value, greaterThan(0));
         expect(sensorData.unit, equals(sensorData.sensorType.defaultUnit));
         expect(sensorData.timestamp, isNotNull);
+        
+        // Validate new structure fields
+        expect(sensorData.deviceId, equals('1')); // Default deviceID
+        expect(sensorData.location, equals('tent')); // Default location
+        expect(sensorData.deviceNode, isNotNull); // Should have deviceNode
+        
+        // Validate deviceNode assignments match expected patterns
+        final expectedNodes = ['rpi', 'esp32_1', 'esp32_2'];
+        expect(expectedNodes.contains(sensorData.deviceNode), isTrue);
+        
+        // Validate ID format: sensorType_deviceID
+        expect(sensorData.id, equals('${sensorData.sensorType.name}_1'));
 
         Logger.debug(
-          '${sensorData.sensorType.name}: ${sensorData.value} ${sensorData.unit}',
+          '${sensorData.sensorType.name}: ${sensorData.value} ${sensorData.unit} [node: ${sensorData.deviceNode}]',
           tag: 'InfluxTest',
         );
       }
@@ -189,10 +201,67 @@ void main() {
       for (final point in data) {
         expect(point.sensorType, equals(SensorType.lightIntensity));
         expect(point.unit, equals('lux'));
+        // Validate new structure
+        expect(point.deviceNode, equals('esp32_1')); // Light sensors on esp32_1
+        expect(point.location, equals('tent'));
+        expect(point.deviceId, equals('1'));
       }
 
       Logger.info(
         'Day/night cycle simulation test completed successfully',
+        tag: 'InfluxTest',
+      );
+    });
+
+    test('validates device node assignments by sensor type', () async {
+      Logger.info(
+        'Testing device node assignments for different sensor types',
+        tag: 'InfluxTest',
+      );
+
+      final service = InfluxDbService(
+        url: 'http://localhost:8086',
+        token: 'test-token',
+        organization: 'test-org',
+        bucket: 'test-bucket',
+      );
+
+      // Test each sensor type's device node assignment
+      final sensorNodeMap = {
+        SensorType.temperature: 'rpi',
+        SensorType.humidity: 'rpi',
+        SensorType.pH: 'rpi',
+        SensorType.electricalConductivity: 'rpi',
+        SensorType.waterLevel: 'esp32_1',
+        SensorType.lightIntensity: 'esp32_1',
+        SensorType.airQuality: 'esp32_1',
+        SensorType.powerUsage: 'esp32_2',
+      };
+
+      for (final entry in sensorNodeMap.entries) {
+        final result = await service.querySensorData(
+          sensorType: entry.key,
+          start: DateTime.now().subtract(const Duration(hours: 1)),
+          end: DateTime.now(),
+          limit: 1,
+        );
+
+        expect(result, isA<Success<List<SensorData>>>());
+        final data = (result as Success<List<SensorData>>).data;
+        expect(data.length, equals(1));
+        
+        final sensorData = data.first;
+        expect(sensorData.deviceNode, equals(entry.value));
+        expect(sensorData.sensorType, equals(entry.key));
+        
+        Logger.debug(
+          '${entry.key.name} assigned to ${entry.value} ✓',
+          tag: 'InfluxTest',
+        );
+      }
+
+      Logger.info(
+        'Device node assignment validation completed successfully',
         tag: 'InfluxTest',
       );
     });
@@ -264,18 +333,24 @@ void main() {
 
       final testData = [
         SensorData(
-          id: 'sensor_1',
+          id: 'temperature_1',
           sensorType: SensorType.temperature,
           value: 23.0,
           unit: '°C',
           timestamp: DateTime.now(),
+          deviceId: '1',
+          deviceNode: 'rpi',
+          location: 'tent',
         ),
         SensorData(
-          id: 'sensor_2',
+          id: 'humidity_1',
           sensorType: SensorType.humidity,
           value: 60.0,
           unit: '%',
           timestamp: DateTime.now(),
+          deviceId: '1',
+          deviceNode: 'rpi',
+          location: 'tent',
         ),
       ];
 

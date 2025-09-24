@@ -88,23 +88,23 @@ class InfluxDbService {
         return Failure(InfluxError('InfluxDB client not initialized'));
       }
 
-      final point = Point('sensor_data')
-          .addTag('sensor_id', data.id)
-          .addTag('sensor_type', data.sensorType.name)
-          .addTag('unit', data.unit)
+      // Use 'sensor' measurement with proper tag structure
+      final point = Point('sensor')
+          .addTag('deviceType', data.sensorType.name)
+          .addTag('deviceID', data.deviceId ?? '1') // Default to '1' if not specified
+          .addTag('location', data.location ?? 'tent') // Default location
+          .addTag('project', 'hydroponic_monitor') // Project identifier
           .addField('value', data.value)
           .time(data.timestamp.toUtc()); // ensure UTC
 
-      if (data.deviceId != null) {
-        point.addTag('device_id', data.deviceId!);
-      }
-      if (data.location != null) {
-        point.addTag('location', data.location!);
+      // Add deviceNode if provided
+      if (data.deviceNode != null) {
+        point.addTag('deviceNode', data.deviceNode!);
       }
 
       await _writeApi!.write(point);
       Logger.debug(
-        'Written sensor data to InfluxDB: ${data.id}',
+        'Written sensor data to InfluxDB: ${data.sensorType.name}/${data.deviceId}',
         tag: 'InfluxDB',
       );
 
@@ -126,19 +126,20 @@ class InfluxDbService {
       }
 
       final points = dataList.map((data) {
-        final p = Point('sensor_data')
-            .addTag('sensor_id', data.id)
-            .addTag('sensor_type', data.sensorType.name)
-            .addTag('unit', data.unit)
+        // Use 'sensor' measurement with proper tag structure
+        final p = Point('sensor')
+            .addTag('deviceType', data.sensorType.name)
+            .addTag('deviceID', data.deviceId ?? '1') // Default to '1' if not specified
+            .addTag('location', data.location ?? 'tent') // Default location
+            .addTag('project', 'hydroponic_monitor') // Project identifier
             .addField('value', data.value)
             .time(data.timestamp.toUtc()); // ensure UTC
 
-        if (data.deviceId != null) {
-          p.addTag('device_id', data.deviceId!);
+        // Add deviceNode if provided
+        if (data.deviceNode != null) {
+          p.addTag('deviceNode', data.deviceNode!);
         }
-        if (data.location != null) {
-          p.addTag('location', data.location!);
-        }
+
         return p;
       }).toList();
 
@@ -265,7 +266,7 @@ from(bucket: "$bucket")
       final dummyData = SensorType.values.map((type) {
         return _generateSingleSensorData(
           type: type,
-          sensorId: 'sensor_${type.name}',
+          sensorId: '1', // Use deviceID format
           timestamp: DateTime.now(),
         );
       }).toList();
@@ -276,7 +277,7 @@ from(bucket: "$bucket")
       Logger.info('Querying latest sensor data from InfluxDB', tag: 'InfluxDB');
 
       // Query for latest reading of each sensor type
-      // Updated to match actual Telegraf data structure
+      // Updated to match actual tag structure: deviceType, deviceID, location, deviceNode, project
       final query =
           '''
 from(bucket: "$bucket")
@@ -310,7 +311,7 @@ from(bucket: "$bucket")
       final dummyData = SensorType.values.map((type) {
         return _generateSingleSensorData(
           type: type,
-          sensorId: 'sensor_${type.name}',
+          sensorId: '1', // Use deviceID format
           timestamp: DateTime.now(),
         );
       }).toList();
@@ -349,7 +350,7 @@ from(bucket: "$bucket")
   /// Parse a single FluxRecord into SensorData.
   SensorData? _parseFluxRecord(FluxRecord record) {
     try {
-      // Extract required fields from the flux record using correct API
+      // Extract required fields from the flux record using the new tag structure
       final timestampRaw = record['_time'];
       final value = record['_value'];
       final sensorId = record['deviceID'];
@@ -395,18 +396,19 @@ from(bucket: "$bucket")
 
       if (sensorType == null) return null;
 
-      // Extract optional fields
-      final unit = record['unit']?.toString();
-      final deviceId = record['deviceNode']?.toString();
+      // Extract optional fields using new tag structure
+      final deviceNode = record['deviceNode']?.toString();
       final location = record['location']?.toString();
+      final project = record['project']?.toString(); // Available but not currently used
 
       return SensorData(
-        id: sensorId.toString(),
+        id: '${sensorType.name}_$sensorId', // Construct ID from type and deviceID
         sensorType: sensorType,
         value: doubleValue,
-        unit: unit ?? sensorType.defaultUnit,
+        unit: sensorType.defaultUnit,
         timestamp: timestamp,
-        deviceId: deviceId?.isNotEmpty == true ? deviceId : null,
+        deviceId: sensorId.toString(),
+        deviceNode: deviceNode?.isNotEmpty == true ? deviceNode : null,
         location: location?.isNotEmpty == true ? location : null,
       );
     } catch (e) {
@@ -430,18 +432,45 @@ from(bucket: "$bucket")
 
     final data = <SensorData>[];
 
+    // Define realistic device nodes for different sensor types
+    final deviceNodes = ['rpi', 'esp32', 'esp32_1', 'esp32_2'];
+
     for (int i = 0; i < limit; i++) {
       final timestamp = start.add(interval * i);
       final type =
           sensorType ??
           SensorType.values[random.nextInt(SensorType.values.length)];
-      final id = sensorId ?? 'sensor_${type.name}_${random.nextInt(10)}';
+      final id = sensorId ?? '1'; // Use deviceID format
+
+      // Assign realistic device nodes based on sensor type
+      String assignedDeviceNode;
+      if (deviceId != null) {
+        assignedDeviceNode = deviceId;
+      } else {
+        // Assign nodes based on sensor characteristics
+        switch (type) {
+          case SensorType.temperature:
+          case SensorType.humidity:
+          case SensorType.pH:
+          case SensorType.electricalConductivity:
+            assignedDeviceNode = 'rpi'; // Main sensor hub
+            break;
+          case SensorType.waterLevel:
+          case SensorType.lightIntensity:
+          case SensorType.airQuality:
+            assignedDeviceNode = 'esp32_1'; // Environmental sensors
+            break;
+          case SensorType.powerUsage:
+            assignedDeviceNode = 'esp32_2'; // Power monitoring
+            break;
+        }
+      }
 
       data.add(
         _generateSingleSensorData(
           type: type,
           sensorId: id,
-          deviceId: deviceId,
+          deviceNode: assignedDeviceNode,
           timestamp: timestamp,
         ),
       );
@@ -454,7 +483,7 @@ from(bucket: "$bucket")
   SensorData _generateSingleSensorData({
     required SensorType type,
     required String sensorId,
-    String? deviceId,
+    String? deviceNode,
     required DateTime timestamp,
   }) {
     final random = Random();
@@ -511,15 +540,36 @@ from(bucket: "$bucket")
         break;
     }
 
+    // Assign default device node if not provided
+    final node = deviceNode ?? _getDefaultDeviceNode(type);
+
     return SensorData(
-      id: sensorId,
+      id: '${type.name}_$sensorId', // Construct ID from type and deviceID
       sensorType: type,
       value: double.parse(value.toStringAsFixed(2)),
       unit: type.defaultUnit,
       timestamp: timestamp,
-      deviceId: deviceId,
-      location: 'hydroponic_system_1',
+      deviceId: sensorId,
+      deviceNode: node,
+      location: 'tent', // Default location as per MQTT patterns
     );
+  }
+
+  /// Get default device node assignment for sensor types.
+  String _getDefaultDeviceNode(SensorType type) {
+    switch (type) {
+      case SensorType.temperature:
+      case SensorType.humidity:
+      case SensorType.pH:
+      case SensorType.electricalConductivity:
+        return 'rpi'; // Main sensor hub
+      case SensorType.waterLevel:
+      case SensorType.lightIntensity:
+      case SensorType.airQuality:
+        return 'esp32_1'; // Environmental sensors
+      case SensorType.powerUsage:
+        return 'esp32_2'; // Power monitoring
+    }
   }
 
   /// Close the InfluxDB client.
