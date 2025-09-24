@@ -13,6 +13,10 @@ void main() {
     late MockDeviceRepository mockRepository;
 
     setUp(() {
+      // Disable real timers to keep tests fast and deterministic
+      DeviceControlsNotifier.useCommandTimeouts = false;
+      // Disable node-online enforcement for these provider unit tests
+      DeviceControlsNotifier.enforceNodeOnlineForCommands = false;
       mockRepository = MockDeviceRepository();
       
       container = ProviderContainer(
@@ -29,8 +33,8 @@ void main() {
     testWidgets('device command sets pending state correctly', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
       
-      // Initialize the provider
-      await tester.pumpAndSettle();
+  // Initialize the provider (no widget tree, a single pump is enough)
+  await tester.pump();
       
       // Initial state should not be pending
       final initialState = container.read(deviceControlsProvider);
@@ -49,10 +53,12 @@ void main() {
     });
 
     testWidgets('device command timeout sets error state', (tester) async {
+      // Re-enable timeouts for this specific test and use fakeAsync to advance time
+      DeviceControlsNotifier.useCommandTimeouts = true;
       final notifier = container.read(deviceControlsProvider.notifier);
       
-      // Initialize the provider
-      await tester.pumpAndSettle();
+  // Initialize the provider
+  await tester.pump();
       
       // Send a command
       await notifier.toggleDevice('rpi_pump_1', true);
@@ -62,21 +68,23 @@ void main() {
       var pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
       expect(pumpDevice.isPending, isTrue);
       
-      // Wait for timeout (10 seconds + buffer)
-      await tester.pumpAndSettle(const Duration(seconds: 11));
+  // Wait for timeout (10 seconds + buffer)
+  await tester.pump(const Duration(seconds: 11));
       
       // Device should now be in error state
       currentState = container.read(deviceControlsProvider);
       pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
       expect(pumpDevice.isPending, isFalse);
       expect(pumpDevice.status, DeviceStatus.error);
+      // Reset for following tests
+      DeviceControlsNotifier.useCommandTimeouts = false;
     });
 
     testWidgets('device status update clears pending state', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
       
-      // Initialize the provider
-      await tester.pumpAndSettle();
+  // Initialize the provider
+  await tester.pump();
       
       // Send a command
       await notifier.toggleDevice('rpi_pump_1', true);
@@ -110,7 +118,7 @@ void main() {
         },
       );
       
-      await tester.pumpAndSettle();
+  await tester.pump();
       
       // Device should no longer be pending
       currentState = container.read(deviceControlsProvider);

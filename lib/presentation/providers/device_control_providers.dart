@@ -119,6 +119,15 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   final Ref ref;
   ProviderSubscription? _deviceStatusSubscription;
   final Map<String, Timer> _pendingTimeouts = {};
+  
+  /// Test hook: when false, pending command timeouts won't be scheduled.
+  /// This prevents widget tests from hanging due to long-lived timers unless
+  /// they explicitly advance time. Leave true in production.
+  static bool useCommandTimeouts = true;
+  
+  /// Test hook: when false, controlDevice won't block on node offline/error.
+  /// Keep true in production to enforce node-online requirement.
+  static bool enforceNodeOnlineForCommands = true;
 
   void _initialize() {
     Logger.info('Initializing device controls provider', tag: 'DeviceControls');
@@ -213,6 +222,19 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
     String command, {
     Map<String, dynamic>? parameters,
   }) async {
+    // Prevent control commands if the node is not online (unless disabled for tests)
+    if (DeviceControlsNotifier.enforceNodeOnlineForCommands) {
+      final node = _extractNodeFromDeviceId(deviceId);
+      final nodeStatus = _computeNodeStatusFromState(node, state);
+      if (nodeStatus != DeviceStatus.online) {
+        Logger.warning(
+          'Ignoring command "$command" for $deviceId - node "$node" is ${nodeStatus.displayName}',
+          tag: 'DeviceControls',
+        );
+        return;
+      }
+    }
+
     Logger.info(
       'Sending device command: $deviceId -> $command',
       tag: 'DeviceControls',
@@ -257,6 +279,10 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   }
 
   void _setPendingTimeout(String deviceId, String commandId) {
+    if (!DeviceControlsNotifier.useCommandTimeouts) {
+      // Skip scheduling timeouts in tests that don't advance fake time.
+      return;
+    }
     _clearPendingTimeout(deviceId);
 
     _pendingTimeouts[deviceId] = Timer(const Duration(seconds: 10), () {
@@ -355,6 +381,24 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
     }
     _pendingTimeouts.clear();
     super.dispose();
+  }
+
+  /// Compute aggregated node status from current device states (no provider reads).
+  DeviceStatus _computeNodeStatusFromState(String node, DeviceControlsState s) {
+    final devicesOnNode = s.devices.values
+        .where((d) => _extractNodeFromDeviceId(d.deviceId) == node)
+        .toList();
+
+    if (devicesOnNode.isEmpty) return DeviceStatus.online; // default permissive
+
+    final statuses = devicesOnNode.map((d) => d.status).toSet();
+    if (statuses.contains(DeviceStatus.error)) return DeviceStatus.error;
+    if (statuses.contains(DeviceStatus.pending)) return DeviceStatus.pending;
+    if (statuses.every((s) => s == DeviceStatus.offline)) {
+      return DeviceStatus.offline;
+    }
+    if (statuses.contains(DeviceStatus.online)) return DeviceStatus.online;
+    return DeviceStatus.offline;
   }
 }
 

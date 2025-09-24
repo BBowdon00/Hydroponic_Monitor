@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:hydroponic_monitor/core/errors.dart';
 import 'package:hydroponic_monitor/data/repos/device_repository.dart';
 import 'package:hydroponic_monitor/domain/entities/device.dart';
+import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
 
 /// Mock device repository for testing.
 class MockDeviceRepository implements DeviceRepository {
@@ -10,6 +11,10 @@ class MockDeviceRepository implements DeviceRepository {
   Map<String, dynamic>? _lastCommand;
   final StreamController<Device> _deviceStatusController = 
       StreamController<Device>.broadcast();
+
+  // Satisfy the DeviceRepository contract. Tests never read this.
+  @override
+  MqttService get mqttService => throw UnimplementedError('Not used in tests');
 
   @override
   Stream<Device> get deviceStatusUpdates => _deviceStatusController.stream;
@@ -34,7 +39,6 @@ class MockDeviceRepository implements DeviceRepository {
 
   @override
   Future<Result<void>> initialize() async {
-    await Future.delayed(const Duration(milliseconds: 10)); // Simulate delay
     return _initializationResult 
         ? const Success(null)
         : const Failure(UnknownError('Mock initialization failure'));
@@ -57,8 +61,6 @@ class MockDeviceRepository implements DeviceRepository {
       'parameters': parameters ?? {},
       'timestamp': DateTime.now().toIso8601String(),
     };
-    
-    await Future.delayed(const Duration(milliseconds: 10)); // Simulate delay
     
     return _commandResult
         ? const Success(null)

@@ -50,11 +50,11 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ### Features In Development 🧱 IN PROGRESS
 
 #### Actuator Control System (Active)
-- [ ] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
-- [ ] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
-- [ ] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges
-- [ ] **Safety Systems**: Command pending -> timeout -> error handling
-- [ ] **Testing**: Unit/provider tests for command/state transitions and node aggregation
+- [x] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
+- [x] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
+- [x] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges; controls disabled when node Offline/Error
+- [x] **Safety Systems**: Command pending -> timeout -> error handling; provider enforcement of node-online requirement (test hooks available)
+- [x] **Testing**: Unit/provider tests for command/state transitions and node aggregation; Added integration test for actuator confirmation (task005)
 
 #### Historical Data Analytics (Next)
 - [ ] **Time-Series Charts**: Interactive charts using fl_chart package
@@ -67,6 +67,8 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [ ] **MJPEG Stream Testing**: Complete video integration testing
 - [ ] **Node Status Display**: Grouped actuator widgets by controlling node  
 - [ ] **Full Stack Automation**: Playwright-based end-to-end testing
+- [ ] **Dynamic device + sensor discovery**: Dynamically add sensor and device tiles when MQTT messages are received. Maybe create a cache for known devices/sensors to seed the app on a restart.
+- [ ] **Refactor Dashboard page**: Change it to a sensor page display only. Keep the devices only on the device page.
 
 ## Known Issues & Technical Debt
 

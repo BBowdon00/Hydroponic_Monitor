@@ -29,6 +29,10 @@ class DevicesPage extends ConsumerWidget {
         padding: const EdgeInsets.all(AppTheme.spaceMd),
         child: ListView(
           children: [
+            // Emergency stop button (always visible at top)
+            _buildEmergencyStopSection(context, ref),
+            const SizedBox(height: AppTheme.spaceLg),
+
             // Build sections for each node
             ...devicesByNode.entries.map((entry) {
               final node = entry.key;
@@ -43,9 +47,6 @@ class DevicesPage extends ConsumerWidget {
                 ],
               );
             }),
-
-            // Emergency stop button
-            _buildEmergencyStopSection(context, ref),
           ],
         ),
       ),
@@ -62,6 +63,8 @@ class DevicesPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final nodeDisplayName = _getNodeDisplayName(node);
     
+    final controlsEnabled = nodeStatus == DeviceStatus.online;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
@@ -88,6 +91,31 @@ class DevicesPage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppTheme.spaceMd),
+
+            // If node is not online, inform user that controls are disabled
+            if (!controlsEnabled) ...[
+              Row(
+                children: [
+                  Icon(
+                    nodeStatus == DeviceStatus.error
+                        ? Icons.error_outline
+                        : Icons.wifi_off,
+                    color: Colors.redAccent,
+                  ),
+                  const SizedBox(width: AppTheme.spaceSm),
+                  Expanded(
+                    child: Text(
+                      'Node is ${nodeStatus.displayName}. Controls are disabled until online.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spaceSm),
+            ],
             
             // Device cards for this node
             if (devices.isEmpty)
@@ -101,7 +129,7 @@ class DevicesPage extends ConsumerWidget {
             else
               ...devices.map((device) => Padding(
                 padding: const EdgeInsets.only(bottom: AppTheme.spaceMd),
-                child: _buildDeviceCard(device, ref),
+                child: _buildDeviceCard(device, ref, controlsEnabled),
               )),
           ],
         ),
@@ -109,7 +137,11 @@ class DevicesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildDeviceCard(DeviceControlState device, WidgetRef ref) {
+  Widget _buildDeviceCard(
+    DeviceControlState device,
+    WidgetRef ref,
+    bool controlsEnabled,
+  ) {
     final config = _getDeviceDisplayConfig(device.deviceType);
     
     return DeviceCard(
@@ -120,13 +152,16 @@ class DevicesPage extends ConsumerWidget {
       isEnabled: device.isEnabled,
       isPending: device.isPending,
       intensity: device.intensity,
-      onToggle: (enabled) {
-        ref
-            .read(deviceControlsProvider.notifier)
-            .toggleDevice(device.deviceId, enabled);
-      },
-      onIntensityChanged: device.deviceType == DeviceType.fan ||
-              device.deviceType == DeviceType.light
+      onToggle: controlsEnabled
+          ? (enabled) {
+              ref
+                  .read(deviceControlsProvider.notifier)
+                  .toggleDevice(device.deviceId, enabled);
+            }
+          : null,
+      onIntensityChanged: (device.deviceType == DeviceType.fan ||
+                  device.deviceType == DeviceType.light) &&
+              controlsEnabled
           ? (intensity) {
               ref
                   .read(deviceControlsProvider.notifier)
