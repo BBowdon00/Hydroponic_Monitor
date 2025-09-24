@@ -92,7 +92,7 @@ class _ConnectionNotificationState
         }
       },
       loading: () {},
-      error: (_, __) {},
+      error: (_, stackTrace) {},
     );
   }
 

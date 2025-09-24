@@ -1,15 +1,16 @@
-/// Stub implementation for MqttBrowserClient to avoid web imports in non-web environments
 import 'package:mqtt_client/mqtt_client.dart';
+
+/// Stub implementation for MqttBrowserClient to avoid web imports in non-web environments
 
 /// Stub class to prevent web import issues in non-web environments
 class MqttBrowserClient extends MqttClient {
-  MqttBrowserClient(String server, String clientIdentifier)
-    : super(server, clientIdentifier) {
+  MqttBrowserClient(super.server, super.clientIdentifier) {
     throw UnsupportedError(
       'MqttBrowserClient is only available on web platforms',
     );
   }
 
+  @override
   set websocketProtocols(List<String> protocols) {
     throw UnsupportedError(
       'MqttBrowserClient is only available on web platforms',

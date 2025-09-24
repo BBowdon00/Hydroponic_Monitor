@@ -340,12 +340,12 @@ class SettingsPage extends ConsumerWidget {
           onChanged: (value) => Navigator.of(context).pop(),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              const RadioListTile<String>(
+            children: const [
+              RadioListTile<String>(
                 title: Text('English (US)'),
                 value: 'en_US',
               ),
-              const RadioListTile<String>(title: Text('Spanish'), value: 'es'),
+              RadioListTile<String>(title: Text('Spanish'), value: 'es'),
             ],
           ),
         ),
@@ -362,12 +362,12 @@ class SettingsPage extends ConsumerWidget {
           onChanged: (value) => Navigator.of(context).pop(),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              const RadioListTile<String>(
+            children: const [
+              RadioListTile<String>(
                 title: Text('Metric (°C, cm, L)'),
                 value: 'metric',
               ),
-              const RadioListTile<String>(
+              RadioListTile<String>(
                 title: Text('Imperial (°F, in, gal)'),
                 value: 'imperial',
               ),
