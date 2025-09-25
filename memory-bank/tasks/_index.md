@@ -5,6 +5,8 @@
 
 ## Pending
 
+- [TASK008] Dashboard Refresh Manual Reconnect (MQTT + InfluxDB)
+
 
 ## Completed
 - [TASK004] Integrate Real-Time Sensor Updates into Dashboard
