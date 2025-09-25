@@ -54,7 +54,7 @@ void main() {
         addTearDown(() => sub.cancel());
 
         final uri = Uri.parse('http://localhost:${server.port}/stream');
-        await controller.start(uri);
+        await controller.start(uri.toString());
 
         await Future.delayed(const Duration(milliseconds: 500));
         await controller.stop();
@@ -85,7 +85,7 @@ void main() {
       final events = <FrameEvent>[];
       controller.events.listen(events.add);
 
-      await controller.start(Uri.parse('http://localhost:${server.port}/bad'));
+      await controller.start('http://localhost:${server.port}/bad');
       await Future.delayed(const Duration(milliseconds: 200));
 
       expect(events.whereType<StreamError>().length, greaterThanOrEqualTo(1));

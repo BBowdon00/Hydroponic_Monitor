@@ -13,16 +13,18 @@ void main() {
     test('should create VideoState with all required fields', () {
       const state = VideoState(
         streamUrl: 'http://test.local:8080/stream',
-        isConnected: false,
-        isConnecting: false,
+        phase: VideoConnectionPhase.idle,
+        hasAttempted: false,
         resolution: Size(640, 480),
         fps: 30,
         latency: 150,
       );
 
       expect(state.streamUrl, equals('http://test.local:8080/stream'));
-      expect(state.isConnected, isFalse);
-      expect(state.isConnecting, isFalse);
+      expect(state.phase, equals(VideoConnectionPhase.idle));
+      expect(state.hasAttempted, isFalse);
+      expect(state.isConnected, isFalse); // Derived getter
+      expect(state.isConnecting, isFalse); // Derived getter
       expect(state.resolution, equals(const Size(640, 480)));
       expect(state.fps, equals(30));
       expect(state.latency, equals(150));
@@ -31,8 +33,8 @@ void main() {
     test('should create copy with modified fields', () {
       const original = VideoState(
         streamUrl: 'http://original.local:8080/stream',
-        isConnected: false,
-        isConnecting: false,
+        phase: VideoConnectionPhase.idle,
+        hasAttempted: false,
         resolution: Size(640, 480),
         fps: 30,
         latency: 150,
@@ -40,13 +42,14 @@ void main() {
 
       final modified = original.copyWith(
         streamUrl: 'http://new.local:8080/stream',
-        isConnected: true,
+        phase: VideoConnectionPhase.playing,
         resolution: const Size(1280, 720),
       );
 
       expect(modified.streamUrl, equals('http://new.local:8080/stream'));
-      expect(modified.isConnected, isTrue);
-      expect(modified.isConnecting, isFalse); // Unchanged
+      expect(modified.phase, equals(VideoConnectionPhase.playing));
+      expect(modified.isConnected, isTrue); // Derived getter
+      expect(modified.hasAttempted, isFalse); // Unchanged
       expect(modified.resolution, equals(const Size(1280, 720)));
       expect(modified.fps, equals(30)); // Unchanged
       expect(modified.latency, equals(150)); // Unchanged
@@ -55,8 +58,8 @@ void main() {
     test('should create copy without changes when no parameters provided', () {
       const original = VideoState(
         streamUrl: 'http://test.local:8080/stream',
-        isConnected: true,
-        isConnecting: false,
+        phase: VideoConnectionPhase.playing,
+        hasAttempted: true,
         resolution: Size(1280, 720),
         fps: 60,
         latency: 100,
@@ -65,8 +68,10 @@ void main() {
       final copy = original.copyWith();
 
       expect(copy.streamUrl, equals(original.streamUrl));
-      expect(copy.isConnected, equals(original.isConnected));
-      expect(copy.isConnecting, equals(original.isConnecting));
+      expect(copy.phase, equals(original.phase));
+      expect(copy.hasAttempted, equals(original.hasAttempted));
+      expect(copy.isConnected, equals(original.isConnected)); // Derived
+      expect(copy.isConnecting, equals(original.isConnecting)); // Derived
       expect(copy.resolution, equals(original.resolution));
       expect(copy.fps, equals(original.fps));
       expect(copy.latency, equals(original.latency));
@@ -165,7 +170,12 @@ void main() {
       expect(state.isConnecting, isFalse);
     });
 
-    test('should update latency on refresh', () {
+    test('should update latency on refresh when playing', () {
+      // First, set the state to playing phase
+      container.read(videoStateProvider.notifier).state = container
+          .read(videoStateProvider)
+          .copyWith(phase: VideoConnectionPhase.playing);
+      
       final originalLatency = container.read(videoStateProvider).latency;
 
       notifier.refresh();
@@ -176,7 +186,22 @@ void main() {
       expect(newLatency, lessThanOrEqualTo(250));
     });
 
-    test('should handle multiple refreshes', () async {
+    test('should not update latency on refresh when not playing', () {
+      // State is idle by default
+      final originalLatency = container.read(videoStateProvider).latency;
+
+      notifier.refresh();
+
+      final newLatency = container.read(videoStateProvider).latency;
+      expect(newLatency, equals(originalLatency)); // Should remain unchanged
+    });
+
+    test('should handle multiple refreshes when playing', () async {
+      // First, set the state to playing phase
+      container.read(videoStateProvider.notifier).state = container
+          .read(videoStateProvider)
+          .copyWith(phase: VideoConnectionPhase.playing);
+      
       final latencies = <int>{};
 
       // Multiple refreshes should generate different latencies
@@ -308,7 +333,12 @@ void main() {
       }
     });
 
-    test('should generate realistic latency values', () async {
+    test('should generate realistic latency values when playing', () async {
+      // First, set the state to playing phase
+      container.read(videoStateProvider.notifier).state = container
+          .read(videoStateProvider)
+          .copyWith(phase: VideoConnectionPhase.playing);
+      
       final latencies = <int>[];
 
       // Collect multiple latency values with small delays to ensure variety

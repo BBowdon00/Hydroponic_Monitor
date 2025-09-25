@@ -48,16 +48,36 @@ class VideoPage extends ConsumerWidget {
     final videoState = ref.watch(videoStateProvider);
     final urlController = ref.watch(_urlTextControllerProvider);
     final theme = Theme.of(context);
+    final isRealMjpeg = Env.enableRealMjpeg;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Feed'),
         actions: [
+          // Simulation Mode badge when REAL_MJPEG is false
+          if (!isRealMjpeg)
+            Container(
+              margin: const EdgeInsets.only(right: AppTheme.spaceMd),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spaceSm,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                'Simulation Mode',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.orange.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           StatusBadge(
-            label: videoState.isConnected ? 'Connected' : 'Disconnected',
-            status: videoState.isConnected
-                ? DeviceStatus.online
-                : DeviceStatus.offline,
+            label: _getStatusLabel(videoState.phase),
+            status: _getDeviceStatus(videoState.phase),
           ),
           const SizedBox(width: AppTheme.spaceMd),
         ],
@@ -73,13 +93,10 @@ class VideoPage extends ConsumerWidget {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppTheme.spaceMd),
-                  child: videoState.isConnected
-                      ? _buildVideoFrame(context, videoState)
-                      : _buildPlaceholder(context),
+                  child: _buildVideoContent(context, videoState),
                 ),
               );
               if (enableScroll) {
-                // In scroll mode we cannot use Expanded/Flexible (unbounded height)
                 return card;
               }
               return Expanded(child: card);
@@ -111,34 +128,13 @@ class VideoPage extends ConsumerWidget {
                           Expanded(
                             child: ElevatedButton.icon(
                               key: const Key('video_connect_button'),
-                              onPressed: videoState.isConnecting
-                                  ? null
-                                  : () {
-                                      if (videoState.isConnected) {
-                                        ref
-                                            .read(videoStateProvider.notifier)
-                                            .disconnect();
-                                      } else {
-                                        ref
-                                            .read(videoStateProvider.notifier)
-                                            .connect();
-                                      }
-                                    },
-                              icon: Icon(
-                                videoState.isConnected
-                                    ? Icons.videocam_off
-                                    : Icons.videocam,
-                              ),
-                              label: Text(
-                                videoState.isConnecting
-                                    ? 'Connecting...'
-                                    : videoState.isConnected
-                                    ? 'Disconnect'
-                                    : 'Connect',
-                              ),
+                              onPressed: _getConnectButtonAction(videoState, ref),
+                              icon: _getConnectButtonIcon(videoState.phase),
+                              label: Text(_getConnectButtonLabel(videoState.phase)),
                             ),
                           ),
-                          if (videoState.isConnected) ...[
+                          // Refresh button only when playing
+                          if (videoState.phase == VideoConnectionPhase.playing) ...[
                             const SizedBox(width: AppTheme.spaceMd),
                             IconButton(
                               onPressed: () {
@@ -156,7 +152,7 @@ class VideoPage extends ConsumerWidget {
               ),
               const SizedBox(height: AppTheme.spaceMd),
               buildVideoArea(),
-              if (videoState.isConnected) ...[
+              if (videoState.phase == VideoConnectionPhase.playing) ...[
                 const SizedBox(height: AppTheme.spaceMd),
                 Card(
                   child: Padding(
@@ -221,101 +217,179 @@ class VideoPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildVideoFrame(BuildContext context, VideoState videoState) {
-    final isReal = Env.enableRealMjpeg;
-    final waitingForFirstFrame =
-        isReal && videoState.isConnected && videoState.lastFrame == null;
-
-    if (isReal) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (videoState.lastFrame != null)
-              Hero(
-                tag: 'videoFrameHero',
-                child: Image.memory(
-                  videoState.lastFrame!,
-                  gaplessPlayback: true,
-                  fit: BoxFit.cover,
-                ),
-              )
-            else
-              Container(
-                color: Colors.black,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            if (waitingForFirstFrame)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 72),
-                  child: Text(
-                    'Waiting for first frame...',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 8,
-              top: 8,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  child: Text(
-                    'FPS ${videoState.fps}  Frames ${videoState.framesReceived}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: Colors.white),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 4,
-              top: 4,
-              child: IconButton(
-                key: const Key('fullscreen_button'),
-                icon: const Icon(Icons.fullscreen, color: Colors.white70),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const _FullscreenVideoPage(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (videoState.errorMessage != null)
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  color: Colors.red.withValues(alpha: 0.7),
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    videoState.errorMessage!,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
+  /// Build video content based on current phase
+  Widget _buildVideoContent(BuildContext context, VideoState videoState) {
+    switch (videoState.phase) {
+      case VideoConnectionPhase.idle:
+        return _buildIdleState(context);
+      case VideoConnectionPhase.connecting:
+        return _buildConnectingState(context);
+      case VideoConnectionPhase.waitingFirstFrame:
+        return _buildWaitingFirstFrameState(context);
+      case VideoConnectionPhase.playing:
+        return _buildPlayingState(context, videoState);
+      case VideoConnectionPhase.error:
+        return _buildErrorState(context, videoState);
     }
+  }
 
-    // Simulated placeholder (also supports fullscreen navigation for consistency)
+  Widget _buildIdleState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.videocam_off,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: AppTheme.spaceMd),
+          Text(
+            'No stream connected',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: AppTheme.spaceSm),
+          Text(
+            'Enter a stream URL and connect to view live video',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConnectingState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: AppTheme.spaceMd),
+          Text(
+            'Connecting...',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaitingFirstFrameState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: AppTheme.spaceMd),
+          Text(
+            'Waiting for first frame...',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: AppTheme.spaceSm),
+          Text(
+            'Connected to stream, receiving data',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayingState(BuildContext context, VideoState videoState) {
+    final isRealMjpeg = Env.enableRealMjpeg;
+    
+    if (isRealMjpeg && videoState.lastFrame != null) {
+      // Real MJPEG stream with actual frame data
+      return _buildRealVideoFrame(context, videoState);
+    } else {
+      // Simulation mode - clearly labeled
+      return _buildSimulationFrame(context, videoState);
+    }
+  }
+
+  Widget _buildRealVideoFrame(BuildContext context, VideoState videoState) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Hero(
+            tag: 'videoFrameHero',
+            child: Image.memory(
+              videoState.lastFrame!,
+              gaplessPlayback: true,
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Frame stats overlay
+          Positioned(
+            left: 8,
+            top: 8,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                child: Text(
+                  'FPS ${videoState.fps}  Frames ${videoState.framesReceived}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Fullscreen button (only when playing)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: IconButton(
+              key: const Key('fullscreen_button'),
+              icon: const Icon(Icons.fullscreen, color: Colors.white70),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const _FullscreenVideoPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Error overlay
+          if (videoState.errorMessage != null)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                color: Colors.red.withValues(alpha: 0.7),
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  videoState.errorMessage!,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimulationFrame(BuildContext context, VideoState videoState) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()));
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
@@ -333,16 +407,30 @@ class VideoPage extends ConsumerWidget {
               ),
               const SizedBox(height: AppTheme.spaceMd),
               Text(
-                'Live Video Stream',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                'Simulation Mode',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: AppTheme.spaceSm),
-              Text(
-                'Connected to ${videoState.streamUrl}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spaceMd,
+                  vertical: AppTheme.spaceSm,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  'No real stream - enable REAL_MJPEG for live video',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.orange.shade200,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -352,41 +440,136 @@ class VideoPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildPlaceholder(BuildContext context) {
+  Widget _buildErrorState(BuildContext context, VideoState videoState) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.videocam_off,
+            Icons.error_outline,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: AppTheme.spaceMd),
           Text(
-            'No Video Stream',
-            style: Theme.of(context).textTheme.titleLarge,
+            'Connection Error',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
           ),
           const SizedBox(height: AppTheme.spaceSm),
-          Text(
-            'Enter a stream URL and connect to view live video',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          if (videoState.errorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spaceMd),
+              margin: const EdgeInsets.symmetric(horizontal: AppTheme.spaceMd),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+              child: Text(
+                videoState.errorMessage!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
         ],
       ),
     );
   }
+
+  // Helper methods for phase-based UI
+  String _getStatusLabel(VideoConnectionPhase phase) {
+    switch (phase) {
+      case VideoConnectionPhase.idle:
+        return 'Disconnected';
+      case VideoConnectionPhase.connecting:
+        return 'Connecting';
+      case VideoConnectionPhase.waitingFirstFrame:
+        return 'Waiting';
+      case VideoConnectionPhase.playing:
+        return 'Playing';
+      case VideoConnectionPhase.error:
+        return 'Error';
+    }
+  }
+
+  DeviceStatus _getDeviceStatus(VideoConnectionPhase phase) {
+    switch (phase) {
+      case VideoConnectionPhase.idle:
+        return DeviceStatus.offline;
+      case VideoConnectionPhase.connecting:
+      case VideoConnectionPhase.waitingFirstFrame:
+        return DeviceStatus.unknown;
+      case VideoConnectionPhase.playing:
+        return DeviceStatus.online;
+      case VideoConnectionPhase.error:
+        return DeviceStatus.error;
+    }
+  }
+
+  VoidCallback? _getConnectButtonAction(VideoState videoState, WidgetRef ref) {
+    switch (videoState.phase) {
+      case VideoConnectionPhase.connecting:
+      case VideoConnectionPhase.waitingFirstFrame:
+        return null; // Disabled during connection process
+      case VideoConnectionPhase.idle:
+      case VideoConnectionPhase.error:
+        return () => ref.read(videoStateProvider.notifier).connect();
+      case VideoConnectionPhase.playing:
+        return () => ref.read(videoStateProvider.notifier).disconnect();
+    }
+  }
+
+  Widget _getConnectButtonIcon(VideoConnectionPhase phase) {
+    switch (phase) {
+      case VideoConnectionPhase.connecting:
+      case VideoConnectionPhase.waitingFirstFrame:
+        return const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+      case VideoConnectionPhase.idle:
+      case VideoConnectionPhase.error:
+        return const Icon(Icons.play_arrow);
+      case VideoConnectionPhase.playing:
+        return const Icon(Icons.stop);
+    }
+  }
+
+  String _getConnectButtonLabel(VideoConnectionPhase phase) {
+    switch (phase) {
+      case VideoConnectionPhase.idle:
+        return 'Connect';
+      case VideoConnectionPhase.connecting:
+        return 'Connecting...';
+      case VideoConnectionPhase.waitingFirstFrame:
+        return 'Waiting...';
+      case VideoConnectionPhase.playing:
+        return 'Disconnect';
+      case VideoConnectionPhase.error:
+        return 'Retry';
+    }
+  }
 }
 
-/// Video state model.
+/// Connection phases for MJPEG streaming
+enum VideoConnectionPhase { 
+  idle, 
+  connecting, 
+  waitingFirstFrame, 
+  playing, 
+  error 
+}
+
+/// Video state model with phase-based connection states
 class VideoState {
   const VideoState({
     required this.streamUrl,
-    required this.isConnected,
-    required this.isConnecting,
+    required this.phase,
+    required this.hasAttempted,
     required this.resolution,
     required this.fps,
     required this.latency,
@@ -396,8 +579,8 @@ class VideoState {
   });
 
   final String streamUrl;
-  final bool isConnected;
-  final bool isConnecting;
+  final VideoConnectionPhase phase;
+  final bool hasAttempted;
   final Size resolution;
   final int fps;
   final int latency;
@@ -405,10 +588,17 @@ class VideoState {
   final int framesReceived;
   final String? errorMessage;
 
+  // Derived getters for backward compatibility
+  bool get isConnected => phase == VideoConnectionPhase.playing;
+  bool get isConnecting => phase == VideoConnectionPhase.connecting;
+  bool get isWaitingFirstFrame => phase == VideoConnectionPhase.waitingFirstFrame;
+  bool get isIdle => phase == VideoConnectionPhase.idle;
+  bool get isError => phase == VideoConnectionPhase.error;
+
   VideoState copyWith({
     String? streamUrl,
-    bool? isConnected,
-    bool? isConnecting,
+    VideoConnectionPhase? phase,
+    bool? hasAttempted,
     Size? resolution,
     int? fps,
     int? latency,
@@ -419,8 +609,8 @@ class VideoState {
   }) {
     return VideoState(
       streamUrl: streamUrl ?? this.streamUrl,
-      isConnected: isConnected ?? this.isConnected,
-      isConnecting: isConnecting ?? this.isConnecting,
+      phase: phase ?? this.phase,
+      hasAttempted: hasAttempted ?? this.hasAttempted,
       resolution: resolution ?? this.resolution,
       fps: fps ?? this.fps,
       latency: latency ?? this.latency,
@@ -446,8 +636,8 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
     : super(
         const VideoState(
           streamUrl: 'http://192.168.1.100:8080/stream',
-          isConnected: false,
-          isConnecting: false,
+          phase: VideoConnectionPhase.idle,
+          hasAttempted: false,
           resolution: Size(640, 480),
           fps: 30,
           latency: 150,
@@ -462,15 +652,22 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
   }
 
   void connect() {
-    if (state.isConnecting || state.isConnected) return;
-    state = state.copyWith(isConnecting: true, clearError: true);
+    if (state.phase == VideoConnectionPhase.connecting || 
+        state.phase == VideoConnectionPhase.playing) return;
+    
+    state = state.copyWith(
+      phase: VideoConnectionPhase.connecting, 
+      hasAttempted: true,
+      clearError: true
+    );
+    
     if (!Env.enableRealMjpeg) {
-      // Simulated path
+      // Simulation mode - follow same phase semantics
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
+          // Skip waitingFirstFrame and go straight to playing in simulation
           state = state.copyWith(
-            isConnected: true,
-            isConnecting: false,
+            phase: VideoConnectionPhase.playing,
             resolution: const Size(1280, 720),
             fps: 30,
             latency: 120 + (DateTime.now().millisecond % 100),
@@ -480,42 +677,52 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
       return;
     }
 
+    // Real MJPEG streaming
     final controller = _ref.read(mjpegStreamControllerProvider);
     _eventSub = controller.events.listen(_onEvent);
-    controller.start(Uri.parse(state.streamUrl));
+    controller.start(state.streamUrl);
   }
 
   void disconnect() {
-    state = state.copyWith(isConnected: false, isConnecting: false);
+    state = state.copyWith(phase: VideoConnectionPhase.idle);
     if (Env.enableRealMjpeg) {
       _eventSub?.cancel();
+      _eventSub = null;
       _ref.read(mjpegStreamControllerProvider).stop();
     }
   }
 
   void refresh() {
-    // Simulate refresh
-    state = state.copyWith(latency: 100 + (DateTime.now().millisecond % 150));
+    // Only refresh when actually playing
+    if (state.phase == VideoConnectionPhase.playing) {
+      state = state.copyWith(latency: 100 + (DateTime.now().millisecond % 150));
+    }
   }
 
   void _onEvent(FrameEvent event) {
     if (event is StreamStarted) {
-      state = state.copyWith(isConnected: true, isConnecting: false);
+      state = state.copyWith(phase: VideoConnectionPhase.waitingFirstFrame);
     } else if (event is FrameBytes) {
-      // Estimate fps naive: increment count and use fixed 30 for now
+      // First frame received - transition to playing
       state = state.copyWith(
+        phase: VideoConnectionPhase.playing,
         lastFrame: event.bytes,
         framesReceived: state.framesReceived + 1,
-        fps: state.fps,
+        fps: state.fps, // Simple fps for now
         latency: 100 + (DateTime.now().millisecond % 150),
       );
     } else if (event is StreamError) {
       state = state.copyWith(
+        phase: VideoConnectionPhase.error,
         errorMessage: event.error.toString(),
-        isConnecting: false,
       );
     } else if (event is StreamEnded) {
-      state = state.copyWith(isConnected: false, isConnecting: false);
+      // Stream ended - go to idle unless it was an error
+      state = state.copyWith(
+        phase: state.errorMessage != null 
+          ? VideoConnectionPhase.error 
+          : VideoConnectionPhase.idle
+      );
     }
   }
 }
@@ -527,7 +734,8 @@ class _FullscreenVideoPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final videoState = ref.watch(videoStateProvider);
-    final isReal = Env.enableRealMjpeg;
+    final isRealMjpeg = Env.enableRealMjpeg;
+    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -537,18 +745,10 @@ class _FullscreenVideoPage extends ConsumerWidget {
               child: Hero(
                 tag: 'videoFrameHero',
                 child: AspectRatio(
-                  aspectRatio:
-                      videoState.resolution.width /
-                      videoState.resolution.height,
+                  aspectRatio: videoState.resolution.width / videoState.resolution.height,
                   child: Container(
                     color: Colors.black,
-                    child: isReal && videoState.lastFrame != null
-                        ? Image.memory(
-                            videoState.lastFrame!,
-                            gaplessPlayback: true,
-                            fit: BoxFit.contain,
-                          )
-                        : const Center(child: CircularProgressIndicator()),
+                    child: _buildFullscreenContent(context, videoState, isRealMjpeg),
                   ),
                 ),
               ),
@@ -562,26 +762,129 @@ class _FullscreenVideoPage extends ConsumerWidget {
                 tooltip: 'Exit Fullscreen',
               ),
             ),
-            Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _StatChip(label: 'FPS', value: '${videoState.fps}'),
-                  _StatChip(
-                    label: 'Frames',
-                    value: '${videoState.framesReceived}',
-                  ),
-                  _StatChip(label: 'Latency', value: '${videoState.latency}ms'),
-                ],
+            // Only show stats when playing
+            if (videoState.phase == VideoConnectionPhase.playing)
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _StatChip(label: 'FPS', value: '${videoState.fps}'),
+                    _StatChip(
+                      label: 'Frames',
+                      value: '${videoState.framesReceived}',
+                    ),
+                    _StatChip(label: 'Latency', value: '${videoState.latency}ms'),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildFullscreenContent(BuildContext context, VideoState videoState, bool isRealMjpeg) {
+    switch (videoState.phase) {
+      case VideoConnectionPhase.playing:
+        if (isRealMjpeg && videoState.lastFrame != null) {
+          return Image.memory(
+            videoState.lastFrame!,
+            gaplessPlayback: true,
+            fit: BoxFit.contain,
+          );
+        } else {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.videocam,
+                  size: 80,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Simulation Mode',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      case VideoConnectionPhase.waitingFirstFrame:
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Waiting for first frame...',
+                style: TextStyle(color: Colors.white70, fontSize: 18),
+              ),
+            ],
+          ),
+        );
+      case VideoConnectionPhase.connecting:
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Connecting...',
+                style: TextStyle(color: Colors.white70, fontSize: 18),
+              ),
+            ],
+          ),
+        );
+      case VideoConnectionPhase.error:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 80,
+                color: Colors.red.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Connection Error',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.red.shade300,
+                ),
+              ),
+            ],
+          ),
+        );
+      case VideoConnectionPhase.idle:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.videocam_off,
+                size: 80,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No stream connected',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+    }
   }
 }
 

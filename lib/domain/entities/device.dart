@@ -76,7 +76,7 @@ class Device {
 enum DeviceType { pump, fan, heater, light, sensor, controller }
 
 /// Status of devices in the system.
-enum DeviceStatus { online, offline, pending, error, stopped }
+enum DeviceStatus { online, offline, pending, error, stopped, unknown }
 
 extension DeviceTypeExtension on DeviceType {
   String get displayName {
@@ -110,6 +110,8 @@ extension DeviceStatusExtension on DeviceStatus {
         return 'Error';
       case DeviceStatus.stopped:
         return 'Stopped';
+      case DeviceStatus.unknown:
+        return 'Unknown';
     }
   }
 }
