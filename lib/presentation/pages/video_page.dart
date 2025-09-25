@@ -22,6 +22,7 @@ final _urlTextControllerProvider = Provider<TextEditingController>((ref) {
   void listener() {
     ref.read(videoStateProvider.notifier).setStreamUrl(controller.text);
   }
+
   controller.addListener(listener);
 
   // Listen to state changes to stay in sync if updated elsewhere.
@@ -132,8 +133,8 @@ class VideoPage extends ConsumerWidget {
                                 videoState.isConnecting
                                     ? 'Connecting...'
                                     : videoState.isConnected
-                                        ? 'Disconnect'
-                                        : 'Connect',
+                                    ? 'Disconnect'
+                                    : 'Connect',
                               ),
                             ),
                           ),
@@ -141,9 +142,7 @@ class VideoPage extends ConsumerWidget {
                             const SizedBox(width: AppTheme.spaceMd),
                             IconButton(
                               onPressed: () {
-                                ref
-                                    .read(videoStateProvider.notifier)
-                                    .refresh();
+                                ref.read(videoStateProvider.notifier).refresh();
                               },
                               icon: const Icon(Icons.refresh),
                               tooltip: 'Refresh stream',
@@ -167,8 +166,10 @@ class VideoPage extends ConsumerWidget {
                       children: [
                         Column(
                           children: [
-                            Text('Resolution',
-                                style: theme.textTheme.bodySmall),
+                            Text(
+                              'Resolution',
+                              style: theme.textTheme.bodySmall,
+                            ),
                             Text(
                               '${videoState.resolution.width.toInt()}×${videoState.resolution.height.toInt()}',
                               style: theme.textTheme.titleSmall,
@@ -186,16 +187,15 @@ class VideoPage extends ConsumerWidget {
                         ),
                         Column(
                           children: [
-                            Text('Latency',
-                                style: theme.textTheme.bodySmall),
+                            Text('Latency', style: theme.textTheme.bodySmall),
                             Text(
                               '${videoState.latency}ms',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 color: videoState.latency > 500
                                     ? Colors.red
                                     : videoState.latency > 200
-                                        ? Colors.orange
-                                        : Colors.green,
+                                    ? Colors.orange
+                                    : Colors.green,
                               ),
                             ),
                           ],
@@ -208,8 +208,7 @@ class VideoPage extends ConsumerWidget {
             ];
 
             final column = Column(
-              mainAxisSize:
-                  enableScroll ? MainAxisSize.min : MainAxisSize.max,
+              mainAxisSize: enableScroll ? MainAxisSize.min : MainAxisSize.max,
               children: children,
             );
             if (enableScroll) {
@@ -245,9 +244,7 @@ class VideoPage extends ConsumerWidget {
             else
               Container(
                 color: Colors.black,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: const Center(child: CircularProgressIndicator()),
               ),
             if (waitingForFirstFrame)
               const Center(
@@ -274,10 +271,9 @@ class VideoPage extends ConsumerWidget {
                   ),
                   child: Text(
                     'FPS ${videoState.fps}  Frames ${videoState.framesReceived}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: Colors.white),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -317,9 +313,9 @@ class VideoPage extends ConsumerWidget {
     // Simulated placeholder (also supports fullscreen navigation for consistency)
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()));
       },
       child: Container(
         decoration: BoxDecoration(
@@ -338,18 +334,16 @@ class VideoPage extends ConsumerWidget {
               const SizedBox(height: AppTheme.spaceMd),
               Text(
                 'Live Video Stream',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(color: Colors.white),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: Colors.white),
               ),
               const SizedBox(height: AppTheme.spaceSm),
               Text(
                 'Connected to ${videoState.streamUrl}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -444,19 +438,21 @@ final mjpegStreamControllerProvider = Provider<MjpegStreamController>((ref) {
 
 final videoStateProvider =
     StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
-  return VideoStateNotifier(ref);
-});
+      return VideoStateNotifier(ref);
+    });
 
 class VideoStateNotifier extends StateNotifier<VideoState> {
   VideoStateNotifier(this._ref)
-      : super(const VideoState(
+    : super(
+        const VideoState(
           streamUrl: 'http://192.168.1.100:8080/stream',
           isConnected: false,
           isConnecting: false,
           resolution: Size(640, 480),
           fps: 30,
           latency: 150,
-        ));
+        ),
+      );
 
   final Ref _ref;
   StreamSubscription<FrameEvent>? _eventSub;
@@ -541,7 +537,8 @@ class _FullscreenVideoPage extends ConsumerWidget {
               child: Hero(
                 tag: 'videoFrameHero',
                 child: AspectRatio(
-                  aspectRatio: videoState.resolution.width /
+                  aspectRatio:
+                      videoState.resolution.width /
                       videoState.resolution.height,
                   child: Container(
                     color: Colors.black,
@@ -551,9 +548,7 @@ class _FullscreenVideoPage extends ConsumerWidget {
                             gaplessPlayback: true,
                             fit: BoxFit.contain,
                           )
-                        : const Center(
-                            child: CircularProgressIndicator(),
-                          ),
+                        : const Center(child: CircularProgressIndicator()),
                   ),
                 ),
               ),
@@ -576,7 +571,9 @@ class _FullscreenVideoPage extends ConsumerWidget {
                 children: [
                   _StatChip(label: 'FPS', value: '${videoState.fps}'),
                   _StatChip(
-                      label: 'Frames', value: '${videoState.framesReceived}'),
+                    label: 'Frames',
+                    value: '${videoState.framesReceived}',
+                  ),
                   _StatChip(label: 'Latency', value: '${videoState.latency}ms'),
                 ],
               ),
@@ -608,17 +605,15 @@ class _StatChip extends StatelessWidget {
           children: [
             Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: Colors.white70),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: Colors.white70),
             ),
             Text(
               value,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.white),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.white),
             ),
           ],
         ),

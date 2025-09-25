@@ -32,12 +32,12 @@ class MjpegStreamConfig {
     int? maxFrameBytes,
     int? targetFps,
   }) => MjpegStreamConfig(
-        connectTimeout: connectTimeout ?? this.connectTimeout,
-        firstFrameTimeout: firstFrameTimeout ?? this.firstFrameTimeout,
-        stallTimeout: stallTimeout ?? this.stallTimeout,
-        maxFrameBytes: maxFrameBytes ?? this.maxFrameBytes,
-        targetFps: targetFps ?? this.targetFps,
-      );
+    connectTimeout: connectTimeout ?? this.connectTimeout,
+    firstFrameTimeout: firstFrameTimeout ?? this.firstFrameTimeout,
+    stallTimeout: stallTimeout ?? this.stallTimeout,
+    maxFrameBytes: maxFrameBytes ?? this.maxFrameBytes,
+    targetFps: targetFps ?? this.targetFps,
+  );
 }
 
 /// Base sealed class for events emitted by the stream controller.
@@ -79,7 +79,7 @@ class StreamEnded extends FrameEvent {
 /// Controller responsible for acquiring and parsing the MJPEG stream.
 class MjpegStreamController {
   MjpegStreamController({MjpegStreamConfig config = const MjpegStreamConfig()})
-      : _config = config;
+    : _config = config;
 
   final MjpegStreamConfig _config;
 
@@ -109,9 +109,12 @@ class MjpegStreamController {
     try {
       final req = await _httpClient!
           .getUrl(uri)
-          .timeout(_config.connectTimeout, onTimeout: () {
-        throw TimeoutException('Connection timeout');
-      });
+          .timeout(
+            _config.connectTimeout,
+            onTimeout: () {
+              throw TimeoutException('Connection timeout');
+            },
+          );
       headers?.forEach(req.headers.add);
       final resp = await req.close();
       if (resp.statusCode >= 400) {
@@ -131,11 +134,18 @@ class MjpegStreamController {
       _boundary = boundary;
       _controller.add(StreamStarted(boundary, DateTime.now()));
 
-      _subscription = resp.listen(_onData, onError: (e, st) {
-        _emitError(e, st);
-      }, onDone: () {
-        _controller.add(StreamEnded(DateTime.now(), reason: 'HTTP stream ended'));
-      }, cancelOnError: true);
+      _subscription = resp.listen(
+        _onData,
+        onError: (e, st) {
+          _emitError(e, st);
+        },
+        onDone: () {
+          _controller.add(
+            StreamEnded(DateTime.now(), reason: 'HTTP stream ended'),
+          );
+        },
+        cancelOnError: true,
+      );
     } catch (e, st) {
       _emitError(e, st);
       await stop();
@@ -186,8 +196,8 @@ class MjpegStreamController {
 
     // boundary marker pattern is '--<boundary>' preceded by CRLF or start.
     final marker = ascii.encode('--$_boundary');
-  int idx = _indexOf(data, marker, _searchIndex);
-  while (idx != -1) {
+    int idx = _indexOf(data, marker, _searchIndex);
+    while (idx != -1) {
       // Find end of headers: CRLFCRLF
       final headerStart = idx + marker.length;
       // Skip optional leading '--' end marker detection
@@ -195,20 +205,31 @@ class MjpegStreamController {
       // Consume leading CRLF if present
       int partStart = headerStart;
       // skip optional leading '--' for final boundary
-      if (partStart + 1 < data.length && data[partStart] == 13 && data[partStart + 1] == 10) {
+      if (partStart + 1 < data.length &&
+          data[partStart] == 13 &&
+          data[partStart + 1] == 10) {
         partStart += 2; // CRLF
       }
 
       // If this is the terminating boundary (ends with --) break
       // (Simplified: if bytes after marker start with '--' and followed by CRLF or end)
-      if (partStart + 1 < data.length && data[partStart] == 45 /* - */ && data[partStart + 1] == 45) {
+      if (partStart + 1 < data.length &&
+          data[partStart] == 45 /* - */ &&
+          data[partStart + 1] == 45) {
         // End of stream boundary encountered
-        _controller.add(StreamEnded(DateTime.now(), reason: 'terminal boundary'));
+        _controller.add(
+          StreamEnded(DateTime.now(), reason: 'terminal boundary'),
+        );
         return;
       }
 
       // Parse headers
-      final headersEnd = _indexOfSequence(data, const [13, 10, 13, 10], partStart); // CRLFCRLF
+      final headersEnd = _indexOfSequence(data, const [
+        13,
+        10,
+        13,
+        10,
+      ], partStart); // CRLFCRLF
       if (headersEnd == -1) {
         // Need more data
         _searchIndex = idx; // resume from marker
@@ -220,7 +241,9 @@ class MjpegStreamController {
       for (final line in headersString.split('\r\n')) {
         final sep = line.indexOf(':');
         if (sep != -1) {
-          headers[line.substring(0, sep).trim().toLowerCase()] = line.substring(sep + 1).trim();
+          headers[line.substring(0, sep).trim().toLowerCase()] = line
+              .substring(sep + 1)
+              .trim();
         }
       }
       int contentStart = headersEnd + 4; // skip CRLFCRLF
@@ -238,11 +261,24 @@ class MjpegStreamController {
         _searchIndex = idx;
         return; // wait for more
       }
-      final frameBytes = data.sublist(contentStart, frameEnd); // exclude trailing CRLF before boundary
+      final frameBytes = data.sublist(
+        contentStart,
+        frameEnd,
+      ); // exclude trailing CRLF before boundary
       if (frameBytes.length <= _config.maxFrameBytes) {
-        _controller.add(FrameBytes(Uint8List.fromList(frameBytes), _frameIndex++, DateTime.now()));
+        _controller.add(
+          FrameBytes(
+            Uint8List.fromList(frameBytes),
+            _frameIndex++,
+            DateTime.now(),
+          ),
+        );
       } else {
-        _emitError(StateError('Frame size ${frameBytes.length} > max ${_config.maxFrameBytes}'));
+        _emitError(
+          StateError(
+            'Frame size ${frameBytes.length} > max ${_config.maxFrameBytes}',
+          ),
+        );
       }
       // Remove processed segment from buffer by rebuilding remaining data
       final remaining = data.sublist(nextIdx); // keep from next boundary
@@ -261,12 +297,16 @@ class MjpegStreamController {
     for (int i = start; i <= data.length - pattern.length; i++) {
       var match = true;
       for (int j = 0; j < pattern.length; j++) {
-        if (data[i + j] != pattern[j]) { match = false; break; }
+        if (data[i + j] != pattern[j]) {
+          match = false;
+          break;
+        }
       }
       if (match) return i;
     }
     return -1;
   }
 
-  int _indexOfSequence(List<int> data, List<int> pattern, int start) => _indexOf(data, pattern, start);
+  int _indexOfSequence(List<int> data, List<int> pattern, int start) =>
+      _indexOf(data, pattern, start);
 }

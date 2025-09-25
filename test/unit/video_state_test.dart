@@ -147,7 +147,7 @@ void main() {
     test('should disconnect immediately', () {
       // First connect
       notifier.connect();
-      
+
       // Then disconnect
       notifier.disconnect();
 
@@ -231,37 +231,43 @@ void main() {
       container.dispose();
     });
 
-    test('should follow correct state transition: disconnected → connecting → connected', () async {
-      // Initial state: disconnected
-      var state = container.read(videoStateProvider);
-      expect(state.isConnected, isFalse);
-      expect(state.isConnecting, isFalse);
+    test(
+      'should follow correct state transition: disconnected → connecting → connected',
+      () async {
+        // Initial state: disconnected
+        var state = container.read(videoStateProvider);
+        expect(state.isConnected, isFalse);
+        expect(state.isConnecting, isFalse);
 
-      // Start connection: connecting
-      notifier.connect();
-      state = container.read(videoStateProvider);
-      expect(state.isConnected, isFalse);
-      expect(state.isConnecting, isTrue);
+        // Start connection: connecting
+        notifier.connect();
+        state = container.read(videoStateProvider);
+        expect(state.isConnected, isFalse);
+        expect(state.isConnecting, isTrue);
 
-      // Wait for connection: connected
-      await Future.delayed(const Duration(seconds: 3));
-      state = container.read(videoStateProvider);
-      expect(state.isConnected, isTrue);
-      expect(state.isConnecting, isFalse);
-    });
+        // Wait for connection: connected
+        await Future.delayed(const Duration(seconds: 3));
+        state = container.read(videoStateProvider);
+        expect(state.isConnected, isTrue);
+        expect(state.isConnecting, isFalse);
+      },
+    );
 
-    test('should follow correct state transition: connected → disconnected', () async {
-      // First get to connected state
-      notifier.connect();
-      await Future.delayed(const Duration(seconds: 3));
-      expect(container.read(videoStateProvider).isConnected, isTrue);
+    test(
+      'should follow correct state transition: connected → disconnected',
+      () async {
+        // First get to connected state
+        notifier.connect();
+        await Future.delayed(const Duration(seconds: 3));
+        expect(container.read(videoStateProvider).isConnected, isTrue);
 
-      // Then disconnect
-      notifier.disconnect();
-      final state = container.read(videoStateProvider);
-      expect(state.isConnected, isFalse);
-      expect(state.isConnecting, isFalse);
-    });
+        // Then disconnect
+        notifier.disconnect();
+        final state = container.read(videoStateProvider);
+        expect(state.isConnected, isFalse);
+        expect(state.isConnecting, isFalse);
+      },
+    );
 
     test('should handle rapid connect/disconnect cycles', () async {
       for (int i = 0; i < 5; i++) {

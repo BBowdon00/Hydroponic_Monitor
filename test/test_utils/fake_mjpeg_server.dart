@@ -16,8 +16,10 @@ class FakeMjpegServer {
 
   Uri get uri => Uri.parse('http://localhost:${_server.port}/stream');
 
-  static Future<FakeMjpegServer> start(List<FakeMjpegFrameSpec> frames,
-      {String boundary = 'fakestream'}) async {
+  static Future<FakeMjpegServer> start(
+    List<FakeMjpegFrameSpec> frames, {
+    String boundary = 'fakestream',
+  }) async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((req) async {
       if (req.uri.path != '/stream') {
@@ -26,14 +28,17 @@ class FakeMjpegServer {
         return;
       }
       req.response.statusCode = 200;
-      req.response.headers.set('Content-Type',
-          'multipart/x-mixed-replace; boundary=$boundary');
+      req.response.headers.set(
+        'Content-Type',
+        'multipart/x-mixed-replace; boundary=$boundary',
+      );
 
       for (final frame in frames) {
         if (frame.delay != Duration.zero) {
           await Future.delayed(frame.delay);
         }
-        final header = '--$boundary\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.bytes.length}\r\n\r\n';
+        final header =
+            '--$boundary\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.bytes.length}\r\n\r\n';
         req.response.add(utf8.encode(header));
         req.response.add(frame.bytes);
         req.response.add(const [13, 10]);

@@ -48,29 +48,31 @@ void main() {
         final uri = Uri.tryParse(url);
         expect(uri, isNotNull, reason: 'URL should be valid: $url');
         expect(uri!.hasScheme, isTrue, reason: 'URL should have scheme: $url');
-        expect(['http', 'https'].contains(uri.scheme), isTrue, 
-               reason: 'URL should use HTTP(S): $url');
+        expect(
+          ['http', 'https'].contains(uri.scheme),
+          isTrue,
+          reason: 'URL should use HTTP(S): $url',
+        );
       }
     });
 
     test('should handle URL validation edge cases', () {
-      const invalidUrls = [
-        '',
-        'not-a-url',
-        'ftp://invalid.com/stream',
-      ];
+      const invalidUrls = ['', 'not-a-url', 'ftp://invalid.com/stream'];
 
       for (final url in invalidUrls) {
         final uri = Uri.tryParse(url);
         // Either null or invalid scheme/format
         if (uri != null && url.isNotEmpty) {
           if (uri.hasScheme) {
-            expect(['http', 'https'].contains(uri.scheme), isFalse,
-                   reason: 'Invalid URL should not have valid HTTP scheme: $url');
+            expect(
+              ['http', 'https'].contains(uri.scheme),
+              isFalse,
+              reason: 'Invalid URL should not have valid HTTP scheme: $url',
+            );
           }
         }
       }
-      
+
       // Test high port numbers separately (these are technically valid URIs)
       const highPortUrl = 'https://invalid:99999/stream';
       final highPortUri = Uri.tryParse(highPortUrl);
@@ -113,7 +115,7 @@ void main() {
       test('should handle connection state transitions correctly', () async {
         final notifier = container.read(videoStateProvider.notifier);
         final states = <VideoState>[];
-        
+
         final stateStream = container.listen(videoStateProvider, (_, next) {
           states.add(next);
         });
@@ -146,7 +148,7 @@ void main() {
 
       test('should simulate network latency variations', () async {
         final notifier = container.read(videoStateProvider.notifier);
-        
+
         // Connect first
         notifier.connect();
         await Future.delayed(const Duration(seconds: 3));
@@ -163,7 +165,7 @@ void main() {
         // Should have realistic latency values
         expect(latencies.every((l) => l >= 100), isTrue);
         expect(latencies.every((l) => l <= 250), isTrue);
-        
+
         // Should have some variation
         final uniqueLatencies = latencies.toSet();
         expect(uniqueLatencies.length, greaterThan(1));
@@ -173,7 +175,7 @@ void main() {
     group('Video Configuration Integration', () {
       test('should handle URL changes during different states', () {
         final notifier = container.read(videoStateProvider.notifier);
-        
+
         const testUrls = [
           'http://camera1.local:8080/stream',
           'http://camera2.local:8080/mjpeg',
@@ -236,7 +238,7 @@ void main() {
 
         // Try to connect again while connecting
         notifier.connect();
-        
+
         // Should still be in connecting state
         expect(container.read(videoStateProvider).isConnecting, isTrue);
         expect(container.read(videoStateProvider).isConnected, isFalse);
@@ -248,7 +250,7 @@ void main() {
 
       test('should handle special URL formats', () {
         final notifier = container.read(videoStateProvider.notifier);
-        
+
         const specialUrls = [
           'https://secure.camera.local:8443/stream',
           'http://camera.local/video.mjpeg',
@@ -312,47 +314,52 @@ void main() {
       networkContainer.dispose();
     });
 
-    test('should validate against localhost server if available', () async {
-      const testUrl = 'http://localhost:8080/stream';
-      
-      try {
-        // Try to create HTTP client and check if server is reachable
-        final client = HttpClient();
-        final request = await client.getUrl(Uri.parse(testUrl));
-        request.headers.set('User-Agent', 'HydroponicMonitor-Test/1.0');
-        
-        // Set timeout
-        final response = await request.close().timeout(
-          const Duration(seconds: 2),
-        );
-        
-        // If we get here, server is available
-        expect(response.statusCode, lessThan(500));
-        
-        await response.drain();
-        client.close();
-      } on TimeoutException {
-        // Server not available, skip test
-        print('Localhost MJPEG server not available for testing: timeout');
-      } catch (e) {
-        // Server not available, skip test
-        print('Localhost MJPEG server not available for testing: $e');
-      }
-    }, tags: ['integration', 'network']);
+    test(
+      'should validate against localhost server if available',
+      () async {
+        const testUrl = 'http://localhost:8080/stream';
+
+        try {
+          // Try to create HTTP client and check if server is reachable
+          final client = HttpClient();
+          final request = await client.getUrl(Uri.parse(testUrl));
+          request.headers.set('User-Agent', 'HydroponicMonitor-Test/1.0');
+
+          // Set timeout
+          final response = await request.close().timeout(
+            const Duration(seconds: 2),
+          );
+
+          // If we get here, server is available
+          expect(response.statusCode, lessThan(500));
+
+          await response.drain();
+          client.close();
+        } on TimeoutException {
+          // Server not available, skip test
+          print('Localhost MJPEG server not available for testing: timeout');
+        } catch (e) {
+          // Server not available, skip test
+          print('Localhost MJPEG server not available for testing: $e');
+        }
+      },
+      tags: ['integration', 'network'],
+    );
 
     test('should handle network timeout scenarios', () async {
       // This test simulates what would happen with network timeouts
       // In real implementation, we would add timeout handling to VideoStateNotifier
-      
-      const unreachableUrl = 'http://192.168.254.254:8080/stream'; // Non-routable IP
-      
+
+      const unreachableUrl =
+          'http://192.168.254.254:8080/stream'; // Non-routable IP
+
       final notifier = networkContainer.read(videoStateProvider.notifier);
       notifier.setStreamUrl(unreachableUrl);
-      
+
       // In current implementation, this would still "connect" since it's simulated
       // In real implementation, this should timeout and handle gracefully
       notifier.connect();
-      
+
       // Current behavior - always connects (simulated)
       await Future.delayed(const Duration(seconds: 3));
       expect(networkContainer.read(videoStateProvider).isConnected, isTrue);

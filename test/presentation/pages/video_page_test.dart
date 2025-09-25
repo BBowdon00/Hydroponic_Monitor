@@ -11,13 +11,11 @@ import 'package:hydroponic_monitor/core/theme.dart';
 /// Tests the UI components, user interactions, and state-dependent rendering.
 void main() {
   group('VideoPage Widget Tests', () {
-    testWidgets('should render all main components in disconnected state', (tester) async {
+    testWidgets('should render all main components in disconnected state', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       // Wait for any async initialization
@@ -38,7 +36,10 @@ void main() {
 
       // Check placeholder content
       expect(find.text('No Video Stream'), findsOneWidget);
-      expect(find.text('Enter a stream URL and connect to view live video'), findsOneWidget);
+      expect(
+        find.text('Enter a stream URL and connect to view live video'),
+        findsOneWidget,
+      );
       expect(find.byIcon(Icons.videocam_off), findsOneWidget);
 
       // Should NOT show connected state elements
@@ -47,13 +48,11 @@ void main() {
       expect(find.byIcon(Icons.refresh), findsNothing);
     });
 
-    testWidgets('should show status badge with disconnected state', (tester) async {
+    testWidgets('should show status badge with disconnected state', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -65,11 +64,7 @@ void main() {
 
     testWidgets('should allow URL editing', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -81,7 +76,7 @@ void main() {
       // Clear and enter new URL
       await tester.tap(urlField);
       await tester.pump();
-      
+
       await tester.enterText(urlField, 'http://raspberry.local:8080/mjpeg');
       await tester.pump();
 
@@ -89,13 +84,11 @@ void main() {
       expect(find.text('http://raspberry.local:8080/mjpeg'), findsOneWidget);
     });
 
-    testWidgets('should show connecting state when connect button pressed', (tester) async {
+    testWidgets('should show connecting state when connect button pressed', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -107,12 +100,16 @@ void main() {
 
       // Should show connecting state
       expect(find.text('Connecting...'), findsOneWidget);
-      
+
       // Button should be disabled during connection
       final elevatedButton = tester.widget<ElevatedButton>(
         find.byKey(const Key('video_connect_button')),
       );
-      expect(elevatedButton.onPressed, isNull, reason: 'Connect button should be disabled while connecting');
+      expect(
+        elevatedButton.onPressed,
+        isNull,
+        reason: 'Connect button should be disabled while connecting',
+      );
 
       // Advance time so pending simulated connection timer completes (prevents teardown assertion)
       await tester.pump(const Duration(seconds: 2));
@@ -120,13 +117,11 @@ void main() {
       expect(find.text('Disconnect'), findsOneWidget);
     });
 
-    testWidgets('should show connected state after connection completes', (tester) async {
+    testWidgets('should show connected state after connection completes', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -149,7 +144,10 @@ void main() {
 
       // Should show video stream content
       expect(find.text('Live Video Stream'), findsOneWidget);
-      expect(find.text('Connected to http://192.168.1.100:8080/stream'), findsOneWidget);
+      expect(
+        find.text('Connected to http://192.168.1.100:8080/stream'),
+        findsOneWidget,
+      );
 
       // Should show refresh button
       expect(find.byIcon(Icons.refresh), findsOneWidget);
@@ -162,13 +160,11 @@ void main() {
       expect(find.text('Latency'), findsOneWidget);
     });
 
-    testWidgets('should handle disconnect from connected state', (tester) async {
+    testWidgets('should handle disconnect from connected state', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -195,11 +191,7 @@ void main() {
 
     testWidgets('should handle refresh button tap', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -212,7 +204,7 @@ void main() {
       // Find and tap refresh button
       final refreshButton = find.byIcon(Icons.refresh);
       expect(refreshButton, findsOneWidget);
-      
+
       await tester.tap(refreshButton);
       await tester.pump();
 
@@ -223,11 +215,7 @@ void main() {
 
     testWidgets('should show latency with color coding', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -239,7 +227,7 @@ void main() {
 
       // Look for latency display
       expect(find.text('Latency'), findsOneWidget);
-      
+
       // Should find latency value ending with 'ms'
       final latencyFinder = find.textContaining('ms');
       expect(latencyFinder, findsOneWidget);
@@ -247,17 +235,13 @@ void main() {
 
     testWidgets('should handle multiple URL changes', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
 
       final urlField = find.byType(TextFormField);
-      
+
       // Test multiple URL changes
       final testUrls = [
         'http://camera1.local:8080/stream',
@@ -271,18 +255,14 @@ void main() {
         await tester.enterText(urlField, url);
         await tester.pump();
         // Verify URL was entered in TextFormField
-  // Just ensure the field reflects user entry; relying on controller rather than initialValue.
-  expect(find.text(url), findsWidgets);
+        // Just ensure the field reflects user entry; relying on controller rather than initialValue.
+        expect(find.text(url), findsWidgets);
       }
     });
 
     testWidgets('should maintain URL during connection cycle', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -316,30 +296,22 @@ void main() {
   group('VideoPage Accessibility', () {
     testWidgets('should have proper semantic labels', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
 
       // Check that important widgets have proper semantics
       expect(find.byType(TextFormField), findsOneWidget);
-  expect(find.byKey(const Key('video_connect_button')), findsOneWidget);
-      
+      expect(find.byKey(const Key('video_connect_button')), findsOneWidget);
+
       // App bar should be accessible
       expect(find.byType(AppBar), findsOneWidget);
     });
 
     testWidgets('should support keyboard navigation', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -348,7 +320,7 @@ void main() {
       final urlField = find.byType(TextFormField);
       await tester.tap(urlField);
       await tester.pump();
-      
+
       // Should show focus
       expect(tester.binding.focusManager.primaryFocus?.hasFocus, isTrue);
     });
@@ -357,11 +329,7 @@ void main() {
   group('VideoPage Error Handling', () {
     testWidgets('should handle empty URL input gracefully', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -376,20 +344,16 @@ void main() {
       // Should still allow connection attempt
       await tester.tap(find.text('Connect'));
       await tester.pump();
-      
+
       expect(find.text('Connecting...'), findsOneWidget);
-      
+
       // Wait for connection to complete to avoid timer issues
       await tester.pump(const Duration(seconds: 3));
     });
 
     testWidgets('should handle rapid button presses', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -398,13 +362,19 @@ void main() {
       final connectButton = find.text('Connect');
       await tester.tap(connectButton);
       await tester.pump();
-      
+
       // Try to find the button that should now be disabled
       expect(find.text('Connecting...'), findsOneWidget);
-      
+
       // Check if any elevated button is disabled
-  final button = tester.widget<ElevatedButton>(find.byKey(const Key('video_connect_button')));
-  expect(button.onPressed, isNull, reason: 'Connect button should be disabled immediately after press');
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('video_connect_button')),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'Connect button should be disabled immediately after press',
+      );
       // Allow simulated connection to finish to clear pending timer
       await tester.pump(const Duration(seconds: 2));
       expect(find.text('Disconnect'), findsOneWidget);
@@ -414,11 +384,7 @@ void main() {
   group('VideoPage Layout', () {
     testWidgets('should have proper layout structure', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
@@ -432,29 +398,23 @@ void main() {
 
     testWidgets('should use consistent spacing', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
 
       // Check for SizedBox spacing elements
       expect(find.byType(SizedBox), findsWidgets);
-      
+
       // Check for consistent padding
       expect(find.byType(Padding), findsWidgets);
     });
 
-    testWidgets('should adapt to connected state layout changes', (tester) async {
+    testWidgets('should adapt to connected state layout changes', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: VideoPage(),
-          ),
-        ),
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
       );
 
       await tester.pump();
