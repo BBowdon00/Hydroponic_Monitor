@@ -12,7 +12,7 @@
 - Dashboard widgets automatically update with live sensor data from MQTT streams
 - Comprehensive error handling for connection failures and malformed data implemented
 
-### Current Development Focus: **Actuator Control System** �️
+### Current Development Focus: **Actuator Control System** 🛠️
 *Status: In Progress (September 2025)*
 - Implement MQTT actuator commands with state confirmation
 - Group actuators by node (rpi, esp1, esp2) in Devices tab
@@ -38,6 +38,9 @@
 - UI reflects confirmed state changes and timeouts
 - Devices grouped by node with Online/Offline badges
 - Tests cover command flow and node status aggregation
+
+#### 2. Manual Reconnect Feature Request (TASK008 - Pending)
+User-requested enhancement: dashboard Refresh button should perform a manual reconnection attempt for both MQTT and InfluxDB (teardown + re-init + health check) with clear success/partial/failure feedback. Task document added (`TASK008-dashboard-refresh-reconnect.md`) and indexed under Pending.
 
 ### Immediate Next Steps (Next 7 Days)
 

@@ -69,6 +69,7 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [ ] **Full Stack Automation**: Playwright-based end-to-end testing
 - [ ] **Dynamic device + sensor discovery**: Dynamically add sensor and device tiles when MQTT messages are received. Maybe create a cache for known devices/sensors to seed the app on a restart.
 - [ ] **Refactor Dashboard page**: Change it to a sensor page display only. Keep the devices only on the device page.
+- [ ] **Manual Reconnect (TASK008)**: Dashboard refresh button to trigger explicit MQTT + InfluxDB reconnection sequence with user feedback.
 
 ## Known Issues & Technical Debt
 
