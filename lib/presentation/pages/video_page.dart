@@ -40,11 +40,35 @@ final _urlTextControllerProvider = Provider<TextEditingController>((ref) {
   return controller;
 });
 
-class VideoPage extends ConsumerWidget {
+/// VideoPage now a Stateful widget so we can perform a safe disconnect in dispose
+/// without triggering provider reads during ProviderContainer teardown (which was
+/// causing Bad state: Tried to read a provider from a ProviderContainer that was already disposed).
+class VideoPage extends ConsumerStatefulWidget {
   const VideoPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VideoPage> createState() => _VideoPageState();
+}
+
+class _VideoPageState extends ConsumerState<VideoPage> {
+  late final VideoStateNotifier _videoNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    // Capture notifier early so dispose doesn't attempt a provider read after container teardown.
+    _videoNotifier = ref.read(videoStateProvider.notifier);
+  }
+  @override
+  void dispose() {
+    // Perform a silent shutdown to release resources without emitting state changes
+    // that would try to rebuild this (now disposing) widget.
+    _videoNotifier.shutdown();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final videoState = ref.watch(videoStateProvider);
     final urlController = ref.watch(_urlTextControllerProvider);
     final theme = Theme.of(context);
@@ -303,17 +327,46 @@ class VideoPage extends ConsumerWidget {
 
   Widget _buildPlayingState(BuildContext context, VideoState videoState) {
     final isRealMjpeg = Env.enableRealMjpeg;
-    
-    if (isRealMjpeg && videoState.lastFrame != null) {
-      // Real MJPEG stream with actual frame data
-      return _buildRealVideoFrame(context, videoState);
-    } else {
-      // Simulation mode - clearly labeled
+    // Provide a stable sized container to prevent "render box has no size" before first frame.
+    const fallbackAspect = 16 / 9;
+    final hasFrame = isRealMjpeg && videoState.lastFrame != null;
+    final aspectRatio = hasFrame
+        ? (videoState.resolution.width / videoState.resolution.height)
+        : fallbackAspect;
+
+    return AspectRatio(
+      aspectRatio: aspectRatio <= 0 || aspectRatio.isNaN ? fallbackAspect : aspectRatio,
+      child: hasFrame
+          ? _buildRealVideoFrame(context, videoState)
+          : _buildPreFramePlaceholder(context, videoState, isRealMjpeg),
+    );
+  }
+
+  Widget _buildPreFramePlaceholder(BuildContext context, VideoState videoState, bool isRealMjpeg) {
+    if (!isRealMjpeg) {
       return _buildSimulationFrame(context, videoState);
     }
+    // Waiting for first real frame; show progress/label within sized box.
+    if (videoState.phase == VideoConnectionPhase.waitingFirstFrame || videoState.phase == VideoConnectionPhase.connecting) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    // Error or idle fallback inside sized box.
+    if (videoState.phase == VideoConnectionPhase.error) {
+      return _buildErrorState(context, videoState);
+    }
+    return _buildIdleState(context); // Generic fallback
   }
 
   Widget _buildRealVideoFrame(BuildContext context, VideoState videoState) {
+    // On web, directly embed <img> to let browser handle the multipart stream natively.
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       child: Stack(
@@ -324,7 +377,8 @@ class VideoPage extends ConsumerWidget {
             child: Image.memory(
               videoState.lastFrame!,
               gaplessPlayback: true,
-              fit: BoxFit.cover,
+              // Use contain to avoid cropping when aspect ratio mismatches during reconnect
+              fit: BoxFit.contain,
             ),
           ),
           // Frame stats overlay
@@ -555,6 +609,7 @@ class VideoPage extends ConsumerWidget {
   }
 }
 
+
 /// Connection phases for MJPEG streaming
 enum VideoConnectionPhase { 
   idle, 
@@ -646,6 +701,7 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
 
   final Ref _ref;
   StreamSubscription<FrameEvent>? _eventSub;
+  Timer? _connectTimeoutTimer; // Enforces max wait before first frame
 
   void setStreamUrl(String url) {
     state = state.copyWith(streamUrl: url);
@@ -655,6 +711,7 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
     if (state.phase == VideoConnectionPhase.connecting || 
         state.phase == VideoConnectionPhase.playing) return;
     
+    _cancelConnectTimeout();
     state = state.copyWith(
       phase: VideoConnectionPhase.connecting, 
       hasAttempted: true,
@@ -666,6 +723,7 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           // Skip waitingFirstFrame and go straight to playing in simulation
+          _cancelConnectTimeout();
           state = state.copyWith(
             phase: VideoConnectionPhase.playing,
             resolution: const Size(1280, 720),
@@ -674,6 +732,8 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
           );
         }
       });
+      // Still start timeout in case simulation future never fires for some reason
+      _startConnectTimeout();
       return;
     }
 
@@ -681,15 +741,35 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
     final controller = _ref.read(mjpegStreamControllerProvider);
     _eventSub = controller.events.listen(_onEvent);
     controller.start(state.streamUrl);
+    _startConnectTimeout();
   }
 
   void disconnect() {
-    state = state.copyWith(phase: VideoConnectionPhase.idle);
+    // Reset phase and revert resolution so AspectRatio fallback is consistent on next connect
+    _cancelConnectTimeout();
+    state = state.copyWith(
+      phase: VideoConnectionPhase.idle,
+      resolution: const Size(640, 480),
+      lastFrame: null,
+      framesReceived: 0,
+    );
     if (Env.enableRealMjpeg) {
       _eventSub?.cancel();
       _eventSub = null;
       _ref.read(mjpegStreamControllerProvider).stop();
     }
+  }
+
+  /// Silent shutdown used by widget dispose to avoid scheduling rebuilds
+  /// while element tree is tearing down. Does not mutate state; only
+  /// releases resources.
+  void shutdown() {
+    if (Env.enableRealMjpeg) {
+      _eventSub?.cancel();
+      _eventSub = null;
+      _ref.read(mjpegStreamControllerProvider).stop();
+    }
+    _cancelConnectTimeout();
   }
 
   void refresh() {
@@ -702,21 +782,31 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
   void _onEvent(FrameEvent event) {
     if (event is StreamStarted) {
       state = state.copyWith(phase: VideoConnectionPhase.waitingFirstFrame);
+    } else if (event is FrameResolution) {
+      // Update resolution metadata without marking playing yet (first FrameBytes will)
+      final w = event.width.toDouble();
+      final h = event.height.toDouble();
+      if (w > 0 && h > 0) {
+        state = state.copyWith(resolution: Size(w, h));
+      }
     } else if (event is FrameBytes) {
-      // First frame received - transition to playing
+      // First frame transitions to playing
+      _cancelConnectTimeout();
       state = state.copyWith(
         phase: VideoConnectionPhase.playing,
         lastFrame: event.bytes,
         framesReceived: state.framesReceived + 1,
-        fps: state.fps, // Simple fps for now
+        fps: state.fps,
         latency: 100 + (DateTime.now().millisecond % 150),
       );
     } else if (event is StreamError) {
+      _cancelConnectTimeout();
       state = state.copyWith(
         phase: VideoConnectionPhase.error,
         errorMessage: event.error.toString(),
       );
     } else if (event is StreamEnded) {
+      _cancelConnectTimeout();
       // Stream ended - go to idle unless it was an error
       state = state.copyWith(
         phase: state.errorMessage != null 
@@ -725,7 +815,36 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
       );
     }
   }
+
+  // --- Timeout Helpers --------------------------------------------------
+  void _startConnectTimeout() {
+    _connectTimeoutTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      if (state.phase == VideoConnectionPhase.connecting ||
+          state.phase == VideoConnectionPhase.waitingFirstFrame) {
+        // Treat as connection failure.
+        _eventSub?.cancel();
+        _eventSub = null;
+        if (Env.enableRealMjpeg) {
+          _ref.read(mjpegStreamControllerProvider).stop();
+        }
+        state = state.copyWith(
+          phase: VideoConnectionPhase.error,
+          errorMessage: 'Connection timeout after 5s',
+        );
+      }
+    });
+  }
+
+  void _cancelConnectTimeout() {
+    _connectTimeoutTimer?.cancel();
+    _connectTimeoutTimer = null;
+  }
 }
+
+// --- JPEG Utilities -------------------------------------------------------
+// Parses JPEG markers to find SOF0/SOF2 and return dimensions.
+// JPEG dimension parsing no longer needed on client; resolution now comes via FrameResolution event.
 
 /// Fullscreen video page using same providers; shows last frame stretching to fit.
 class _FullscreenVideoPage extends ConsumerWidget {

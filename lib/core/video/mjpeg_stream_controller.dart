@@ -7,3 +7,5 @@ export 'mjpeg_stream_controller_io.dart'
 
 // Ensure FrameEvent types are always available regardless of platform  
 export 'mjpeg_stream_controller_io.dart' show FrameEvent, StreamStarted, FrameBytes, StreamError, StreamEnded, MjpegStreamConfig;
+// Export resolution metadata event
+export 'mjpeg_stream_controller_io.dart' show FrameResolution;

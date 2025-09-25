@@ -25,6 +25,16 @@ class FrameBytes extends FrameEvent {
   String toString() => 'FrameBytes(index=$index, size=${bytes.length})';
 }
 
+/// Emitted when the decoder learns (or detects a change in) the frame
+/// resolution. Width/height are in raw pixel units.
+class FrameResolution extends FrameEvent {
+  const FrameResolution(this.width, this.height, DateTime ts) : super(ts);
+  final int width;
+  final int height;
+  @override
+  String toString() => 'FrameResolution(${width}x$height)';
+}
+
 class StreamError extends FrameEvent {
   const StreamError(this.error, this.stack, DateTime ts) : super(ts);
   final Object error;
