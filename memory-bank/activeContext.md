@@ -12,33 +12,35 @@
 - Dashboard widgets automatically update with live sensor data from MQTT streams
 - Comprehensive error handling for connection failures and malformed data implemented
 
-### Current Development Focus: **Historical Data Integration** 🎯
-*Status: Next Priority (September 2025)*
-- Focus shifting to InfluxDB historical data charts for sensor analytics
-- Building on completed real-time data foundation
-- Implementing time-series visualization with customizable ranges (1h, 24h, 7d, 30d)
+### Current Development Focus: **Actuator Control System** 🛠️
+*Status: In Progress (September 2025)*
+- Implement MQTT actuator commands with state confirmation
+- Group actuators by node (rpi, esp1, esp2) in Devices tab
+- Display node online/offline status badges (LWT-ready)
+- Prepare testing framework for command/state transitions
 
 ## Active Work Items
 
-#### 1. Historical Data Charts Implementation
+#### 1. Actuator Control Implementation
 **Priority**: High  
-**Status**: Planning Phase  
-**Estimated Start**: September 25, 2025
+**Status**: Active  
+**Estimated Completion**: October 02, 2025
 
 **Planned Tasks**:
-- [ ] Design chart component architecture using fl_chart package
-- [ ] Implement InfluxDB historical data queries with time range support
-- [ ] Create dashboard chart widgets with sensor data visualization
-- [ ] Add time range controls and aggregation function selection
-- [ ] Implement comprehensive testing for historical data flow
-- [ ] Document chart architecture in systemPatterns.md
+- [ ] Implement data layer for actuators (MQTT publish/subscribe, LWT readiness)
+- [ ] Add providers: command pending/timeout handling, devices-by-node, node status
+- [ ] Update Devices UI: group by node, status badges, control cards
+- [ ] Testing: unit/provider tests for command/state transitions and node status
+- [ ] Documentation updates (systemPatterns.md)
 
 **Acceptance Criteria**:
-- Historical sensor data displayed in interactive charts
-- Time range selection (1h, 24h, 7d, 30d) functional
-- Data aggregation and query performance optimized
-- Full test coverage for historical data integration
-- Dashboard seamlessly combines real-time and historical data
+- Commands publish successfully for rpi, esp1, esp2 via `grow/{node}/actuator/set`
+- UI reflects confirmed state changes and timeouts
+- Devices grouped by node with Online/Offline badges
+- Tests cover command flow and node status aggregation
+
+#### 2. Manual Reconnect Feature Request (TASK008 - Pending)
+User-requested enhancement: dashboard Refresh button should perform a manual reconnection attempt for both MQTT and InfluxDB (teardown + re-init + health check) with clear success/partial/failure feedback. Task document added (`TASK008-dashboard-refresh-reconnect.md`) and indexed under Pending.
 
 ### Immediate Next Steps (Next 7 Days)
 
@@ -52,10 +54,9 @@
 - Validate cross-references and hierarchical relationships
 - Update any documentation gaps discovered during memory bank refresh
 
-#### 3. Actuator Control Preparation
-- Begin planning phase for actuator command and control system
-- Design MQTT command flow architecture with confirmation feedback
-- Prepare testing framework for actuator state management
+#### 3. Historical Data Preparation (Next)
+- Plan fl_chart integration and time ranges
+- Outline InfluxDB query shapes and aggregation
 
 ## Development Workflow Status
 

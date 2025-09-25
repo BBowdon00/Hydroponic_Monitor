@@ -25,7 +25,7 @@ class DeviceCard extends StatelessWidget {
   final Color color;
   final bool isEnabled;
   final bool isPending;
-  final void Function(bool enabled) onToggle;
+  final void Function(bool enabled)? onToggle;
   final double? intensity;
   final ValueChanged<double>? onIntensityChanged;
 
@@ -79,7 +79,7 @@ class DeviceCard extends StatelessWidget {
                 else
                   Switch(
                     value: isEnabled,
-                    onChanged: isPending ? null : onToggle,
+                    onChanged: isPending || onToggle == null ? null : onToggle,
                     activeThumbColor: color,
                   ),
               ],
