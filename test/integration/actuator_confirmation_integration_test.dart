@@ -27,9 +27,7 @@ void main() {
         // Build app with Provider overrides to inject our mock repository
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              deviceRepositoryProvider.overrideWithValue(mockRepo),
-            ],
+            overrides: [deviceRepositoryProvider.overrideWithValue(mockRepo)],
             child: const MaterialApp(home: DevicesPage()),
           ),
         );
@@ -41,7 +39,9 @@ void main() {
         expect(find.text('Water Pump'), findsOneWidget);
 
         // Trigger a toggle ON command via the provider (simulating user intent)
-        final container = ProviderScope.containerOf(tester.element(find.byType(DevicesPage)));
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(DevicesPage)),
+        );
         final controls = container.read(deviceControlsProvider.notifier);
         await controls.toggleDevice('rpi_pump_1', true);
 
@@ -61,7 +61,9 @@ void main() {
         // Convert payload to Device entity (mimicking repository parsing logic)
         final node = 'rpi';
         final typeStr = confirmationPayload['deviceType'] as String;
-        final deviceType = DeviceType.values.firstWhere((t) => t.name == typeStr);
+        final deviceType = DeviceType.values.firstWhere(
+          (t) => t.name == typeStr,
+        );
         final device = Device(
           id: '${node}_${typeStr}_${confirmationPayload['deviceID']}',
           name: (confirmationPayload['description'] as String?) ?? 'Device',

@@ -119,12 +119,12 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   final Ref ref;
   ProviderSubscription? _deviceStatusSubscription;
   final Map<String, Timer> _pendingTimeouts = {};
-  
+
   /// Test hook: when false, pending command timeouts won't be scheduled.
   /// This prevents widget tests from hanging due to long-lived timers unless
   /// they explicitly advance time. Leave true in production.
   static bool useCommandTimeouts = true;
-  
+
   /// Test hook: when false, controlDevice won't block on node offline/error.
   /// Keep true in production to enforce node-online requirement.
   static bool enforceNodeOnlineForCommands = true;
@@ -441,15 +441,17 @@ String _extractNodeFromDeviceId(String deviceId) {
 }
 
 /// Provider for devices grouped by node.
-final devicesByNodeProvider = Provider<Map<String, List<DeviceControlState>>>((ref) {
+final devicesByNodeProvider = Provider<Map<String, List<DeviceControlState>>>((
+  ref,
+) {
   final controls = ref.watch(deviceControlsProvider);
   final devicesByNode = <String, List<DeviceControlState>>{};
-  
+
   for (final device in controls.devices.values) {
     final node = _extractNodeFromDeviceId(device.deviceId);
     devicesByNode.putIfAbsent(node, () => []).add(device);
   }
-  
+
   return devicesByNode;
 });
 
@@ -457,19 +459,19 @@ final devicesByNodeProvider = Provider<Map<String, List<DeviceControlState>>>((r
 final nodeStatusProvider = Provider<Map<String, DeviceStatus>>((ref) {
   final devicesByNode = ref.watch(devicesByNodeProvider);
   final nodeStatuses = <String, DeviceStatus>{};
-  
+
   for (final entry in devicesByNode.entries) {
     final node = entry.key;
     final devices = entry.value;
-    
+
     if (devices.isEmpty) {
       nodeStatuses[node] = DeviceStatus.offline;
       continue;
     }
-    
+
     // Determine node status based on device statuses
     final statuses = devices.map((d) => d.status).toSet();
-    
+
     if (statuses.contains(DeviceStatus.error)) {
       nodeStatuses[node] = DeviceStatus.error;
     } else if (statuses.contains(DeviceStatus.pending)) {
@@ -482,18 +484,22 @@ final nodeStatusProvider = Provider<Map<String, DeviceStatus>>((ref) {
       nodeStatuses[node] = DeviceStatus.offline;
     }
   }
-  
+
   return nodeStatuses;
 });
 
 /// Provider for devices on a specific node.
-final devicesForNodeProvider = Provider.family<List<DeviceControlState>, String>((ref, node) {
-  final devicesByNode = ref.watch(devicesByNodeProvider);
-  return devicesByNode[node] ?? [];
-});
+final devicesForNodeProvider =
+    Provider.family<List<DeviceControlState>, String>((ref, node) {
+      final devicesByNode = ref.watch(devicesByNodeProvider);
+      return devicesByNode[node] ?? [];
+    });
 
 /// Provider for status of a specific node.
-final nodeStatusForProvider = Provider.family<DeviceStatus, String>((ref, node) {
+final nodeStatusForProvider = Provider.family<DeviceStatus, String>((
+  ref,
+  node,
+) {
   final nodeStatuses = ref.watch(nodeStatusProvider);
   return nodeStatuses[node] ?? DeviceStatus.offline;
 });

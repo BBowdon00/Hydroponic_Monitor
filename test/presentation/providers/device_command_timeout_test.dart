@@ -18,11 +18,9 @@ void main() {
       // Disable node-online enforcement for these provider unit tests
       DeviceControlsNotifier.enforceNodeOnlineForCommands = false;
       mockRepository = MockDeviceRepository();
-      
+
       container = ProviderContainer(
-        overrides: [
-          deviceRepositoryProvider.overrideWithValue(mockRepository),
-        ],
+        overrides: [deviceRepositoryProvider.overrideWithValue(mockRepository)],
       );
     });
 
@@ -32,21 +30,27 @@ void main() {
 
     testWidgets('device command sets pending state correctly', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
-  // Initialize the provider (no widget tree, a single pump is enough)
-  await tester.pump();
-      
+
+      // Initialize the provider (no widget tree, a single pump is enough)
+      await tester.pump();
+
       // Initial state should not be pending
       final initialState = container.read(deviceControlsProvider);
-      final pumpDevice = initialState.getDeviceState('rpi_pump_1', DeviceType.pump);
+      final pumpDevice = initialState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pumpDevice.isPending, isFalse);
-      
+
       // Send a command
       await notifier.toggleDevice('rpi_pump_1', true);
-      
+
       // Device should now be in pending state
       final pendingState = container.read(deviceControlsProvider);
-      final pendingPumpDevice = pendingState.getDeviceState('rpi_pump_1', DeviceType.pump);
+      final pendingPumpDevice = pendingState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pendingPumpDevice.isPending, isTrue);
       expect(pendingPumpDevice.lastCommand, 'turn_on');
       expect(pendingPumpDevice.pendingCommandId, isNotNull);
@@ -56,21 +60,24 @@ void main() {
       // Re-enable timeouts for this specific test and use fakeAsync to advance time
       DeviceControlsNotifier.useCommandTimeouts = true;
       final notifier = container.read(deviceControlsProvider.notifier);
-      
-  // Initialize the provider
-  await tester.pump();
-      
+
+      // Initialize the provider
+      await tester.pump();
+
       // Send a command
       await notifier.toggleDevice('rpi_pump_1', true);
-      
+
       // Verify pending state
       var currentState = container.read(deviceControlsProvider);
-      var pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
+      var pumpDevice = currentState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pumpDevice.isPending, isTrue);
-      
-  // Wait for timeout (10 seconds + buffer)
-  await tester.pump(const Duration(seconds: 11));
-      
+
+      // Wait for timeout (10 seconds + buffer)
+      await tester.pump(const Duration(seconds: 11));
+
       // Device should now be in error state
       currentState = container.read(deviceControlsProvider);
       pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
@@ -82,18 +89,21 @@ void main() {
 
     testWidgets('device status update clears pending state', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
-  // Initialize the provider
-  await tester.pump();
-      
+
+      // Initialize the provider
+      await tester.pump();
+
       // Send a command
       await notifier.toggleDevice('rpi_pump_1', true);
-      
+
       // Verify pending state
       var currentState = container.read(deviceControlsProvider);
-      var pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
+      var pumpDevice = currentState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pumpDevice.isPending, isTrue);
-      
+
       // Simulate MQTT status update
       const confirmedDevice = Device(
         id: 'rpi_pump_1',
@@ -103,7 +113,7 @@ void main() {
         isEnabled: true,
         lastUpdate: null,
       );
-      
+
       // Trigger device status update
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -117,9 +127,9 @@ void main() {
           ),
         },
       );
-      
-  await tester.pump();
-      
+
+      await tester.pump();
+
       // Device should no longer be pending
       currentState = container.read(deviceControlsProvider);
       pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
@@ -128,40 +138,48 @@ void main() {
       expect(pumpDevice.isEnabled, isTrue);
     });
 
-    testWidgets('command failure resets pending state immediately', (tester) async {
+    testWidgets('command failure resets pending state immediately', (
+      tester,
+    ) async {
       // Configure mock to return failure
       mockRepository.setCommandResult(false);
-      
+
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       // Initialize the provider
       await tester.pumpAndSettle();
-      
+
       // Send a command that will fail
       await notifier.toggleDevice('rpi_pump_1', true);
       await tester.pumpAndSettle();
-      
+
       // Device should not be pending after command failure
       final currentState = container.read(deviceControlsProvider);
-      final pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
+      final pumpDevice = currentState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pumpDevice.isPending, isFalse);
     });
 
     testWidgets('intensity control commands work correctly', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       // Initialize the provider
       await tester.pumpAndSettle();
-      
+
       // Set fan intensity
       await notifier.setDeviceIntensity('rpi_fan_1', 0.8);
       await tester.pumpAndSettle();
-      
+
       // Check that intensity is set
       final currentState = container.read(deviceControlsProvider);
-      final fanDevice = currentState.getDeviceState('rpi_fan_1', DeviceType.fan);
+      final fanDevice = currentState.getDeviceState(
+        'rpi_fan_1',
+        DeviceType.fan,
+      );
       expect(fanDevice.intensity, 0.8);
-      
+
       // Check that command was sent
       expect(mockRepository.lastCommand, isNotNull);
       expect(mockRepository.lastCommand!['command'], 'set_fan_speed');
@@ -170,10 +188,10 @@ void main() {
 
     testWidgets('emergency stop affects all devices', (tester) async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       // Initialize the provider
       await tester.pumpAndSettle();
-      
+
       // Set some devices to enabled state
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -192,20 +210,26 @@ void main() {
           ),
         },
       );
-      
+
       // Trigger emergency stop
       await notifier.emergencyStopAll();
       await tester.pumpAndSettle();
-      
+
       // All devices should be stopped and disabled
       final currentState = container.read(deviceControlsProvider);
-      
-      final pumpDevice = currentState.getDeviceState('rpi_pump_1', DeviceType.pump);
+
+      final pumpDevice = currentState.getDeviceState(
+        'rpi_pump_1',
+        DeviceType.pump,
+      );
       expect(pumpDevice.isEnabled, isFalse);
       expect(pumpDevice.status, DeviceStatus.stopped);
       expect(pumpDevice.isPending, isFalse);
-      
-      final fanDevice = currentState.getDeviceState('rpi_fan_1', DeviceType.fan);
+
+      final fanDevice = currentState.getDeviceState(
+        'rpi_fan_1',
+        DeviceType.fan,
+      );
       expect(fanDevice.isEnabled, isFalse);
       expect(fanDevice.status, DeviceStatus.stopped);
       expect(fanDevice.isPending, isFalse);

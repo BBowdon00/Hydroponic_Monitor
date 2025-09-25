@@ -17,7 +17,7 @@ void main() {
 
     test('MQTT command topics follow correct format', () async {
       // Test the _extractNodeFromDeviceId function through the providers
-      
+
       // Mock some devices with different node prefixes
       final notifier = container.read(deviceControlsProvider.notifier);
       notifier.state = notifier.state.copyWith(
@@ -29,7 +29,7 @@ void main() {
             status: DeviceStatus.offline,
           ),
           'esp1_fan_1': const DeviceControlState(
-            deviceId: 'esp1_fan_1', 
+            deviceId: 'esp1_fan_1',
             deviceType: DeviceType.fan,
             isEnabled: false,
             status: DeviceStatus.offline,
@@ -42,15 +42,15 @@ void main() {
           ),
         },
       );
-      
+
       // Check device grouping by node
       final devicesByNode = container.read(devicesByNodeProvider);
-      
+
       expect(devicesByNode.keys, containsAll(['rpi', 'esp1', 'esp2']));
       expect(devicesByNode['rpi']?.length, 1);
       expect(devicesByNode['esp1']?.length, 1);
       expect(devicesByNode['esp2']?.length, 1);
-      
+
       // Verify specific devices are in correct nodes
       expect(devicesByNode['rpi']?.first.deviceId, 'rpi_pump_1');
       expect(devicesByNode['esp1']?.first.deviceId, 'esp1_fan_1');
@@ -59,7 +59,7 @@ void main() {
 
     test('node status aggregation works correctly', () async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       // Create a mix of device states for different nodes
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -83,19 +83,19 @@ void main() {
           ),
         },
       );
-      
+
       final nodeStatuses = container.read(nodeStatusProvider);
-      
+
       // RPI should be online (has at least one online device)
       expect(nodeStatuses['rpi'], DeviceStatus.online);
-      
+
       // ESP1 should be error (has error device)
       expect(nodeStatuses['esp1'], DeviceStatus.error);
     });
 
     test('node status changes when device states change', () async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       // Initially all offline
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -107,10 +107,10 @@ void main() {
           ),
         },
       );
-      
+
       var nodeStatuses = container.read(nodeStatusProvider);
       expect(nodeStatuses['rpi'], DeviceStatus.offline);
-      
+
       // Update to online
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -122,10 +122,10 @@ void main() {
           ),
         },
       );
-      
+
       nodeStatuses = container.read(nodeStatusProvider);
       expect(nodeStatuses['rpi'], DeviceStatus.online);
-      
+
       // Update to pending
       notifier.state = notifier.state.copyWith(
         devices: {
@@ -138,14 +138,14 @@ void main() {
           ),
         },
       );
-      
+
       nodeStatuses = container.read(nodeStatusProvider);
       expect(nodeStatuses['rpi'], DeviceStatus.pending);
     });
 
     test('specific node providers return correct data', () async {
       final notifier = container.read(deviceControlsProvider.notifier);
-      
+
       notifier.state = notifier.state.copyWith(
         devices: {
           'rpi_pump_1': const DeviceControlState(
@@ -162,25 +162,25 @@ void main() {
           ),
         },
       );
-      
+
       // Test family providers
       final rpiDevices = container.read(devicesForNodeProvider('rpi'));
       final esp1Devices = container.read(devicesForNodeProvider('esp1'));
       final unknownDevices = container.read(devicesForNodeProvider('unknown'));
-      
+
       expect(rpiDevices.length, 1);
       expect(rpiDevices.first.deviceId, 'rpi_pump_1');
-      
+
       expect(esp1Devices.length, 1);
       expect(esp1Devices.first.deviceId, 'esp1_fan_1');
-      
+
       expect(unknownDevices.length, 0);
-      
+
       // Test node status family providers
       final rpiStatus = container.read(nodeStatusForProvider('rpi'));
       final esp1Status = container.read(nodeStatusForProvider('esp1'));
       final unknownStatus = container.read(nodeStatusForProvider('unknown'));
-      
+
       expect(rpiStatus, DeviceStatus.online);
       expect(esp1Status, DeviceStatus.offline);
       expect(unknownStatus, DeviceStatus.offline);
