@@ -4,7 +4,7 @@
 
 ## Project Status Overview
 
-The Hydroponic Monitor is in **Active Development** state with core real-time functionality complete and tested. Current focus is implementing historical data visualization and actuator control systems.
+The Hydroponic Monitor is in **Active Development** state with core real-time functionality complete. Web-compatible MJPEG streaming (TASK007) has been completed; current focus shifts to planning historical data visualization.
 
 ## Feature Completion Status
 
@@ -18,6 +18,14 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Multi-sensor Support**: Temperature, humidity, pH, EC, water level, light, power ✅ **COMPLETED**
 - [x] **Comprehensive Testing**: 78+ unit tests, 11+ integration tests, full coverage ✅ **COMPLETED**
 
+#### Actuator Control System (Active)
+- [x] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
+- [x] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
+- [x] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges; controls disabled when node Offline/Error
+- [x] **Safety Systems**: Command pending -> timeout -> error handling; provider enforcement of node-online requirement (test hooks available)
+- [x] **Testing**: Unit/provider tests for command/state transitions and node aggregation; Added integration test for actuator confirmation (task005)
+
+
 #### Application Infrastructure  
 - [x] **UI Framework**: Clean Material 3 design with responsive layouts ✅ **COMPLETED**
 - [x] **Sensor Support**: All major hydroponic sensor types supported ✅ **COMPLETED**
@@ -25,7 +33,8 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Multi-device Support**: Multiple sensor nodes and device types ✅ **COMPLETED**
 
 #### Video Integration  
-- [x] **MJPEG Streaming**: Framework established for camera feeds ✅ **COMPLETED**
+- [x] **MJPEG Streaming**: Framework established (native/feature flagged) ✅ **COMPLETED (Baseline)**
+- [x] **Web-Compatible MJPEG Path**: Implement controller & UI state cleanup (TASK007) 🚧 **COMPLETED**
 
 ### System Infrastructure ✅ COMPLETE
 
@@ -47,14 +56,8 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Web Application**: Primary platform
 - [x] **Android Application**: Native mobile experience
 
-### Features In Development 🧱 IN PROGRESS
+### Features In Development 🚧 IN PROGRESS
 
-#### Actuator Control System (Active)
-- [x] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
-- [x] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
-- [x] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges; controls disabled when node Offline/Error
-- [x] **Safety Systems**: Command pending -> timeout -> error handling; provider enforcement of node-online requirement (test hooks available)
-- [x] **Testing**: Unit/provider tests for command/state transitions and node aggregation; Added integration test for actuator confirmation (task005)
 
 #### Historical Data Analytics (Next)
 - [ ] **Time-Series Charts**: Interactive charts using fl_chart package
@@ -74,7 +77,8 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ## Known Issues & Technical Debt
 
 ### Current Known Issues
-- **Video Stream Testing**: MJPEG stream integration needs comprehensive testing validation
+// (Resolved) Web MJPEG previously unsupported; completed via TASK007 (phase-based streaming + timeout)
+- **Video Stream Testing**: Needs expanded coverage for error / waitingFirstFrame / fullscreen behaviors
 
 ### Technical Debt Items  
 - **Code Documentation**: Some utility functions need more comprehensive inline documentation
@@ -100,10 +104,8 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ### Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. **Actuator Control System**: MQTT command sending with state confirmation feedback
-2. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
-3. **MJPEG Camera Streaming Test**: Robust testing for the MJPEG video feed
-4. **Enhanced Testing**: Playwright automation for full-stack validation
+1. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
+3. **Enhanced Testing**: Playwright automation for full-stack validation
 
   
 ---
@@ -118,4 +120,4 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - **→ Tasks**: [tasks/](./tasks/) - Individual work items and detailed tracking
 
 ---
-*Last Updated: 2025-09-24* 
+*Last Updated: 2025-09-25* 

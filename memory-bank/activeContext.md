@@ -4,20 +4,29 @@
 
 ## Current Development Status
 
-### Recent Milestone: **Real-Time Sensor Data Integration Complete** ✅
-*Status: Completed (September 24, 2025)*
-- **TASK004** successfully completed: Real-time sensor updates fully integrated into dashboard
-- All 78+ unit tests, 11 integration tests, 3 widget tests, and 4 error handling tests passing
-- MQTT provider architecture working reliably with real-time data flow
-- Dashboard widgets automatically update with live sensor data from MQTT streams
-- Comprehensive error handling for connection failures and malformed data implemented
+### Recent Milestones
+**Real-Time Sensor Data Integration Complete (TASK004)** ✅ *(Completed: Sept 24, 2025)*
+- Live MQTT-driven dashboard operational with comprehensive tests
+- 78+ unit tests, 11 integration tests, 3 widget tests, 4 error handling tests passing
 
-### Current Development Focus: **Actuator Control System** 🛠️
-*Status: In Progress (September 2025)*
-- Implement MQTT actuator commands with state confirmation
-- Group actuators by node (rpi, esp1, esp2) in Devices tab
-- Display node online/offline status badges (LWT-ready)
-- Prepare testing framework for command/state transitions
+**Web MJPEG Streaming Support (TASK007)** ✅ *(Completed: Sept 25, 2025)*
+- Unified phase model: idle → connecting → waitingFirstFrame → playing → error
+- Web-compatible streaming path implemented with fetch-based controller
+- 5s connection timeout prevents long hangs; clear error surfaced
+- Simulation mode clearly labeled (no misleading placeholders)
+- Updated widget tests reflecting new phases; disposal safety (`shutdown()`) pattern added
+
+### Current Development Focus: **Historical Data Integration (Charts) Preparation** 🎯
+*Status: In Planning (September 25, 2025)*
+- Designing time-series chart architecture (fl_chart evaluation)
+- Defining InfluxDB query patterns (range + aggregation)
+- Identifying caching and sampling strategies for performance
+
+### Upcoming: **Historical Data Integration (TASK - TBD)** 📊
+*Status: Queued (September 2025)*
+- InfluxDB historical data charts (1h, 24h, 7d, 30d)
+- Aggregation & downsampling strategy
+- Combine real-time + historical perspectives in unified dashboard
 
 ## Active Work Items
 
@@ -44,19 +53,22 @@ User-requested enhancement: dashboard Refresh button should perform a manual rec
 
 ### Immediate Next Steps (Next 7 Days)
 
-#### 1. Begin Historical Data Implementation
-- Start design phase for fl_chart integration and time-series visualization
-- Plan InfluxDB query optimization for historical data retrieval
-- Create component architecture for dashboard chart widgets
+#### 1. Historical Data Architecture Spike
+- Evaluate fl_chart capabilities for large time ranges
+- Draft repository + provider interfaces for historical queries
+- Define query batching & cache invalidation rules
 
-#### 2. Complete Memory Bank Validation
-- Ensure all Memory Bank documentation reflects current project state accurately
-- Validate cross-references and hierarchical relationships
-- Update any documentation gaps discovered during memory bank refresh
+#### 2. Documentation & Memory Sync
+- Update progress and system patterns with streaming architecture changes
+- Add README section for enabling real MJPEG on web
 
-#### 3. Historical Data Preparation (Next)
-- Plan fl_chart integration and time ranges
-- Outline InfluxDB query shapes and aggregation
+#### 3. Prepare Historical Data Foundation
+- Early design for chart architecture (fl_chart evaluation)
+- Identify InfluxDB query patterns & indexes
+
+#### 4. Actuator Control (Preliminary Research)
+- Map required MQTT command topics & acknowledgment patterns
+- Draft provisional provider interfaces (deferred implementation)
 
 ## Development Workflow Status
 
@@ -107,4 +119,4 @@ User-requested enhancement: dashboard Refresh button should perform a manual rec
 
 ---
 
-*Last Updated: 2025-09-24*
+*Last Updated: 2025-09-25*
