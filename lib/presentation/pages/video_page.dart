@@ -63,82 +63,12 @@ class VideoPage extends ConsumerWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppTheme.spaceMd),
-        child: Column(
-          children: [
-            // URL input field
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spaceMd),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Video Stream URL',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppTheme.spaceSm),
-                    TextFormField(
-                      controller: urlController,
-                      decoration: const InputDecoration(
-                        hintText: 'http://192.168.1.100:8080/stream',
-                        prefixIcon: Icon(Icons.link),
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spaceMd),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: videoState.isConnecting
-                                ? null
-                                : () {
-                                    if (videoState.isConnected) {
-                                      ref
-                                          .read(videoStateProvider.notifier)
-                                          .disconnect();
-                                    } else {
-                                      ref
-                                          .read(videoStateProvider.notifier)
-                                          .connect();
-                                    }
-                                  },
-                            icon: Icon(
-                              videoState.isConnected
-                                  ? Icons.videocam_off
-                                  : Icons.videocam,
-                            ),
-                            key: const Key('video_connect_button'),
-                            label: Text(
-                              videoState.isConnecting
-                                  ? 'Connecting...'
-                                  : videoState.isConnected
-                                      ? 'Disconnect'
-                                      : 'Connect',
-                            ),
-                          ),
-                        ),
-                        if (videoState.isConnected) ...[
-                          const SizedBox(width: AppTheme.spaceMd),
-                          IconButton(
-                            onPressed: () {
-                              ref.read(videoStateProvider.notifier).refresh();
-                            },
-                            icon: const Icon(Icons.refresh),
-                            tooltip: 'Refresh stream',
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool enableScroll = constraints.maxHeight < 600;
 
-            const SizedBox(height: AppTheme.spaceMd),
-
-            // Video display area
-            Expanded(
-              child: Card(
+            Widget buildVideoArea() {
+              final card = Card(
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppTheme.spaceMd),
@@ -146,58 +76,147 @@ class VideoPage extends ConsumerWidget {
                       ? _buildVideoFrame(context, videoState)
                       : _buildPlaceholder(context),
                 ),
-              ),
-            ),
+              );
+              if (enableScroll) {
+                // In scroll mode we cannot use Expanded/Flexible (unbounded height)
+                return card;
+              }
+              return Expanded(child: card);
+            }
 
-            if (videoState.isConnected) ...[
-              const SizedBox(height: AppTheme.spaceMd),
-
-              // Video controls
+            final children = <Widget>[
+              // URL input field
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(AppTheme.spaceMd),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        children: [
-                          Text('Resolution', style: theme.textTheme.bodySmall),
-                          Text(
-                            '${videoState.resolution.width.toInt()}×${videoState.resolution.height.toInt()}',
-                            style: theme.textTheme.titleSmall,
-                          ),
-                        ],
+                      Text(
+                        'Video Stream URL',
+                        style: theme.textTheme.titleMedium,
                       ),
-                      Column(
-                        children: [
-                          Text('FPS', style: theme.textTheme.bodySmall),
-                          Text(
-                            '${videoState.fps}',
-                            style: theme.textTheme.titleSmall,
-                          ),
-                        ],
+                      const SizedBox(height: AppTheme.spaceSm),
+                      TextFormField(
+                        controller: urlController,
+                        decoration: const InputDecoration(
+                          hintText: 'http://192.168.1.100:8080/stream',
+                          prefixIcon: Icon(Icons.link),
+                        ),
                       ),
-                      Column(
+                      const SizedBox(height: AppTheme.spaceMd),
+                      Row(
                         children: [
-                          Text('Latency', style: theme.textTheme.bodySmall),
-                          Text(
-                            '${videoState.latency}ms',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              color: videoState.latency > 500
-                                  ? Colors.red
-                                  : videoState.latency > 200
-                                  ? Colors.orange
-                                  : Colors.green,
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              key: const Key('video_connect_button'),
+                              onPressed: videoState.isConnecting
+                                  ? null
+                                  : () {
+                                      if (videoState.isConnected) {
+                                        ref
+                                            .read(videoStateProvider.notifier)
+                                            .disconnect();
+                                      } else {
+                                        ref
+                                            .read(videoStateProvider.notifier)
+                                            .connect();
+                                      }
+                                    },
+                              icon: Icon(
+                                videoState.isConnected
+                                    ? Icons.videocam_off
+                                    : Icons.videocam,
+                              ),
+                              label: Text(
+                                videoState.isConnecting
+                                    ? 'Connecting...'
+                                    : videoState.isConnected
+                                        ? 'Disconnect'
+                                        : 'Connect',
+                              ),
                             ),
                           ),
+                          if (videoState.isConnected) ...[
+                            const SizedBox(width: AppTheme.spaceMd),
+                            IconButton(
+                              onPressed: () {
+                                ref
+                                    .read(videoStateProvider.notifier)
+                                    .refresh();
+                              },
+                              icon: const Icon(Icons.refresh),
+                              tooltip: 'Refresh stream',
+                            ),
+                          ],
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ],
+              const SizedBox(height: AppTheme.spaceMd),
+              buildVideoArea(),
+              if (videoState.isConnected) ...[
+                const SizedBox(height: AppTheme.spaceMd),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppTheme.spaceMd),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Text('Resolution',
+                                style: theme.textTheme.bodySmall),
+                            Text(
+                              '${videoState.resolution.width.toInt()}×${videoState.resolution.height.toInt()}',
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Text('FPS', style: theme.textTheme.bodySmall),
+                            Text(
+                              '${videoState.fps}',
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Text('Latency',
+                                style: theme.textTheme.bodySmall),
+                            Text(
+                              '${videoState.latency}ms',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: videoState.latency > 500
+                                    ? Colors.red
+                                    : videoState.latency > 200
+                                        ? Colors.orange
+                                        : Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ];
+
+            final column = Column(
+              mainAxisSize:
+                  enableScroll ? MainAxisSize.min : MainAxisSize.max,
+              children: children,
+            );
+            if (enableScroll) {
+              return SingleChildScrollView(child: column);
+            }
+            return column;
+          },
         ),
       ),
     );
@@ -205,20 +224,40 @@ class VideoPage extends ConsumerWidget {
 
   Widget _buildVideoFrame(BuildContext context, VideoState videoState) {
     final isReal = Env.enableRealMjpeg;
-    if (isReal && videoState.lastFrame != null) {
+    final waitingForFirstFrame =
+        isReal && videoState.isConnected && videoState.lastFrame == null;
+
+    if (isReal) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.memory(
-              videoState.lastFrame!,
-              gaplessPlayback: true,
-              fit: BoxFit.cover,
-            ),
-            if (videoState.isConnecting)
+            if (videoState.lastFrame != null)
+              Hero(
+                tag: 'videoFrameHero',
+                child: Image.memory(
+                  videoState.lastFrame!,
+                  gaplessPlayback: true,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else
+              Container(
+                color: Colors.black,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            if (waitingForFirstFrame)
               const Center(
-                child: CircularProgressIndicator(),
+                child: Padding(
+                  padding: EdgeInsets.only(top: 72),
+                  child: Text(
+                    'Waiting for first frame...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
               ),
             Positioned(
               left: 8,
@@ -243,6 +282,21 @@ class VideoPage extends ConsumerWidget {
                 ),
               ),
             ),
+            Positioned(
+              right: 4,
+              top: 4,
+              child: IconButton(
+                key: const Key('fullscreen_button'),
+                icon: const Icon(Icons.fullscreen, color: Colors.white70),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const _FullscreenVideoPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
             if (videoState.errorMessage != null)
               Align(
                 alignment: Alignment.bottomCenter,
@@ -259,38 +313,46 @@ class VideoPage extends ConsumerWidget {
         ),
       );
     }
-    // Fallback: simulated placeholder
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.videocam,
-              size: 64,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-            const SizedBox(height: AppTheme.spaceMd),
-            Text(
-              'Live Video Stream',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: AppTheme.spaceSm),
-            Text(
-              'Connected to ${videoState.streamUrl}',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
-            ),
-          ],
+
+    // Simulated placeholder (also supports fullscreen navigation for consistency)
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.videocam,
+                size: 64,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+              const SizedBox(height: AppTheme.spaceMd),
+              Text(
+                'Live Video Stream',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: Colors.white),
+              ),
+              const SizedBox(height: AppTheme.spaceSm),
+              Text(
+                'Connected to ${videoState.streamUrl}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -459,5 +521,108 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
     } else if (event is StreamEnded) {
       state = state.copyWith(isConnected: false, isConnecting: false);
     }
+  }
+}
+
+/// Fullscreen video page using same providers; shows last frame stretching to fit.
+class _FullscreenVideoPage extends ConsumerWidget {
+  const _FullscreenVideoPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final videoState = ref.watch(videoStateProvider);
+    final isReal = Env.enableRealMjpeg;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: Hero(
+                tag: 'videoFrameHero',
+                child: AspectRatio(
+                  aspectRatio: videoState.resolution.width /
+                      videoState.resolution.height,
+                  child: Container(
+                    color: Colors.black,
+                    child: isReal && videoState.lastFrame != null
+                        ? Image.memory(
+                            videoState.lastFrame!,
+                            gaplessPlayback: true,
+                            fit: BoxFit.contain,
+                          )
+                        : const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Exit Fullscreen',
+              ),
+            ),
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _StatChip(label: 'FPS', value: '${videoState.fps}'),
+                  _StatChip(
+                      label: 'Frames', value: '${videoState.framesReceived}'),
+                  _StatChip(label: 'Latency', value: '${videoState.latency}ms'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: Colors.white70),
+            ),
+            Text(
+              value,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

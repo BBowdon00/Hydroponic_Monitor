@@ -12,11 +12,18 @@
 - Dashboard widgets automatically update with live sensor data from MQTT streams
 - Comprehensive error handling for connection failures and malformed data implemented
 
-### Current Development Focus: **Historical Data Integration** 🎯
-*Status: Next Priority (September 2025)*
-- Focus shifting to InfluxDB historical data charts for sensor analytics
-- Building on completed real-time data foundation
-- Implementing time-series visualization with customizable ranges (1h, 24h, 7d, 30d)
+### Current Development Focus: **Web MJPEG Streaming Support (TASK007)** 🎯
+*Status: In Progress (September 25, 2025)*
+- Implementing web-compatible MJPEG controller (conditional platform implementation)
+- Cleaning up video UI states (remove misleading placeholder text)
+- Introducing explicit phases: idle, connecting, waitingFirstFrame, playing, error
+- Maintaining feature flag isolation while enabling real camera view on web
+
+### Upcoming (After TASK007): **Historical Data Integration** 📊
+*Status: Queued (September 2025)*
+- InfluxDB historical data charts for sensor analytics
+- Time-range visualization (1h, 24h, 7d, 30d)
+- Integrate alongside live stream dashboard once video foundation stabilized
 
 ## Active Work Items
 
@@ -42,20 +49,23 @@
 
 ### Immediate Next Steps (Next 7 Days)
 
-#### 1. Begin Historical Data Implementation
-- Start design phase for fl_chart integration and time-series visualization
-- Plan InfluxDB query optimization for historical data retrieval
-- Create component architecture for dashboard chart widgets
+#### 1. Implement TASK007 (Web MJPEG)
+- Extract existing IO controller into platform-specific file
+- Add web implementation (Image.network phase 1)
+- Update `VideoState` & UI states (remove placeholder text)
+- Add widget tests for new state transitions
 
-#### 2. Complete Memory Bank Validation
-- Ensure all Memory Bank documentation reflects current project state accurately
-- Validate cross-references and hierarchical relationships
-- Update any documentation gaps discovered during memory bank refresh
+#### 2. Documentation & Memory Sync
+- Update progress and system patterns with streaming architecture changes
+- Add README section for enabling real MJPEG on web
 
-#### 3. Actuator Control Preparation
-- Begin planning phase for actuator command and control system
-- Design MQTT command flow architecture with confirmation feedback
-- Prepare testing framework for actuator state management
+#### 3. Prepare Historical Data Foundation
+- Early design for chart architecture (fl_chart evaluation)
+- Identify InfluxDB query patterns & indexes
+
+#### 4. Actuator Control (Preliminary Research)
+- Map required MQTT command topics & acknowledgment patterns
+- Draft provisional provider interfaces (deferred implementation)
 
 ## Development Workflow Status
 
@@ -106,4 +116,4 @@
 
 ---
 
-*Last Updated: 2025-09-24*
+*Last Updated: 2025-09-25*
