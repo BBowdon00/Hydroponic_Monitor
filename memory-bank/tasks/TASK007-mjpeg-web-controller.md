@@ -1,6 +1,6 @@
 # TASK007: Web-Compatible MJPEG Streaming & UI State Cleanup
 
-Status: PLANNED
+Status: COMPLETED
 Priority: High
 Created: 2025-09-25
 Owner: GitHub Copilot
@@ -15,13 +15,17 @@ Current real MJPEG implementation works only on dart:io platforms. On Flutter We
 3. Unify state model: disconnected, connecting, waitingFirstFrame, playing, error.
 4. Preserve existing native (IO) behavior while adding web path.
 5. Maintain feature flag `REAL_MJPEG`; when disabled still allow simulation mode but clearly labeled.
+ 6. Enforce fast connection failure: 5-second timeout transitioning to error state (implemented 2025-09-25).
 
 ## Non-Objectives (This Task)
 - Advanced reconnect/backoff policies (deferred to resilience task).
 - FPS smoothing / isolate parsing optimization (future performance task).
 - Multi-camera switching; authentication headers.
 
-## Proposed Approach
+## Summary / Outcomes
+Implemented unified phase-based MJPEG streaming with web compatibility and fast-fail timeout. Added 5s connection timeout, simulation mode labeling, and updated UI states (idle, connecting, waitingFirstFrame, playing, error). Tests updated and passing; no analyzer warnings. Feature flag preserves ability to disable real streaming.
+
+## Original Proposed Approach (for record)
 ### 1. Controller Abstraction
 Introduce conditional implementation files:
 - `mjpeg_stream_controller_io.dart` – existing HttpClient-based implementation (migrated from current file).
@@ -72,7 +76,8 @@ Augment `VideoState`:
 2. UI never shows "Live Video Stream" or "Connected to <url>" placeholders in absence of frames.
 3. Distinct visual states for idle, connecting, waitingFirstFrame, playing, and error.
 4. Existing tests pass; new tests cover waitingFirstFrame & error states.
-5. No analyzer warnings; conditional imports compile for web & io.
+ 5. Connection attempts exceeding 5s without first frame trigger error with explicit timeout message.
+ 6. No analyzer warnings; conditional imports compile for web & io.
 
 ## Risks & Mitigations
 | Risk | Impact | Mitigation |
@@ -86,17 +91,17 @@ Augment `VideoState`:
 - TASK009: True FPS calculation & frame pacing.
 - TASK010: Manual web parser for consistent stats.
 
-## Implementation Steps Checklist
-- [ ] Extract IO controller to `mjpeg_stream_controller_io.dart`.
-- [ ] Create web controller file with basic Image.network signaling.
-- [ ] Conditional export file.
-- [ ] Update state model & notifier logic.
-- [ ] Update UI states & remove placeholder text.
-- [ ] Update / add tests.
-- [ ] Docs & memory bank updates.
+## Implementation Steps Checklist (Final)
+- [x] Extract IO controller to `mjpeg_stream_controller_io.dart`.
+- [x] Create web controller file with basic fetch/stream (upgraded from simple Image.network concept).
+- [x] Conditional export file.
+- [x] Update state model & notifier logic (phases + timeout).
+- [x] Update UI states & remove placeholder text.
+- [x] Update / add tests (widget tests reflect new labels & phases).
+- [x] Docs & memory bank updates.
 
 ## Timeline Estimate
 ~1 day initial (Phase 1) + additional time later for advanced parsing.
 
 ---
-Last Updated: 2025-09-25
+Last Updated: 2025-09-25 (Completed)

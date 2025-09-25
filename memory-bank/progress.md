@@ -4,7 +4,7 @@
 
 ## Project Status Overview
 
-The Hydroponic Monitor is in **Active Development** state with core real-time functionality complete and tested. Current immediate focus has temporarily shifted to adding web-compatible MJPEG streaming (TASK007) and cleaning up video UI states before proceeding with historical data visualization.
+The Hydroponic Monitor is in **Active Development** state with core real-time functionality complete. Web-compatible MJPEG streaming (TASK007) has been completed; current focus shifts to planning historical data visualization.
 
 ## Feature Completion Status
 
@@ -50,13 +50,14 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 
 ### Features In Development 🚧 IN PROGRESS
 
-#### Web MJPEG Support (Current Priority)
-- [ ] Conditional platform controller (web vs io)
-- [ ] UI state refactor (idle / connecting / waiting / playing / error)
-- [ ] Remove misleading placeholder banners
-- [ ] Widget & integration tests updated for new states
+#### Web MJPEG Support (Completed)
+- [x] Conditional platform controller (web vs io)
+- [x] UI state refactor (idle / connecting / waiting / playing / error)
+- [x] Remove misleading placeholder banners
+- [x] Widget & integration tests updated for new states
+- [x] Connection timeout enforcement (5s fail-fast)
 
-#### Historical Data Analytics (Next Priority After TASK007)
+#### Historical Data Analytics (Next Priority)
 - [ ] **Time-Series Charts**: Interactive charts using fl_chart package
 - [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges  
 - [ ] **Data Aggregation**: Multiple aggregation functions for different time scales
@@ -78,7 +79,7 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ## Known Issues & Technical Debt
 
 ### Current Known Issues
-- **Web MJPEG Unsupported**: Current controller uses dart:io; web path pending (TASK007)
+// (Resolved) Web MJPEG previously unsupported; completed via TASK007 (phase-based streaming + timeout)
 - **Video Stream Testing**: Needs expanded coverage for error / waitingFirstFrame / fullscreen behaviors
 
 ### Technical Debt Items  
@@ -105,7 +106,7 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ## Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. **Web MJPEG Support (TASK007)**: Platform controller + UI state cleanup
+1. **Historical Data Charts**: Time-series visualization with InfluxDB
 2. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
 3. **Actuator Control System**: MQTT command sending with state confirmation feedback
 4. **MJPEG Resilience & Performance**: Reconnect, stall detection, FPS calc
