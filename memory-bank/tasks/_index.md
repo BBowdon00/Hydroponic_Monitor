@@ -10,5 +10,6 @@
 - [TASK001] Implementing memory bank instruction
 - [TASK002] Examine and Refactor Providers, Services, Streams, and Repositories
 - [TASK003] Integrate Testing Procedure into Memory Bank
+- [TASK006] MJPEG Streaming Framework & Testing
 
 ## Abandoned

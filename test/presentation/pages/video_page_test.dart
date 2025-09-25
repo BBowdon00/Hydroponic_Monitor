@@ -110,12 +110,14 @@ void main() {
       
       // Button should be disabled during connection
       final elevatedButton = tester.widget<ElevatedButton>(
-        find.ancestor(
-          of: find.text('Connecting...'),
-          matching: find.byType(ElevatedButton),
-        ),
+        find.byKey(const Key('video_connect_button')),
       );
-      expect(elevatedButton.onPressed, isNull);
+      expect(elevatedButton.onPressed, isNull, reason: 'Connect button should be disabled while connecting');
+
+      // Advance time so pending simulated connection timer completes (prevents teardown assertion)
+      await tester.pump(const Duration(seconds: 2));
+      // Sanity: connected state now visible
+      expect(find.text('Disconnect'), findsOneWidget);
     });
 
     testWidgets('should show connected state after connection completes', (tester) async {
@@ -269,8 +271,8 @@ void main() {
         await tester.enterText(urlField, url);
         await tester.pump();
         // Verify URL was entered in TextFormField
-        final textField = tester.widget<TextFormField>(urlField);
-        expect(textField.initialValue, isNull); // Should be using controller
+  // Just ensure the field reflects user entry; relying on controller rather than initialValue.
+  expect(find.text(url), findsWidgets);
       }
     });
 
@@ -325,7 +327,7 @@ void main() {
 
       // Check that important widgets have proper semantics
       expect(find.byType(TextFormField), findsOneWidget);
-      expect(find.byType(ElevatedButton), findsOneWidget);
+  expect(find.byKey(const Key('video_connect_button')), findsOneWidget);
       
       // App bar should be accessible
       expect(find.byType(AppBar), findsOneWidget);
@@ -401,9 +403,11 @@ void main() {
       expect(find.text('Connecting...'), findsOneWidget);
       
       // Check if any elevated button is disabled
-      final buttons = tester.widgetList<ElevatedButton>(find.byType(ElevatedButton));
-      final disabledButton = buttons.firstWhere((button) => button.onPressed == null);
-      expect(disabledButton, isNotNull);
+  final button = tester.widget<ElevatedButton>(find.byKey(const Key('video_connect_button')));
+  expect(button.onPressed, isNull, reason: 'Connect button should be disabled immediately after press');
+      // Allow simulated connection to finish to clear pending timer
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Disconnect'), findsOneWidget);
     });
   });
 
