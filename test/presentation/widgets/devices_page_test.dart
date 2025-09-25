@@ -10,11 +10,7 @@ void main() {
   group('DevicesPage Widget Tests', () {
     testWidgets('displays app bar and emergency stop section', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: DevicesPage(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: DevicesPage())),
       );
 
       // Wait for the UI to settle
@@ -32,11 +28,7 @@ void main() {
 
     testWidgets('emergency stop button shows dialog', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: DevicesPage(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: DevicesPage())),
       );
 
       await tester.pumpAndSettle();
@@ -46,7 +38,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify dialog appears
-      expect(find.text('This will immediately stop all devices. Are you sure you want to continue?'), findsOneWidget);
+      expect(
+        find.text(
+          'This will immediately stop all devices. Are you sure you want to continue?',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('STOP ALL'), findsOneWidget);
 
@@ -55,16 +52,17 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dialog should be dismissed
-      expect(find.text('This will immediately stop all devices. Are you sure you want to continue?'), findsNothing);
+      expect(
+        find.text(
+          'This will immediately stop all devices. Are you sure you want to continue?',
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('page layout includes cards and sections', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: DevicesPage(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: DevicesPage())),
       );
 
       await tester.pumpAndSettle();
@@ -82,11 +80,7 @@ void main() {
 
     testWidgets('displays system status badge in app bar', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: DevicesPage(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: DevicesPage())),
       );
 
       await tester.pumpAndSettle();
@@ -94,18 +88,14 @@ void main() {
       // Verify system status badge exists
       final systemStatusBadges = find.byType(StatusBadge);
       expect(systemStatusBadges, findsWidgets);
-      
+
       // Should have at least the system status badge
       expect(systemStatusBadges, findsAtLeastNWidgets(1));
     });
 
     testWidgets('page is scrollable with ListView', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: DevicesPage(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: DevicesPage())),
       );
 
       await tester.pumpAndSettle();

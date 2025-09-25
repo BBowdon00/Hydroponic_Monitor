@@ -9,7 +9,7 @@ class MockDeviceRepository implements DeviceRepository {
   bool _initializationResult = true;
   bool _commandResult = true;
   Map<String, dynamic>? _lastCommand;
-  final StreamController<Device> _deviceStatusController = 
+  final StreamController<Device> _deviceStatusController =
       StreamController<Device>.broadcast();
 
   // Satisfy the DeviceRepository contract. Tests never read this.
@@ -39,13 +39,15 @@ class MockDeviceRepository implements DeviceRepository {
 
   @override
   Future<Result<void>> initialize() async {
-    return _initializationResult 
+    return _initializationResult
         ? const Success(null)
         : const Failure(UnknownError('Mock initialization failure'));
   }
 
   @override
-  Future<Result<void>> ensureInitialized({Duration timeout = const Duration(seconds: 5)}) async {
+  Future<Result<void>> ensureInitialized({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     return initialize();
   }
 
@@ -61,7 +63,7 @@ class MockDeviceRepository implements DeviceRepository {
       'parameters': parameters ?? {},
       'timestamp': DateTime.now().toIso8601String(),
     };
-    
+
     return _commandResult
         ? const Success(null)
         : const Failure(UnknownError('Mock command failure'));
@@ -79,17 +81,29 @@ class MockDeviceRepository implements DeviceRepository {
 
   @override
   Future<Result<void>> setDevicePower(String deviceId, double powerLevel) {
-    return controlDevice(deviceId, 'set_power', parameters: {'power_level': powerLevel});
+    return controlDevice(
+      deviceId,
+      'set_power',
+      parameters: {'power_level': powerLevel},
+    );
   }
 
   @override
   Future<Result<void>> setTemperature(String deviceId, double temperature) {
-    return controlDevice(deviceId, 'set_temperature', parameters: {'target_temperature': temperature});
+    return controlDevice(
+      deviceId,
+      'set_temperature',
+      parameters: {'target_temperature': temperature},
+    );
   }
 
   @override
   Future<Result<void>> setFanSpeed(String deviceId, double speed) {
-    return controlDevice(deviceId, 'set_fan_speed', parameters: {'speed': speed});
+    return controlDevice(
+      deviceId,
+      'set_fan_speed',
+      parameters: {'speed': speed},
+    );
   }
 
   @override
@@ -114,7 +128,7 @@ class MockDeviceRepository implements DeviceRepository {
     if (brightness != null) parameters['brightness'] = brightness;
     if (color != null) parameters['color'] = color;
     if (enabled != null) parameters['enabled'] = enabled;
-    
+
     return controlDevice(
       deviceId,
       'set_light',

@@ -38,7 +38,7 @@ class DevicesPage extends ConsumerWidget {
               final node = entry.key;
               final devices = entry.value;
               final nodeStatus = nodeStatuses[node] ?? DeviceStatus.offline;
-              
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -62,7 +62,7 @@ class DevicesPage extends ConsumerWidget {
   ) {
     final theme = Theme.of(context);
     final nodeDisplayName = _getNodeDisplayName(node);
-    
+
     final controlsEnabled = nodeStatus == DeviceStatus.online;
 
     return Card(
@@ -84,10 +84,7 @@ class DevicesPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                StatusBadge(
-                  label: nodeStatus.displayName,
-                  status: nodeStatus,
-                ),
+                StatusBadge(label: nodeStatus.displayName, status: nodeStatus),
               ],
             ),
             const SizedBox(height: AppTheme.spaceMd),
@@ -116,7 +113,7 @@ class DevicesPage extends ConsumerWidget {
               ),
               const SizedBox(height: AppTheme.spaceSm),
             ],
-            
+
             // Device cards for this node
             if (devices.isEmpty)
               Text(
@@ -127,10 +124,12 @@ class DevicesPage extends ConsumerWidget {
                 ),
               )
             else
-              ...devices.map((device) => Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.spaceMd),
-                child: _buildDeviceCard(device, ref, controlsEnabled),
-              )),
+              ...devices.map(
+                (device) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.spaceMd),
+                  child: _buildDeviceCard(device, ref, controlsEnabled),
+                ),
+              ),
           ],
         ),
       ),
@@ -143,7 +142,7 @@ class DevicesPage extends ConsumerWidget {
     bool controlsEnabled,
   ) {
     final config = _getDeviceDisplayConfig(device.deviceType);
-    
+
     return DeviceCard(
       title: config.title,
       description: config.description,
@@ -159,7 +158,8 @@ class DevicesPage extends ConsumerWidget {
                   .toggleDevice(device.deviceId, enabled);
             }
           : null,
-      onIntensityChanged: (device.deviceType == DeviceType.fan ||
+      onIntensityChanged:
+          (device.deviceType == DeviceType.fan ||
                   device.deviceType == DeviceType.light) &&
               controlsEnabled
           ? (intensity) {
@@ -173,7 +173,7 @@ class DevicesPage extends ConsumerWidget {
 
   Widget _buildEmergencyStopSection(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
+
     return Card(
       color: Colors.red.shade50,
       child: Padding(
