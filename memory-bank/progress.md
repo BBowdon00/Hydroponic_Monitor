@@ -18,6 +18,14 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Multi-sensor Support**: Temperature, humidity, pH, EC, water level, light, power ✅ **COMPLETED**
 - [x] **Comprehensive Testing**: 78+ unit tests, 11+ integration tests, full coverage ✅ **COMPLETED**
 
+#### Actuator Control System (Active)
+- [x] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
+- [x] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
+- [x] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges; controls disabled when node Offline/Error
+- [x] **Safety Systems**: Command pending -> timeout -> error handling; provider enforcement of node-online requirement (test hooks available)
+- [x] **Testing**: Unit/provider tests for command/state transitions and node aggregation; Added integration test for actuator confirmation (task005)
+
+
 #### Application Infrastructure  
 - [x] **UI Framework**: Clean Material 3 design with responsive layouts ✅ **COMPLETED**
 - [x] **Sensor Support**: All major hydroponic sensor types supported ✅ **COMPLETED**
@@ -26,7 +34,7 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 
 #### Video Integration  
 - [x] **MJPEG Streaming**: Framework established (native/feature flagged) ✅ **COMPLETED (Baseline)**
-- [ ] **Web-Compatible MJPEG Path**: Implement controller & UI state cleanup (TASK007) 🚧 **IN PROGRESS**
+- [x] **Web-Compatible MJPEG Path**: Implement controller & UI state cleanup (TASK007) 🚧 **COMPLETED**
 
 ### System Infrastructure ✅ COMPLETE
 
@@ -50,31 +58,21 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 
 ### Features In Development 🚧 IN PROGRESS
 
-#### Web MJPEG Support (Completed)
-- [x] Conditional platform controller (web vs io)
-- [x] UI state refactor (idle / connecting / waiting / playing / error)
-- [x] Remove misleading placeholder banners
-- [x] Widget & integration tests updated for new states
-- [x] Connection timeout enforcement (5s fail-fast)
 
-#### Historical Data Analytics (Next Priority)
+#### Historical Data Analytics (Next)
 - [ ] **Time-Series Charts**: Interactive charts using fl_chart package
-- [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges  
+- [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges
 - [ ] **Data Aggregation**: Multiple aggregation functions for different time scales
 - [ ] **Time Range Controls**: User selectable ranges (1h, 24h, 7d, 30d)
 - [ ] **Chart Widgets**: Dashboard integration with historical visualization
-
-#### Actuator Control System (Future)
-- [ ] **MQTT Commands**: Send control commands to devices via MQTT
-- [ ] **State Confirmation**: Verify actuator state changes via status feedback
-- [ ] **Control Interface**: Dashboard widgets for device control
-- [ ] **Safety Systems**: Timeout handling and error recovery
-- [ ] **Command History**: Logging and audit trail for control actions
 
 #### Advanced Features (Future)
 - [ ] **MJPEG Stream Testing**: Complete video integration testing
 - [ ] **Node Status Display**: Grouped actuator widgets by controlling node  
 - [ ] **Full Stack Automation**: Playwright-based end-to-end testing
+- [ ] **Dynamic device + sensor discovery**: Dynamically add sensor and device tiles when MQTT messages are received. Maybe create a cache for known devices/sensors to seed the app on a restart.
+- [ ] **Refactor Dashboard page**: Change it to a sensor page display only. Keep the devices only on the device page.
+- [ ] **Manual Reconnect (TASK008)**: Dashboard refresh button to trigger explicit MQTT + InfluxDB reconnection sequence with user feedback.
 
 ## Known Issues & Technical Debt
 
@@ -103,14 +101,11 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - **Architecture Compliance**: Clean Architecture principles maintained
 - **Dependency Management**: All packages up-to-date and secure
 
-## Future Roadmap
+### Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. **Historical Data Charts**: Time-series visualization with InfluxDB
-2. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
-3. **Actuator Control System**: MQTT command sending with state confirmation feedback
-4. **MJPEG Resilience & Performance**: Reconnect, stall detection, FPS calc
-5. **Enhanced Testing**: Playwright automation for full-stack validation
+1. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
+3. **Enhanced Testing**: Playwright automation for full-stack validation
 
   
 ---
