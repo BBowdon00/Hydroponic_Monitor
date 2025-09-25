@@ -8,13 +8,22 @@ import 'dart:js_util' as js_util; // promise & JS property helpers
 import 'package:web/web.dart' as web;
 
 import '../../core/logger.dart';
-import 'mjpeg_stream_controller_io.dart' show FrameEvent, StreamStarted, FrameBytes, StreamError, StreamEnded, FrameResolution, MjpegStreamConfig;
+import 'mjpeg_stream_controller_io.dart'
+    show
+        FrameEvent,
+        StreamStarted,
+        FrameBytes,
+        StreamError,
+        StreamEnded,
+        FrameResolution,
+        MjpegStreamConfig;
 
 /// Web MJPEG stream controller that mirrors the native (dart:io) multipart boundary
 /// parsing logic using the browser Fetch API and ReadableStream. This avoids the
 /// brittle <img> + <canvas> re-encode loop and provides true frame boundaries.
 class MjpegStreamController {
-  MjpegStreamController({MjpegStreamConfig config = const MjpegStreamConfig()}) : _config = config;
+  MjpegStreamController({MjpegStreamConfig config = const MjpegStreamConfig()})
+    : _config = config;
 
   final MjpegStreamConfig _config;
   final _controller = StreamController<FrameEvent>.broadcast();
@@ -40,15 +49,17 @@ class MjpegStreamController {
     try {
       _abortController = web.AbortController();
       final jsHeaders = web.Headers();
-      headers?.forEach((k, v) { jsHeaders.append(k, v); });
+      headers?.forEach((k, v) {
+        jsHeaders.append(k, v);
+      });
       final init = web.RequestInit(
         method: 'GET',
         headers: jsHeaders,
         signal: _abortController!.signal,
         // mode / credentials could be parameterized if needed.
       );
-  Logger.info('Fetch start $url', tag: 'MJPEG_WEB');
-  final resp = await web.window.fetch(url.toJS, init).toDart; // Response
+      Logger.info('Fetch start $url', tag: 'MJPEG_WEB');
+      final resp = await web.window.fetch(url.toJS, init).toDart; // Response
       if (resp.status >= 400) {
         throw StateError('HTTP ${resp.status}');
       }
@@ -66,56 +77,67 @@ class MjpegStreamController {
       if (body == null) {
         throw StateError('Response has no body stream');
       }
-  final reader = body.getReader();
-  _pump(reader);
+      final reader = body.getReader();
+      _pump(reader);
     } catch (e, st) {
       _emitError(e, st);
       await stop();
     }
   }
 
-  void _pump(dynamic reader) { // dynamic due to package:web reader typing
+  void _pump(dynamic reader) {
+    // dynamic due to package:web reader typing
     if (!_started) {
-      try { reader.releaseLock(); } catch (_) {}
+      try {
+        reader.releaseLock();
+      } catch (_) {}
       return;
     }
 
     // reader.read() returns a JS Promise -> convert via promiseToFuture
     final jsPromise = reader.read();
-    js_util.promiseToFuture(jsPromise).then((result) {
-      if (!_started) return; // stopped while awaiting
-      // Access JS object properties dynamically
-      final done = js_util.getProperty(result, 'done') as bool? ?? false;
-      if (done) {
-        _controller.add(StreamEnded(DateTime.now(), reason: 'HTTP stream ended'));
-        return;
-      }
-      final value = js_util.getProperty(result, 'value');
-      if (value != null) {
-        try {
-          // Expect a Uint8Array; attempt cast to interop typed array
-          final jsArray = value as JSUint8Array;
-          final dartBytes = jsArray.toDart; // Uint8List
-          _buffer.add(dartBytes);
-          _parseBuffer();
-        } catch (e, st) {
-          _emitError(e, st);
-        }
-      }
-      // Recurse for next chunk
-      _pump(reader);
-    }).catchError((error, stack) {
-      // Ignore AbortError or post-stop noise
-      final aborted = !_started || error.toString().contains('AbortError') || error.toString().contains('The operation was aborted');
-      if (aborted) {
-        if (_started) {
-          // Treat as normal end if still marked started
-          _controller.add(StreamEnded(DateTime.now(), reason: 'aborted'));
-        }
-        return;
-      }
-      _emitError(error, stack);
-    });
+    js_util
+        .promiseToFuture(jsPromise)
+        .then((result) {
+          if (!_started) return; // stopped while awaiting
+          // Access JS object properties dynamically
+          final done = js_util.getProperty(result, 'done') as bool? ?? false;
+          if (done) {
+            _controller.add(
+              StreamEnded(DateTime.now(), reason: 'HTTP stream ended'),
+            );
+            return;
+          }
+          final value = js_util.getProperty(result, 'value');
+          if (value != null) {
+            try {
+              // Expect a Uint8Array; attempt cast to interop typed array
+              final jsArray = value as JSUint8Array;
+              final dartBytes = jsArray.toDart; // Uint8List
+              _buffer.add(dartBytes);
+              _parseBuffer();
+            } catch (e, st) {
+              _emitError(e, st);
+            }
+          }
+          // Recurse for next chunk
+          _pump(reader);
+        })
+        .catchError((error, stack) {
+          // Ignore AbortError or post-stop noise
+          final aborted =
+              !_started ||
+              error.toString().contains('AbortError') ||
+              error.toString().contains('The operation was aborted');
+          if (aborted) {
+            if (_started) {
+              // Treat as normal end if still marked started
+              _controller.add(StreamEnded(DateTime.now(), reason: 'aborted'));
+            }
+            return;
+          }
+          _emitError(error, stack);
+        });
   }
 
   void _parseBuffer() {
@@ -127,15 +149,26 @@ class MjpegStreamController {
       final headerStart = idx + marker.length;
       int partStart = headerStart;
       // Skip optional CRLF after boundary
-      if (partStart + 1 < data.length && data[partStart] == 13 && data[partStart + 1] == 10) {
+      if (partStart + 1 < data.length &&
+          data[partStart] == 13 &&
+          data[partStart + 1] == 10) {
         partStart += 2;
       }
       // Terminal boundary check
-      if (partStart + 1 < data.length && data[partStart] == 45 && data[partStart + 1] == 45) {
-        _controller.add(StreamEnded(DateTime.now(), reason: 'terminal boundary'));
+      if (partStart + 1 < data.length &&
+          data[partStart] == 45 &&
+          data[partStart + 1] == 45) {
+        _controller.add(
+          StreamEnded(DateTime.now(), reason: 'terminal boundary'),
+        );
         return;
       }
-      final headersEnd = _indexOfSequence(data, const [13, 10, 13, 10], partStart);
+      final headersEnd = _indexOfSequence(data, const [
+        13,
+        10,
+        13,
+        10,
+      ], partStart);
       if (headersEnd == -1) {
         _searchIndex = idx; // need more bytes
         return;
@@ -146,7 +179,9 @@ class MjpegStreamController {
         _searchIndex = idx; // wait for more
         return;
       }
-      final frameEnd = nextIdx >= 2 ? nextIdx - 2 : contentStart; // trim trailing CRLF
+      final frameEnd = nextIdx >= 2
+          ? nextIdx - 2
+          : contentStart; // trim trailing CRLF
       if (frameEnd < contentStart) {
         _searchIndex = idx;
         return;
@@ -161,9 +196,19 @@ class MjpegStreamController {
             _resolutionEmitted = true;
           }
         }
-        _controller.add(FrameBytes(Uint8List.fromList(frameBytes), _frameIndex++, DateTime.now()));
+        _controller.add(
+          FrameBytes(
+            Uint8List.fromList(frameBytes),
+            _frameIndex++,
+            DateTime.now(),
+          ),
+        );
       } else {
-        _emitError(StateError('Frame size ${frameBytes.length} > max ${_config.maxFrameBytes}'));
+        _emitError(
+          StateError(
+            'Frame size ${frameBytes.length} > max ${_config.maxFrameBytes}',
+          ),
+        );
       }
       // Remove processed bytes
       final remaining = data.sublist(nextIdx);
@@ -179,7 +224,8 @@ class MjpegStreamController {
 
   (int, int)? _parseJpegDimensions(List<int> bytes) {
     // Minimal JPEG SOF parser. Based on common marker scanning.
-    if (bytes.length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8) return null; // not JPEG
+    if (bytes.length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8)
+      return null; // not JPEG
     int i = 2;
     while (i + 9 < bytes.length) {
       if (bytes[i] != 0xFF) {
@@ -197,7 +243,10 @@ class MjpegStreamController {
         marker = bytes[i + 1];
       }
       // SOF0..SOF15 excluding DHT/DQT etc.
-      if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) || (marker >= 0xC9 && marker <= 0xCB) || (marker >= 0xCD && marker <= 0xCF)) {
+      if ((marker >= 0xC0 && marker <= 0xC3) ||
+          (marker >= 0xC5 && marker <= 0xC7) ||
+          (marker >= 0xC9 && marker <= 0xCB) ||
+          (marker >= 0xCD && marker <= 0xCF)) {
         if (i + 8 >= bytes.length) return null;
         final blockLength = (bytes[i + 2] << 8) + bytes[i + 3];
         if (blockLength < 7) return null;
@@ -262,5 +311,6 @@ class MjpegStreamController {
     return -1;
   }
 
-  int _indexOfSequence(List<int> data, List<int> pattern, int start) => _indexOf(data, pattern, start);
+  int _indexOfSequence(List<int> data, List<int> pattern, int start) =>
+      _indexOf(data, pattern, start);
 }

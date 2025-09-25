@@ -59,6 +59,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
     // Capture notifier early so dispose doesn't attempt a provider read after container teardown.
     _videoNotifier = ref.read(videoStateProvider.notifier);
   }
+
   @override
   void dispose() {
     // Perform a silent shutdown to release resources without emitting state changes
@@ -152,13 +153,19 @@ class _VideoPageState extends ConsumerState<VideoPage> {
                           Expanded(
                             child: ElevatedButton.icon(
                               key: const Key('video_connect_button'),
-                              onPressed: _getConnectButtonAction(videoState, ref),
+                              onPressed: _getConnectButtonAction(
+                                videoState,
+                                ref,
+                              ),
                               icon: _getConnectButtonIcon(videoState.phase),
-                              label: Text(_getConnectButtonLabel(videoState.phase)),
+                              label: Text(
+                                _getConnectButtonLabel(videoState.phase),
+                              ),
                             ),
                           ),
                           // Refresh button only when playing
-                          if (videoState.phase == VideoConnectionPhase.playing) ...[
+                          if (videoState.phase ==
+                              VideoConnectionPhase.playing) ...[
                             const SizedBox(width: AppTheme.spaceMd),
                             IconButton(
                               onPressed: () {
@@ -292,10 +299,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: AppTheme.spaceMd),
-          Text(
-            'Connecting...',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Connecting...', style: Theme.of(context).textTheme.titleLarge),
         ],
       ),
     );
@@ -335,27 +339,32 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         : fallbackAspect;
 
     return AspectRatio(
-      aspectRatio: aspectRatio <= 0 || aspectRatio.isNaN ? fallbackAspect : aspectRatio,
+      aspectRatio: aspectRatio <= 0 || aspectRatio.isNaN
+          ? fallbackAspect
+          : aspectRatio,
       child: hasFrame
           ? _buildRealVideoFrame(context, videoState)
           : _buildPreFramePlaceholder(context, videoState, isRealMjpeg),
     );
   }
 
-  Widget _buildPreFramePlaceholder(BuildContext context, VideoState videoState, bool isRealMjpeg) {
+  Widget _buildPreFramePlaceholder(
+    BuildContext context,
+    VideoState videoState,
+    bool isRealMjpeg,
+  ) {
     if (!isRealMjpeg) {
       return _buildSimulationFrame(context, videoState);
     }
     // Waiting for first real frame; show progress/label within sized box.
-    if (videoState.phase == VideoConnectionPhase.waitingFirstFrame || videoState.phase == VideoConnectionPhase.connecting) {
+    if (videoState.phase == VideoConnectionPhase.waitingFirstFrame ||
+        videoState.phase == VideoConnectionPhase.connecting) {
       return Container(
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
     // Error or idle fallback inside sized box.
@@ -391,15 +400,12 @@ class _VideoPageState extends ConsumerState<VideoPage> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
                   'FPS ${videoState.fps}  Frames ${videoState.framesReceived}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: Colors.white),
                 ),
               ),
             ),
@@ -441,9 +447,9 @@ class _VideoPageState extends ConsumerState<VideoPage> {
   Widget _buildSimulationFrame(BuildContext context, VideoState videoState) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const _FullscreenVideoPage()));
       },
       child: Container(
         decoration: BoxDecoration(
@@ -462,9 +468,9 @@ class _VideoPageState extends ConsumerState<VideoPage> {
               const SizedBox(height: AppTheme.spaceMd),
               Text(
                 'Simulation Mode',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: Colors.white),
               ),
               const SizedBox(height: AppTheme.spaceSm),
               Container(
@@ -609,14 +615,13 @@ class _VideoPageState extends ConsumerState<VideoPage> {
   }
 }
 
-
 /// Connection phases for MJPEG streaming
-enum VideoConnectionPhase { 
-  idle, 
-  connecting, 
-  waitingFirstFrame, 
-  playing, 
-  error 
+enum VideoConnectionPhase {
+  idle,
+  connecting,
+  waitingFirstFrame,
+  playing,
+  error,
 }
 
 /// Video state model with phase-based connection states
@@ -646,7 +651,8 @@ class VideoState {
   // Derived getters for backward compatibility
   bool get isConnected => phase == VideoConnectionPhase.playing;
   bool get isConnecting => phase == VideoConnectionPhase.connecting;
-  bool get isWaitingFirstFrame => phase == VideoConnectionPhase.waitingFirstFrame;
+  bool get isWaitingFirstFrame =>
+      phase == VideoConnectionPhase.waitingFirstFrame;
   bool get isIdle => phase == VideoConnectionPhase.idle;
   bool get isError => phase == VideoConnectionPhase.error;
 
@@ -708,16 +714,17 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
   }
 
   void connect() {
-    if (state.phase == VideoConnectionPhase.connecting || 
-        state.phase == VideoConnectionPhase.playing) return;
-    
+    if (state.phase == VideoConnectionPhase.connecting ||
+        state.phase == VideoConnectionPhase.playing)
+      return;
+
     _cancelConnectTimeout();
     state = state.copyWith(
-      phase: VideoConnectionPhase.connecting, 
+      phase: VideoConnectionPhase.connecting,
       hasAttempted: true,
-      clearError: true
+      clearError: true,
     );
-    
+
     if (!Env.enableRealMjpeg) {
       // Simulation mode - follow same phase semantics
       Future.delayed(const Duration(seconds: 2), () {
@@ -809,9 +816,9 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
       _cancelConnectTimeout();
       // Stream ended - go to idle unless it was an error
       state = state.copyWith(
-        phase: state.errorMessage != null 
-          ? VideoConnectionPhase.error 
-          : VideoConnectionPhase.idle
+        phase: state.errorMessage != null
+            ? VideoConnectionPhase.error
+            : VideoConnectionPhase.idle,
       );
     }
   }
@@ -854,7 +861,7 @@ class _FullscreenVideoPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final videoState = ref.watch(videoStateProvider);
     final isRealMjpeg = Env.enableRealMjpeg;
-    
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -864,10 +871,16 @@ class _FullscreenVideoPage extends ConsumerWidget {
               child: Hero(
                 tag: 'videoFrameHero',
                 child: AspectRatio(
-                  aspectRatio: videoState.resolution.width / videoState.resolution.height,
+                  aspectRatio:
+                      videoState.resolution.width /
+                      videoState.resolution.height,
                   child: Container(
                     color: Colors.black,
-                    child: _buildFullscreenContent(context, videoState, isRealMjpeg),
+                    child: _buildFullscreenContent(
+                      context,
+                      videoState,
+                      isRealMjpeg,
+                    ),
                   ),
                 ),
               ),
@@ -895,7 +908,10 @@ class _FullscreenVideoPage extends ConsumerWidget {
                       label: 'Frames',
                       value: '${videoState.framesReceived}',
                     ),
-                    _StatChip(label: 'Latency', value: '${videoState.latency}ms'),
+                    _StatChip(
+                      label: 'Latency',
+                      value: '${videoState.latency}ms',
+                    ),
                   ],
                 ),
               ),
@@ -905,7 +921,11 @@ class _FullscreenVideoPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildFullscreenContent(BuildContext context, VideoState videoState, bool isRealMjpeg) {
+  Widget _buildFullscreenContent(
+    BuildContext context,
+    VideoState videoState,
+    bool isRealMjpeg,
+  ) {
     switch (videoState.phase) {
       case VideoConnectionPhase.playing:
         if (isRealMjpeg && videoState.lastFrame != null) {
@@ -927,9 +947,9 @@ class _FullscreenVideoPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   'Simulation Mode',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(color: Colors.white),
                 ),
               ],
             ),
@@ -968,17 +988,13 @@ class _FullscreenVideoPage extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 80,
-                color: Colors.red.shade300,
-              ),
+              Icon(Icons.error_outline, size: 80, color: Colors.red.shade300),
               const SizedBox(height: 16),
               Text(
                 'Connection Error',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.red.shade300,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(color: Colors.red.shade300),
               ),
             ],
           ),
@@ -996,9 +1012,9 @@ class _FullscreenVideoPage extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 'No stream connected',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(color: Colors.white),
               ),
             ],
           ),

@@ -3,9 +3,16 @@
 
 // Export the appropriate implementation based on platform
 export 'mjpeg_stream_controller_io.dart'
-  if (dart.library.html) 'mjpeg_stream_controller_web.dart';
+    if (dart.library.html) 'mjpeg_stream_controller_web.dart';
 
-// Ensure FrameEvent types are always available regardless of platform  
-export 'mjpeg_stream_controller_io.dart' show FrameEvent, StreamStarted, FrameBytes, StreamError, StreamEnded, MjpegStreamConfig;
+// Ensure FrameEvent types are always available regardless of platform
+export 'mjpeg_stream_controller_io.dart'
+    show
+        FrameEvent,
+        StreamStarted,
+        FrameBytes,
+        StreamError,
+        StreamEnded,
+        MjpegStreamConfig;
 // Export resolution metadata event
 export 'mjpeg_stream_controller_io.dart' show FrameResolution;

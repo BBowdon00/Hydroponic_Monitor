@@ -18,7 +18,9 @@ void main() {
 
   group('VideoPage: basic lifecycle', () {
     testWidgets('idle/disconnected initial state', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       expect(find.text('Video Feed'), findsOneWidget);
       expect(find.text('Video Stream URL'), findsOneWidget);
@@ -30,7 +32,9 @@ void main() {
     });
 
     testWidgets('connect -> playing -> disconnect', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       await _connect(tester);
       expect(find.text('Disconnect'), findsOneWidget);
@@ -45,7 +49,9 @@ void main() {
 
   group('VideoPage: interactions', () {
     testWidgets('URL retained through connection cycle', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       const url = 'http://example.local:8080/mjpeg';
       final urlField = find.byType(TextFormField);
@@ -63,13 +69,19 @@ void main() {
       expect(find.text(url), findsWidgets);
     });
 
-    testWidgets('rapid connect press disables button until state change', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+    testWidgets('rapid connect press disables button until state change', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       await tester.tap(find.text('Connect'));
       await tester.pump();
       expect(find.text('Connecting...'), findsAtLeastNWidgets(1));
-      final button = tester.widget<ElevatedButton>(find.byKey(const Key('video_connect_button')));
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('video_connect_button')),
+      );
       expect(button.onPressed, isNull);
       await tester.pump(const Duration(seconds: 3));
       expect(find.text('Disconnect'), findsOneWidget);
@@ -78,7 +90,9 @@ void main() {
 
   group('VideoPage: metrics & layout', () {
     testWidgets('shows metrics in playing state', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       await _connect(tester);
       // Allow any post-frame listeners to settle
@@ -92,14 +106,18 @@ void main() {
 
   group('VideoPage: accessibility basics', () {
     testWidgets('core interactive elements present', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       expect(find.byType(TextFormField), findsOneWidget);
       expect(find.byKey(const Key('video_connect_button')), findsOneWidget);
     });
 
     testWidgets('URL field focusable', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: VideoPage())),
+      );
       await tester.pump();
       final urlField = find.byType(TextFormField);
       await tester.tap(urlField);

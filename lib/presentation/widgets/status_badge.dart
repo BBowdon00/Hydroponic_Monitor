@@ -74,7 +74,10 @@ class StatusBadge extends StatelessWidget {
       case DeviceStatus.stopped:
         return const _StatusConfig(color: Colors.red, icon: Icons.stop_circle);
       case DeviceStatus.unknown:
-        return const _StatusConfig(color: Colors.orange, icon: Icons.help_outline);
+        return const _StatusConfig(
+          color: Colors.orange,
+          icon: Icons.help_outline,
+        );
     }
   }
 }

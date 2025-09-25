@@ -175,7 +175,7 @@ void main() {
       container.read(videoStateProvider.notifier).state = container
           .read(videoStateProvider)
           .copyWith(phase: VideoConnectionPhase.playing);
-      
+
       final originalLatency = container.read(videoStateProvider).latency;
 
       notifier.refresh();
@@ -201,7 +201,7 @@ void main() {
       container.read(videoStateProvider.notifier).state = container
           .read(videoStateProvider)
           .copyWith(phase: VideoConnectionPhase.playing);
-      
+
       final latencies = <int>{};
 
       // Multiple refreshes should generate different latencies
@@ -338,7 +338,7 @@ void main() {
       container.read(videoStateProvider.notifier).state = container
           .read(videoStateProvider)
           .copyWith(phase: VideoConnectionPhase.playing);
-      
+
       final latencies = <int>[];
 
       // Collect multiple latency values with small delays to ensure variety

@@ -125,7 +125,7 @@ class MjpegStreamController {
       if (!contentType.contains('multipart/x-mixed-replace')) {
         throw StateError('Invalid content-type: $contentType');
       }
-      
+
       final boundary = _extractBoundary(boundaryParam);
       if (boundary == null) {
         throw StateError('Boundary parameter missing');
@@ -196,7 +196,7 @@ class MjpegStreamController {
     while (idx != -1) {
       final headerStart = idx + marker.length;
       int partStart = headerStart;
-      
+
       if (partStart + 1 < data.length &&
           data[partStart] == 13 &&
           data[partStart + 1] == 10) {
@@ -214,25 +214,30 @@ class MjpegStreamController {
       }
 
       // Parse headers
-      final headersEnd = _indexOfSequence(data, const [13, 10, 13, 10], partStart);
+      final headersEnd = _indexOfSequence(data, const [
+        13,
+        10,
+        13,
+        10,
+      ], partStart);
       if (headersEnd == -1) {
         _searchIndex = idx;
         return;
       }
-      
+
       final contentStart = headersEnd + 4;
       final nextIdx = _indexOf(data, marker, contentStart);
       if (nextIdx == -1) {
         _searchIndex = idx;
         return;
       }
-      
+
       final frameEnd = nextIdx >= 2 ? nextIdx - 2 : contentStart;
       if (frameEnd < contentStart) {
         _searchIndex = idx;
         return;
       }
-      
+
       final frameBytes = data.sublist(contentStart, frameEnd);
       if (frameBytes.length <= _config.maxFrameBytes) {
         _controller.add(
@@ -249,7 +254,7 @@ class MjpegStreamController {
           ),
         );
       }
-      
+
       final remaining = data.sublist(nextIdx);
       _buffer.clear();
       _buffer.add(remaining);
