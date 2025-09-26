@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:hydroponic_monitor/data/influx/influx_service.dart';
 import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
+import 'package:hydroponic_monitor/presentation/pages/charts_page.dart';
 import 'package:hydroponic_monitor/core/errors.dart';
 import 'package:hydroponic_monitor/core/logger.dart';
 
@@ -269,6 +270,45 @@ void main() {
     tearDown(() async {
       Logger.info('Tearing down InfluxDB service test', tag: 'InfluxTest');
       await influxService.close();
+    });
+
+    test('generates time series data with proper aggregation points', () async {
+      Logger.info(
+        'Testing time series data generation',
+        tag: 'InfluxTest',
+      );
+
+      const range = ChartRange.hours24;
+      final result = await influxService.queryTimeSeries(
+        sensorType: SensorType.temperature,
+        range: range,
+      );
+
+      expect(result, isA<Success>());
+      final points = (result as Success).data;
+
+      expect(points, isNotEmpty);
+      expect(points.length, lessThanOrEqualTo(range.expectedPoints));
+
+      // Verify points are sorted by timestamp
+      for (int i = 1; i < points.length; i++) {
+        expect(
+          points[i].timestamp.isAfter(points[i - 1].timestamp),
+          isTrue,
+          reason: 'Points should be sorted chronologically',
+        );
+      }
+
+      // Verify values are reasonable for temperature
+      for (final point in points) {
+        expect(point.value, greaterThan(0));
+        expect(point.value, lessThan(50));
+      }
+
+      Logger.info(
+        'Time series generation test completed with ${points.length} points',
+        tag: 'InfluxTest',
+      );
     });
   });
 
