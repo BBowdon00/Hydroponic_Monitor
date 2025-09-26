@@ -208,8 +208,20 @@ class _SensorPageState extends ConsumerState<SensorPage> {
       icon: icon,
       color: color,
       trend: _calculateTrend(sensorType, sensorData.value),
-      lastUpdated: sensorData.timestamp,
+      // Coarsen timestamp so stale notifier only changes:
+      // - in whole minute increments while < 60 minutes old
+      // - in whole hour increments once >= 60 minutes old
+      lastUpdated: _coarsenTimestamp(sensorData.timestamp),
     );
+  }
+
+  DateTime _coarsenTimestamp(DateTime ts) {
+    final now = DateTime.now();
+    final age = now.difference(ts);
+    if (age.inMinutes < 60) {
+      return DateTime(ts.year, ts.month, ts.day, ts.hour, ts.minute);
+    }
+    return DateTime(ts.year, ts.month, ts.day, ts.hour);
   }
 
   SensorTrend _calculateTrend(SensorType sensorType, double value) {

@@ -175,14 +175,14 @@ class SensorTile extends StatelessWidget {
     );
   }
 
-  /// Formats elapsed time for display.
+  /// Formats elapsed time for display in coarse increments:
+  /// < 60 minutes -> Xm ago
+  /// >= 60 minutes -> Xh ago
   String _formatElapsedTime(Duration difference) {
     if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ${difference.inSeconds % 60}s ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ${difference.inMinutes % 60}m ago';
-    } else {
-      return '${difference.inDays}d ${difference.inHours % 24}h ago';
+      return '${difference.inMinutes}m ago';
     }
+    return '${difference.inHours}h ago';
   }
 }
+

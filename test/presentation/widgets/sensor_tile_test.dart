@@ -25,7 +25,7 @@ void main() {
       );
 
       // Verify stale indicator is shown
-      expect(find.text('Stale (1m 30s ago)'), findsOneWidget);
+      expect(find.text('Stale (1m ago)'), findsOneWidget);
       expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 
