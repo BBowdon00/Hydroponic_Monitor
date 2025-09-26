@@ -75,11 +75,6 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 - [ ] Replace Settings UI placeholders with validated forms, success/error feedback, and restore defaults flow
 - [ ] Add repository/controller/provider/widget tests covering configuration lifecycle
 
-#### Sensor Page Refresh & Stale Indicator (TASK009)
-- [ ] Remove Device Control section from the current Dashboard page and ensure Devices tab remains canonical for actuators
-- [ ] Rename Dashboard navigation/tab copy to "Sensor" and update associated routes/tests
-- [ ] Surface >60s stale notices directly on sensor tiles (with elapsed time messaging)
-
 #### Historical Data Analytics (TASK011)
 - [ ] **Time-Series Charts**: Build fl_chart line charts per sensor using new Riverpod providers
 - [ ] **InfluxDB Queries**: Implement time-series query helper with fallback for 1h / 24h / 7h ranges
@@ -126,7 +121,34 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 3. Historical chart prototype feeding from Influx queries (TASK011)
 4. MJPEG stream resiliency tests + automation groundwork (TASK007 follow-up)
 
-  
+# Progress
+
+## Recently Completed
+- Fixed mobile keyboard focus loss on VideoPage (layout rebuild cause removed).
+- Implemented coarse stale time display (minutes / hours) across SensorTile & SensorPage.
+- Adjusted sensor tile tests to new time format.
+- Added timestamp coarsening to reduce reactive noise.
+- Maintained existing video tests compatibility.
+- Sensor Page Refresh (TASK009): rename complete, device controls separated, stale indicator + docs/tests updated.
+
+## In Progress / Pending
+- No active refactors currently in progress.
+
+## Upcoming / Backlog Ideas
+1. Replace SensorTile sparkline placeholder with lightweight mini-chart.
+2. Add error retry UX enhancements (auto-retry with backoff).
+3. Persist custom video stream URL across app restarts (local storage).
+4. Provide settings toggle for stale threshold & refresh cadence.
+5. Add unit tests for `_coarsenTimestamp` logic.
+
+## Risk / Notes
+- Coarsening timestamps trades precision for stability—acceptable per requirement.
+- Simulation mode logic remains coupled to notifier; could isolate for cleaner testability later.
+
+## Metrics To Watch
+- Rebuild frequency of SensorPage after coarsening (should decrease).
+- User-reported stability of video stream focus after fix.
+
 ---
 
 ## Related Documents
@@ -139,4 +161,4 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 - **→ Tasks**: [tasks/](./tasks/) - Individual work items and detailed tracking
 
 ---
-*Last Updated: 2025-09-26* 
+*Last Updated: 2025-09-26*
