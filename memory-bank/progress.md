@@ -4,7 +4,7 @@
 
 ## Project Status Overview
 
-The Hydroponic Monitor is in **Active Development** with core real-time monitoring, actuator control, and web MJPEG streaming landed. Current efforts focus on manual reconnect tooling and historical analytics groundwork.
+The Hydroponic Monitor is in **Active Development** with core real-time monitoring, actuator control, and web MJPEG streaming landed. Current efforts focus on manual reconnect tooling, historical analytics groundwork, and production readiness hardening (TASK012).
 
 ## Feature Completion Status
 
@@ -59,21 +59,32 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 
 ### Features In Flight 🚧
 
+#### Production Readiness Hardening (TASK012)
+- [ ] Remove dummy InfluxDB fallbacks and surface explicit error states across repositories/providers.
+- [ ] Update dashboard/video UI to default to "No Data" and highlight service outages.
+- [ ] Default MJPEG stream URL to production `.env` value and refresh documentation/tests.
+
 #### Manual Reconnect Orchestration (TASK008)
 - [ ] `ConnectionRecoveryService` to tear down + reinitialize MQTT & InfluxDB
 - [ ] Persistent connection banner UX (green connected state, Wi-Fi icon/refresh affordance with progress indicator + success/partial/failure snackbar)
 - [ ] Structured logging + provider state for last reconnect attempt
+
+#### Settings-Driven Runtime Configuration (TASK010)
+- [ ] Persist MQTT, InfluxDB, and MJPEG settings with secure credential handling (shared prefs + secure storage)
+- [ ] Rebuild MQTT/Influx services and video stream controller when overrides change, reusing manual reconnect hooks
+- [ ] Replace Settings UI placeholders with validated forms, success/error feedback, and restore defaults flow
+- [ ] Add repository/controller/provider/widget tests covering configuration lifecycle
 
 #### Sensor Page Refresh & Stale Indicator (TASK009)
 - [ ] Remove Device Control section from the current Dashboard page and ensure Devices tab remains canonical for actuators
 - [ ] Rename Dashboard navigation/tab copy to "Sensor" and update associated routes/tests
 - [ ] Surface >60s stale notices directly on sensor tiles (with elapsed time messaging)
 
-#### Historical Data Analytics (Planning)
-- [ ] **Time-Series Charts**: Implement fl_chart line charts fed by Influx queries
-- [ ] **InfluxDB Queries**: Range/aggregation helpers with graceful fallback when Influx unavailable
-- [ ] **Time Range Controls**: UI toggle for 1h / 24h / 7d / 30d windows
-- [ ] **Dashboard Integration**: Blend historical trends with real-time sensor tiles
+#### Historical Data Analytics (TASK011)
+- [ ] **Time-Series Charts**: Build fl_chart line charts per sensor using new Riverpod providers
+- [ ] **InfluxDB Queries**: Implement time-series query helper with fallback for 1h / 24h / 7h ranges
+- [ ] **Range Controls**: Align Charts page chips with 1h, 24h, 7h options and refresh behavior
+- [ ] **UI Integration**: Embed charts within dedicated cards/tiles while preserving stats and accessibility
 
 #### Future Enhancements
 - [ ] **MJPEG Stress Testing**: Broaden coverage for error/waitingFirstFrame/fullscreen flows
@@ -110,9 +121,10 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 ### Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. Manual reconnect service + dashboard UX polish (TASK008)
-2. Historical chart prototype feeding from Influx queries
-3. MJPEG stream resiliency tests + automation groundwork
+1. Production readiness hardening (TASK012) — remove dummy data, surface service health, align video defaults
+2. Manual reconnect service + dashboard UX polish (TASK008)
+3. Historical chart prototype feeding from Influx queries (TASK011)
+4. MJPEG stream resiliency tests + automation groundwork (TASK007 follow-up)
 
   
 ---

@@ -21,19 +21,34 @@
 - 5s connection timeout prevents long hangs; clear error surfaced in UI
 - Simulation mode badge clarifies feature-flagged runs; widget tests updated
 
-### Current Development Focus: **Manual Reconnect & Historical Data Spike** 🎯
+### Current Development Focus: **Manual Reconnect, Historical Data, Production Hardening** 🎯
 *Status: In Planning (September 26, 2025)*
 - TASK008 manual reconnect: design `ConnectionRecoveryService` for MQTT + Influx retries
-- Validate dashboard Refresh UX (progress indicator + snackbar outcomes)
 - Historical charts spike: evaluate fl_chart, finalize Influx query windows & caching strategy
+- TASK012 production readiness hardening: remove dummy data, surface real connection health, align video defaults
 
-### Upcoming: **Historical Data Integration (TASK - TBD)** 📊
-*Status: Queued (September 2025)*
-- Implement chart rendering (line charts with fl_chart) fed by Influx queries
-- Provide time range controls (1h, 24h, 7d, 30d) + aggregation mode toggles
-- Merge historical metrics alongside live dashboard tiles
+### Upcoming: **Historical Data Integration (TASK011)** 📊
+*Status: Plan Ready (September 26, 2025)*
+- Detailed plan captured in `TASK011-charts-page.md` covering data plumbing, Riverpod providers, and UI work.
+- Implement fl_chart line charts backed by Influx time-series queries with range controls (1h, 24h, 7h) and aggregation buckets.
+- Embed per-sensor charts within the Charts page while maintaining alignment with Sensor tiles.
 
 ## Active Work Items
+
+#### 0. Production Readiness Hardening (TASK012)
+**Priority**: Critical  
+**Status**: Planning  
+**ETA**: October 05, 2025
+
+**Scope Highlights**:
+- Eliminate dummy sensor responses from `InfluxDbService` and surface explicit error states end-to-end.
+- Propagate service health through repositories/providers so dashboard tiles default to "No Data"/"N/A" and flag outages.
+- Default MJPEG stream configuration to `.env` value (`http://raspberrypi:8000/stream.mjpg`) and tighten disconnected-state messaging in the UI.
+
+**Next Actions**:
+- Draft error-type updates in `core/errors.dart` plus service connection telemetry plumbing.
+- Outline dashboard/video UI adjustments to reflect real service health.
+- Define verification plan (unit/provider/widget tests) in accordance with the testing procedure.
 
 #### 1. Actuator Control Enhancements (TASK005 follow-ups)
 **Priority**: Medium  
@@ -58,27 +73,48 @@ User-requested enhancement: relocate the connection controls into the always-on 
 #### 3. Sensor Page Refresh (TASK009)
 Operators want the landing page to focus purely on sensor telemetry with clear staleness indicators. New spec (`TASK009-sensor-page-refresh.md`) covers removing device controls from the Dashboard page, renaming it to "Sensor", and surfacing a >60s stale badge on each tile. Implementation queued after manual reconnect.
 
+#### 4. Settings-Driven Runtime Configuration (TASK010)
+**Priority**: High  
+**Status**: Planning  
+**ETA**: October 04, 2025
+
+**Scope Highlights**:
+- Persist MQTT, InfluxDB, and MJPEG configuration with secure handling for credentials.
+- Introduce config controller/repository so runtime overrides propagate to `mqttServiceProvider`, `influxServiceProvider`, and `videoStateProvider`.
+- Refresh services automatically (leveraging upcoming manual reconnect helpers) whenever settings change.
+- Replace placeholder dialogs on `SettingsPage` with validated forms, status feedback, and restore-defaults affordance.
+
+**Next Actions**:
+- Prototype `AppConfig` model + storage adapters (shared preferences + secure storage) and unit tests.
+- Draft controller API for save/apply/test flows coordinated with connection recovery logic.
+- Align UI design with Material 3 components and ensure secrets never appear in logs.
+
 ### Immediate Next Steps (Next 7 Days)
 
-#### 1. Manual Reconnect Service Spike
-- Draft `ConnectionRecoveryService` API + provider wiring
-- UX spec for dashboard Refresh (loading indicator + snackbar states)
-- Add structured logging for attempts
+#### 1. Production Hardening Prep (TASK012)
+- Author error-state plan for Influx/MQTT connection telemetry (no more dummy fallbacks).
+- Draft dashboard/video UX updates for "No Data" and service outage messaging.
+- Align `.env` defaults and documentation with production MJPEG endpoint.
 
-#### 2. Historical Charts Prototype
-- Validate fl_chart with sample data (line chart + tooltip interactions)
-- Prototype repository method for time-ranged Influx queries with fallback
-- Determine caching/aggregation rules per range
+#### 2. Manual Reconnect Service Spike (TASK008)
+- Draft `ConnectionRecoveryService` API + provider wiring.
+- UX spec for dashboard Refresh (loading indicator + snackbar states).
+- Add structured logging for attempts.
 
-#### 3. Actuator Control Polish
-- Finalize payload metadata schema + broker documentation
-- Add provider-level integration smoke test harness (using mocks/fake MQTT)
-- Update systemPatterns.md with finalized control flow diagrams
+#### 3. Historical Charts Implementation Prep (TASK011)
+- Validate fl_chart rendering with sample datasets (line chart + tooltip interactions).
+- Prototype repository method for time-ranged Influx queries with fallback dummy generation per range (1h/24h/7h).
+- Finalize provider caching & aggregation window rules before wiring into Charts page UI.
 
-#### 4. Sensor Page Refresh Prep
-- Audit navigation shell, routes, and page imports for "Dashboard" references
-- Prototype stale timestamp helper and UX treatment for >60s readings
-- Plan regression checks ensuring Devices page remains authoritative
+#### 4. Actuator Control Polish
+- Finalize payload metadata schema + broker documentation.
+- Add provider-level integration smoke test harness (using mocks/fake MQTT).
+- Update systemPatterns.md with finalized control flow diagrams.
+
+#### 5. Sensor Page Refresh Prep (TASK009)
+- Audit navigation shell, routes, and page imports for "Dashboard" references.
+- Prototype stale timestamp helper and UX treatment for >60s readings.
+- Plan regression checks ensuring Devices page remains authoritative.
 
 ## Development Workflow Status
 

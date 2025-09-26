@@ -5,8 +5,11 @@
 
 ## Pending
 
+- [TASK011] Implement Sensor Charts Page & Time Range Controls
 - [TASK009] Sensor Page Refresh & Stale Indicator
 - [TASK008] Dashboard Refresh Manual Reconnect (MQTT + InfluxDB)
+- [TASK010] Settings-Driven Runtime Configuration
+- [TASK012] Production Readiness Hardening
 
 
 ## Completed
