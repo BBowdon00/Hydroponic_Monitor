@@ -111,7 +111,13 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         padding: const EdgeInsets.all(AppTheme.spaceMd),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final bool enableScroll = constraints.maxHeight < 600;
+            // FIX: Previously used constraints.maxHeight (<600) which shrank when the
+            // keyboard appeared, toggling between scroll/non-scroll layouts and
+            // rebuilding the TextFormField -> focus lost & keyboard dismissed.
+            // Use the full screen height (independent of keyboard insets) so the
+            // structural layout stays stable while typing.
+            final screenHeight = MediaQuery.of(context).size.height;
+            final bool enableScroll = screenHeight < 600;
 
             Widget buildVideoArea() {
               final card = Card(
