@@ -185,4 +185,3 @@ class SensorTile extends StatelessWidget {
     return '${difference.inHours}h ago';
   }
 }
-
