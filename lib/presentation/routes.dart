@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'pages/dashboard_page.dart';
+import 'pages/sensor_page.dart';
 import 'pages/devices_page.dart';
 import 'pages/video_page.dart';
 import 'pages/charts_page.dart';
@@ -12,7 +12,7 @@ import 'widgets/connection_notification.dart';
 /// Router configuration provider.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/sensor',
     routes: [
       ShellRoute(
         builder: (context, state, child) {
@@ -20,9 +20,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(
-            path: '/dashboard',
-            name: 'dashboard',
-            builder: (context, state) => const DashboardPage(),
+            path: '/sensor',
+            name: 'sensor',
+            builder: (context, state) => const SensorPage(),
           ),
           GoRoute(
             path: '/devices',
@@ -83,10 +83,7 @@ class MainBottomNavigation extends StatelessWidget {
       currentIndex: _getCurrentIndex(currentLocation),
       onTap: (index) => _onItemTapped(context, index),
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
-          label: 'Dashboard',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.sensors), label: 'Sensor'),
         BottomNavigationBarItem(icon: Icon(Icons.devices), label: 'Devices'),
         BottomNavigationBarItem(icon: Icon(Icons.videocam), label: 'Video'),
         BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Charts'),
@@ -97,7 +94,7 @@ class MainBottomNavigation extends StatelessWidget {
 
   int _getCurrentIndex(String location) {
     switch (location) {
-      case '/dashboard':
+      case '/sensor':
         return 0;
       case '/devices':
         return 1;
@@ -115,7 +112,7 @@ class MainBottomNavigation extends StatelessWidget {
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go('/dashboard');
+        context.go('/sensor');
         break;
       case 1:
         context.go('/devices');

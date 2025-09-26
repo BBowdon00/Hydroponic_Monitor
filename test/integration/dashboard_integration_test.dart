@@ -10,17 +10,15 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:hydroponic_monitor/core/logger.dart';
-import 'package:hydroponic_monitor/domain/entities/sensor_data.dart';
 import 'package:hydroponic_monitor/presentation/app.dart';
-import 'package:hydroponic_monitor/presentation/pages/dashboard_page.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 import '../test_utils.dart';
 
-/// Integration tests for the dashboard with real MQTT data.
+/// Integration tests for the sensor page with real MQTT data.
 ///
 /// These tests verify that:
-/// 1. Dashboard renders correctly without data
-/// 2. Dashboard updates when real MQTT sensor data is received
+/// 1. Sensor page renders correctly without data
+/// 2. Sensor page updates when real MQTT sensor data is received
 /// 3. Sensor tiles display correct values from MQTT messages
 /// 4. Connection status updates based on data reception
 ///
@@ -204,7 +202,7 @@ class ConnectionTestHelper {
 }
 
 void main() {
-  group('Dashboard Real-time Integration', () {
+  group('Sensor Real-time Integration', () {
     const testTimeout = Timeout(Duration(minutes: 2)); // Reduced from 3 minutes
     MqttServerClient? testPublisherClient;
     bool mqttBrokerAvailable = false;
@@ -295,7 +293,7 @@ void main() {
       }
     });
 
-    testWidgets('Dashboard can be rendered without errors', (
+    testWidgets('Sensor page can be rendered without errors', (
       WidgetTester tester,
     ) async {
       // This test confirms that our changes don't break the app startup
@@ -308,8 +306,8 @@ void main() {
         await tester.pump();
         await tester.pumpAndSettle();
 
-        // Verify that the dashboard is displayed (expect multiple instances since it could be in nav and appbar)
-        expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+        // Verify that the sensor page is displayed
+        expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
         // Verify that sensor tiles are present by looking for sensor names
         expect(find.text('Water Level'), findsOneWidget);
@@ -336,7 +334,7 @@ void main() {
       });
     });
 
-    testWidgets('Dashboard refresh button works', (WidgetTester tester) async {
+    testWidgets('Sensor refresh button works', (WidgetTester tester) async {
       await tester.runAsync(() async {
         await tester.pumpWidget(
           const ProviderScope(child: HydroponicMonitorApp()),
@@ -352,12 +350,12 @@ void main() {
         await tester.pumpAndSettle();
 
         // The tap should complete without errors
-        expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+        expect(find.text('Sensor'), findsAtLeastNWidgets(1));
       });
     });
 
     testWidgets(
-      'Dashboard connection status button works',
+      'Sensor connection status button works',
       (WidgetTester tester) async {
         // This integration test verifies that the connection status dialog works properly
         // and shows the actual MQTT/InfluxDB connection status
@@ -468,7 +466,7 @@ void main() {
 
             // Verify dialog is closed and dashboard is still visible
             expect(find.text('Connection Status'), findsNothing);
-            expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+            expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
             final statusSummary = mqttBrokerAvailable && influxDbAvailable
                 ? 'Services available - connection status verified'
@@ -479,7 +477,7 @@ void main() {
           // Provide detailed error information for connection issues
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(
-                testName: 'Dashboard connection status button test',
+                testName: 'Sensor connection status button test',
                 host: TestConfig.testMqttHost,
                 port: TestConfig.testMqttPort,
                 serviceType: 'MQTT/InfluxDB',
@@ -500,15 +498,14 @@ void main() {
     );
 
     testWidgets(
-      'Dashboard displays real-time temperature data from MQTT',
+      'Sensor displays real-time temperature data from MQTT',
       tags: ['integration'],
       (WidgetTester tester) async {
         // Skip this test if MQTT broker is not available
         if (!mqttBrokerAvailable || testPublisherClient == null) {
           Logger.warning(
             ConnectionTestHelper.generateConnectionErrorMessage(
-              testName:
-                  'Dashboard displays real-time temperature data from MQTT',
+              testName: 'Sensor displays real-time temperature data from MQTT',
               host: TestConfig.testMqttHost,
               port: TestConfig.testMqttPort,
               serviceType: 'MQTT',
@@ -543,7 +540,7 @@ void main() {
             await tester.pumpAndSettle();
 
             // Verify dashboard is rendered
-            expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+            expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
             // Wait for repository initialization with timeout
             bool repositoryInitialized = false;
@@ -631,17 +628,17 @@ void main() {
                   'Temperature value $foundValue should be displayed on dashboard',
             );
             Logger.info(
-              '✅ MQTT → Dashboard integration test PASSED: Temperature data successfully displayed',
+              '✅ MQTT → Sensor integration test PASSED: Temperature data successfully displayed',
             );
           } else {
             // Fallback verification - at least ensure dashboard is functional
             Logger.warning(
               'Temperature value not displayed, but verifying dashboard functionality',
             );
-            expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+            expect(find.text('Sensor'), findsAtLeastNWidgets(1));
             expect(find.text('Temperature'), findsOneWidget);
             Logger.info(
-              '⚠️ Dashboard is functional but temperature data not displayed in UI',
+              '⚠️ Sensor is functional but temperature data not displayed in UI',
             );
           }
         } catch (e, stackTrace) {
@@ -649,7 +646,7 @@ void main() {
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(
                 testName:
-                    'Dashboard displays real-time temperature data from MQTT',
+                    'Sensor displays real-time temperature data from MQTT',
                 host: TestConfig.testMqttHost,
                 port: TestConfig.testMqttPort,
                 serviceType: 'MQTT',
@@ -673,7 +670,7 @@ void main() {
     );
 
     testWidgets(
-      'Dashboard displays multiple sensor types from MQTT',
+      'Sensor displays multiple sensor types from MQTT',
       tags: ['integration'],
       (WidgetTester tester) async {
         // Skip this test if MQTT broker is not available
@@ -703,7 +700,7 @@ void main() {
             await tester.pumpAndSettle();
 
             // Verify dashboard renders
-            expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+            expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
             // Wait for repository initialization with timeout
             try {
@@ -794,7 +791,7 @@ void main() {
           }); // End of runAsync
 
           // Verify that the dashboard structure is present
-          expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+          expect(find.text('Sensor'), findsAtLeastNWidgets(1));
           expect(find.text('Temperature'), findsOneWidget);
           expect(find.text('Humidity'), findsOneWidget);
           expect(find.text('Water Level'), findsOneWidget);
@@ -842,12 +839,12 @@ void main() {
           }
 
           // At minimum, verify dashboard functionality is intact
-          expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+          expect(find.text('Sensor'), findsAtLeastNWidgets(1));
           Logger.info('Multi-sensor integration test completed');
         } catch (e, stackTrace) {
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(
-                testName: 'Dashboard displays multiple sensor types from MQTT',
+                testName: 'Sensor displays multiple sensor types from MQTT',
                 host: TestConfig.testMqttHost,
                 port: TestConfig.testMqttPort,
                 serviceType: 'MQTT',
@@ -864,13 +861,13 @@ void main() {
     );
 
     testWidgets(
-      'Dashboard updates sensor values when new MQTT data arrives',
+      'Sensor updates sensor values when new MQTT data arrives',
       tags: ['integration'],
       (WidgetTester tester) async {
         // Skip this test if MQTT broker is not available
         if (!mqttBrokerAvailable || testPublisherClient == null) {
           Logger.warning(
-            'Dashboard update test skipped: MQTT broker not available',
+            'Sensor update test skipped: MQTT broker not available',
           );
           printOnFailure(
             'Test skipped: MQTT broker not available for update testing',
@@ -894,7 +891,7 @@ void main() {
             await tester.pumpAndSettle();
 
             // Verify dashboard renders
-            expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+            expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
             // Wait for repository initialization with timeout
             try {
@@ -1002,7 +999,7 @@ void main() {
           }
 
           // Verify dashboard functionality
-          expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
+          expect(find.text('Sensor'), findsAtLeastNWidgets(1));
           expect(find.text('Temperature'), findsOneWidget);
 
           // Log update test results
@@ -1014,12 +1011,12 @@ void main() {
             );
           }
 
-          Logger.info('Dashboard update test completed');
+          Logger.info('Sensor update test completed');
         } catch (e, stackTrace) {
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(
                 testName:
-                    'Dashboard updates sensor values when new MQTT data arrives',
+                    'Sensor updates sensor values when new MQTT data arrives',
                 host: TestConfig.testMqttHost,
                 port: TestConfig.testMqttPort,
                 serviceType: 'MQTT',
@@ -1029,7 +1026,7 @@ void main() {
           Logger.error(errorMessage);
           Logger.error('Stack trace: $stackTrace');
 
-          throw Exception('Dashboard update test failed. Original error: $e');
+          throw Exception('Sensor update test failed. Original error: $e');
         }
       },
       timeout: testTimeout,
