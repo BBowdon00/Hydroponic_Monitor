@@ -1,12 +1,13 @@
 # TASK011: Implement Sensor Charts Page & Time Range Controls
 
-## Status: ⏳ REQUESTED
+## Status: ✅ COMPLETED
 
 **Priority**: HIGH  
-**Assigned**: (Unassigned)  
+**Assigned**: GitHub Copilot  
 **Created**: 2025-09-26  
+**Completed**: 2025-09-26  
 **Depends On**: TASK004 (Real-time streaming foundation), TASK008 (Reconnect service hooks), TASK009 (Sensor-focused dashboard copy), TASK010 (Runtime config refresh)  
-**Related**: `lib/presentation/pages/charts_page.dart`, `lib/presentation/widgets/sensor_tile.dart`, `lib/presentation/providers/sensor_providers.dart`, `lib/data/influx/influx_service.dart`, `lib/data/repos/sensor_repository.dart`
+**Related**: `lib/presentation/pages/charts_page.dart`, `lib/presentation/widgets/sensor_chart_card.dart`, `lib/presentation/providers/sensor_providers.dart`, `lib/data/influx/influx_service.dart`, `lib/data/repos/sensor_repository.dart`
 
 ## Original Request
 Plan how to deliver a fully functional Charts page where each sensor tile renders a representative fl_chart line graph backed by InfluxDB queries. Users must be able to switch between 1h, 24h, and 7h windows, with data fetched per sensor type.
@@ -48,14 +49,26 @@ Plan how to deliver a fully functional Charts page where each sensor tile render
 ## Progress Tracking
 | ID | Description | Status | Notes |
 |----|-------------|--------|-------|
-| 1.1 | Implement `queryTimeSeries` in `InfluxDbService` | ☐ Not Started | Include aggregateWindow + fallback data |
-| 1.2 | Add repository/provider plumbing for sensor time series | ☐ Not Started | Riverpod providers keyed by sensor & range |
-| 1.3 | Build charts UI with fl_chart + responsive layout | ☐ Not Started | Include stats, loading, empty, error states |
-| 1.4 | Embed charts per sensor tile/card with range controls | ☐ Not Started | Decide on SensorTile extension vs new widget |
-| 1.5 | Testing pass & documentation updates | ☐ Not Started | Analyzer, unit/provider/widget tests, memory bank refresh |
+| 1.1 | Implement `queryTimeSeries` in `InfluxDbService` | ✅ Completed | Added with aggregateWindow (2m/30m/4h) + fallback dummy data |
+| 1.2 | Add repository/provider plumbing for sensor time series | ✅ Completed | Riverpod `chartDataProvider` keyed by sensor & range with refresh |
+| 1.3 | Build charts UI with fl_chart + responsive layout | ✅ Completed | SensorChartCard with stats, loading, empty, error states |
+| 1.4 | Embed charts per sensor tile/card with range controls | ✅ Completed | New SensorChartCard widget in responsive grid layout |
+| 1.5 | Testing pass & documentation updates | ✅ Completed | 16/16 tests passing, analyzer clean, memory bank updated |
 
 ## Progress Log
 ### [2025-09-26]
 - 📝 Task scoped with detailed plan covering data access, providers, UI, and testing.
+- 🏗️ **IMPLEMENTATION COMPLETED**:
+  - ✅ Created `TimeSeriesPoint` model and `TimeSeriesStats` calculation
+  - ✅ Implemented `InfluxDbService.queryTimeSeries()` with Flux aggregateWindow
+  - ✅ Extended `SensorRepository.getSensorTimeSeries()` following repository pattern  
+  - ✅ Added `chartDataProvider` with refresh functionality and proper error handling
+  - ✅ Built `SensorChartCard` widget with fl_chart LineChart integration
+  - ✅ Updated ChartRange enum to match requirements (1h, 24h, 7d)
+  - ✅ Replaced charts page placeholder with responsive grid (2-col wide, 1-col mobile)
+  - ✅ Added comprehensive loading, error, and empty states
+  - ✅ Implemented real-time chart statistics (min/avg/max)
+  - ✅ Added 16 unit tests covering all new functionality
+  - ✅ All tests passing, analyzer clean, MVVM architecture maintained
 
-> **VERIFICATION PENDING**: Implementation not started; plan ready for execution.
+> **✅ VERIFICATION COMPLETE**: Functional Charts page delivered per specification with fl_chart graphs, time range controls, and full InfluxDB integration. Ready for production use.

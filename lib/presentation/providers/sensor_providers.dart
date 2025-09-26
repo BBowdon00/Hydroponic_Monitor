@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
+import '../../presentation/pages/charts_page.dart';
 import '../../core/logger.dart';
 import 'data_providers.dart';
 
@@ -117,3 +119,78 @@ final historicalLatestSensorDataProvider =
       );
       return latestReadings[sensorType];
     });
+
+/// Chart data state combining time series points and statistics.
+class ChartDataState {
+  const ChartDataState({
+    required this.points,
+    required this.stats,
+    required this.isLoading,
+    this.error,
+  });
+
+  final List<TimeSeriesPoint> points;
+  final TimeSeriesStats stats;
+  final bool isLoading;
+  final String? error;
+
+  ChartDataState copyWith({
+    List<TimeSeriesPoint>? points,
+    TimeSeriesStats? stats,
+    bool? isLoading,
+    String? error,
+  }) {
+    return ChartDataState(
+      points: points ?? this.points,
+      stats: stats ?? this.stats,
+      isLoading: isLoading ?? this.isLoading,
+      error: error ?? this.error,
+    );
+  }
+}
+
+/// Provider for chart data for a specific sensor type and range.
+final chartDataProvider = FutureProvider.family
+    .autoDispose<ChartDataState, ({SensorType sensorType, ChartRange range})>((
+      ref,
+      params,
+    ) async {
+      // Watch refresh provider to invalidate cache when refreshed
+      ref.watch(chartRefreshProvider);
+
+      final sensorRepository = ref.read(sensorRepositoryProvider);
+
+      final result = await sensorRepository.getSensorTimeSeries(
+        params.sensorType,
+        params.range,
+      );
+
+      return result.when(
+        success: (points) {
+          final stats = TimeSeriesStats.fromPoints(points);
+          return ChartDataState(points: points, stats: stats, isLoading: false);
+        },
+        failure: (error) {
+          Logger.error(
+            'Failed to get chart data for ${params.sensorType.name}: $error',
+            tag: 'SensorProviders',
+          );
+          return ChartDataState(
+            points: const [],
+            stats: const TimeSeriesStats(min: 0, max: 0, average: 0, count: 0),
+            isLoading: false,
+            error: error.toString(),
+          );
+        },
+      );
+    });
+
+/// Provider for refreshing chart data.
+final chartRefreshProvider = StateProvider<int>((ref) => 0);
+
+/// Helper to refresh all chart data.
+extension ChartProviderExtensions on Ref {
+  void refreshCharts() {
+    read(chartRefreshProvider.notifier).state++;
+  }
+}
