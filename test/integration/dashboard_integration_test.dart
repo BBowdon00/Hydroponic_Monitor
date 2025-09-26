@@ -505,8 +505,7 @@ void main() {
         if (!mqttBrokerAvailable || testPublisherClient == null) {
           Logger.warning(
             ConnectionTestHelper.generateConnectionErrorMessage(
-              testName:
-                  'Sensor displays real-time temperature data from MQTT',
+              testName: 'Sensor displays real-time temperature data from MQTT',
               host: TestConfig.testMqttHost,
               port: TestConfig.testMqttPort,
               serviceType: 'MQTT',

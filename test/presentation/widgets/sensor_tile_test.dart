@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 
 void main() {
   group('SensorTile Stale Data Tests', () {
-    testWidgets('shows stale indicator for old data', (WidgetTester tester) async {
+    testWidgets('shows stale indicator for old data', (
+      WidgetTester tester,
+    ) async {
       // Create a timestamp that's more than 60 seconds old
-      final staleTimestamp = DateTime.now().subtract(const Duration(seconds: 90));
-      
+      final staleTimestamp = DateTime.now().subtract(
+        const Duration(seconds: 90),
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -29,10 +33,14 @@ void main() {
       expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 
-    testWidgets('does not show stale indicator for fresh data', (WidgetTester tester) async {
+    testWidgets('does not show stale indicator for fresh data', (
+      WidgetTester tester,
+    ) async {
       // Create a timestamp that's less than 60 seconds old
-      final freshTimestamp = DateTime.now().subtract(const Duration(seconds: 30));
-      
+      final freshTimestamp = DateTime.now().subtract(
+        const Duration(seconds: 30),
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -54,7 +62,9 @@ void main() {
       expect(find.byIcon(Icons.schedule), findsNothing);
     });
 
-    testWidgets('shows no indicator when lastUpdated is null', (WidgetTester tester) async {
+    testWidgets('shows no indicator when lastUpdated is null', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
