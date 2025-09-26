@@ -61,8 +61,13 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 
 #### Manual Reconnect Orchestration (TASK008)
 - [ ] `ConnectionRecoveryService` to tear down + reinitialize MQTT & InfluxDB
-- [ ] Dashboard refresh UX (progress indicator + success/partial/failure snackbar)
+- [ ] Persistent connection banner UX (green connected state, Wi-Fi icon/refresh affordance with progress indicator + success/partial/failure snackbar)
 - [ ] Structured logging + provider state for last reconnect attempt
+
+#### Sensor Page Refresh & Stale Indicator (TASK009)
+- [ ] Remove Device Control section from the current Dashboard page and ensure Devices tab remains canonical for actuators
+- [ ] Rename Dashboard navigation/tab copy to "Sensor" and update associated routes/tests
+- [ ] Surface >60s stale notices directly on sensor tiles (with elapsed time messaging)
 
 #### Historical Data Analytics (Planning)
 - [ ] **Time-Series Charts**: Implement fl_chart line charts fed by Influx queries
@@ -122,4 +127,4 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 - **→ Tasks**: [tasks/](./tasks/) - Individual work items and detailed tracking
 
 ---
-*Last Updated: 2025-09-25* 
+*Last Updated: 2025-09-26* 

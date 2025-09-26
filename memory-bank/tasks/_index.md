@@ -5,6 +5,7 @@
 
 ## Pending
 
+- [TASK009] Sensor Page Refresh & Stale Indicator
 - [TASK008] Dashboard Refresh Manual Reconnect (MQTT + InfluxDB)
 
 

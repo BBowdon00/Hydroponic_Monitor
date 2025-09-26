@@ -53,7 +53,10 @@
 - Documentation updated to capture finalized control flow
 
 #### 2. Manual Reconnect Workflow (TASK008)
-User-requested enhancement: dashboard Refresh should tear down and reinitialize MQTT & InfluxDB with explicit success/partial/failure messaging. Task spec documented (`TASK008-dashboard-refresh-reconnect.md`); awaiting implementation kickoff.
+User-requested enhancement: relocate the connection controls into the always-on banner so its Wi-Fi icon/refresh affordance can tear down and reinitialize MQTT & InfluxDB with explicit success/partial/failure messaging (green connected state, no countdown timer). Task spec documented (`TASK008-dashboard-refresh-reconnect.md`); awaiting implementation kickoff.
+
+#### 3. Sensor Page Refresh (TASK009)
+Operators want the landing page to focus purely on sensor telemetry with clear staleness indicators. New spec (`TASK009-sensor-page-refresh.md`) covers removing device controls from the Dashboard page, renaming it to "Sensor", and surfacing a >60s stale badge on each tile. Implementation queued after manual reconnect.
 
 ### Immediate Next Steps (Next 7 Days)
 
@@ -71,6 +74,11 @@ User-requested enhancement: dashboard Refresh should tear down and reinitialize 
 - Finalize payload metadata schema + broker documentation
 - Add provider-level integration smoke test harness (using mocks/fake MQTT)
 - Update systemPatterns.md with finalized control flow diagrams
+
+#### 4. Sensor Page Refresh Prep
+- Audit navigation shell, routes, and page imports for "Dashboard" references
+- Prototype stale timestamp helper and UX treatment for >60s readings
+- Plan regression checks ensuring Devices page remains authoritative
 
 ## Development Workflow Status
 
@@ -121,4 +129,4 @@ User-requested enhancement: dashboard Refresh should tear down and reinitialize 
 
 ---
 
-*Last Updated: 2025-09-25*
+*Last Updated: 2025-09-26*

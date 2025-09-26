@@ -19,13 +19,15 @@ When data appears stale or connection indicators show a degraded state, users ha
 1. Re-initialize MQTT client (teardown + reconnect handshake)
 2. Re-test and rebind InfluxDB client/query layer
 3. Surface immediate feedback (success, still failing, partial failures)
+4. Access connection controls consistently across pages (current dashboard-only placement hides refresh and signal controls elsewhere)
 
 ## Objectives
-1. Repurpose / augment the dashboard refresh button to perform an orchestrated manual reconnection attempt.
+1. Relocate the dashboard connection controls (signal strength menu, Wi-Fi icon, Refresh action) into the persistent connection banner shown on every page.
 2. Provide granular feedback: MQTT reconnected, InfluxDB reconnected, partial failure messaging.
 3. Non-blocking UI: operation shows progress indicator but does not freeze main thread.
 4. Safe to invoke repeatedly (idempotent + internal throttling to avoid hammering services).
 5. Log structured outcome (success/failure + timing) for diagnostics.
+6. Maintain the banner at all times (even when healthy), tint it green when fully connected, and remove the countdown timer while keeping the Wi-Fi icon behavior consistent with the existing dashboard button.
 
 ## Non-Objectives (Deferred)
 - Automatic adaptive backoff tuning (handled by existing connection auto-retry logic).
@@ -52,9 +54,10 @@ As an operator, when live data or device statuses stop updating, I want to click
    }
    ```
 3. UI Integration:
-   - Dashboard AppBar / toolbar Refresh button triggers notifier method `attemptManualReconnect()`.
-   - While in-flight: show spinner (icon morph or overlay) + tooltip "Reconnecting…".
-   - Upon completion: success toast/snackbar if both OK; warning if partial; error banner if both failed.
+   - Promote the connection banner so it is always rendered; in healthy state it presents success copy with green styling and no countdown timer.
+   - Embed the Wi-Fi icon and connection signal menu within the banner; tapping the icon triggers `attemptManualReconnect()` identical to the current dashboard Wi-Fi button (long-press/menu still surfaces diagnostics).
+   - Surface Refresh affordance inside the banner action row (spinner overlay during in-flight attempts, tooltip "Reconnecting…").
+   - Upon completion: success toast/snackbar if both OK; warning if partial; error banner (red) if both failed, synchronized with banner messaging.
 4. State Management:
    - Add provider (e.g. `manualReconnectStatusProvider`) holding last attempt time, inProgress flag, last result.
    - Throttle: if a reconnect occurred < 5s ago and still in progress or just completed, disable or show tooltip "Please wait…".
@@ -70,21 +73,24 @@ As an operator, when live data or device statuses stop updating, I want to click
 | Both already healthy | Fast path: do minimal health check (<250ms) then success snackbar |
 | Reconnect during existing auto-retry | Merge logic: cancel/reset auto path safely or allow concurrent if safe (prefer cancel) |
 | Failure due to bad credentials | Surface explicit auth error (future enhancement) |
+| User on non-dashboard page | Banner remains present with Wi-Fi icon + refresh affordance |
 
 ## Acceptance Criteria
 1. Clicking Refresh triggers real reconnection attempts (validated by disposing the old MQTT client and constructing a new instance; topics resubscribed).
 2. InfluxDB health check performed and result surfaced.
-3. UI communicates distinct outcomes: success, partial, failure.
-4. Operation is idempotent and guarded against spam (throttled or disabled while running).
-5. No uncaught exceptions; analyzer/test suite passes.
-6. Structured logs produced for each attempt.
+3. Connection banner remains visible when connected, switches to green styling without countdown timer, and co-locates signal menu + Wi-Fi icon + refresh action.
+4. Wi-Fi icon in the banner invokes the same reconnect logic and diagnostics menu as the previous dashboard Wi-Fi button.
+5. UI communicates distinct outcomes: success, partial, failure (banner + snackbar states).
+6. Operation is idempotent and guarded against spam (throttled or disabled while running).
+7. No uncaught exceptions; analyzer/test suite passes.
+8. Structured logs produced for each attempt.
 
 ## Testing Strategy
 - Unit:
   - `ConnectionRecoveryService` success path, MQTT fail, Influx fail, both fail.
   - Throttle logic (<5s consecutive attempts).
 - Provider tests: state transitions (idle -> inProgress -> done) and result caching.
-- Widget test: tapping refresh updates UI (loading state) and displays snackbar.
+- Widget test: persistent banner renders in healthy + degraded states, Wi-Fi icon/refresh affordance trigger loading state and snackbar.
 - Integration test (optional initial phase): simulate MQTT disconnect then manual reconnect triggers resubscription callbacks (mock).
 
 ## Implementation Steps
@@ -93,11 +99,13 @@ As an operator, when live data or device statuses stop updating, I want to click
    - `IMqttManager` (close/start/subscribe)
    - `IInfluxHealthChecker` (ping or test query)
 3. Add Riverpod provider(s) for service + status.
-4. Wire Dashboard refresh button to call notifier method.
-5. Add UI feedback (loading state + snackbar / banner).
-6. Add logging via existing `logger.dart` utility.
-7. Write unit + provider tests.
-8. Update memory bank references (systemPatterns.md / techContext.md if new patterns introduced).
+4. Move connection controls from the dashboard AppBar into the shared `ConnectionNotification` (or equivalent banner widget) rendered on all pages.
+5. Ensure banner styling supports connected (green, subtle) vs degraded (amber/red) states without countdown timer.
+6. Bind Wi-Fi icon tap/press gestures to manual reconnect logic; preserve diagnostics menu behavior inside the banner placement.
+7. Add UI feedback (loading state + snackbar / banner).
+8. Add logging via existing `logger.dart` utility.
+9. Write unit + provider tests.
+10. Update memory bank references (systemPatterns.md / techContext.md if new patterns introduced).
 
 ## Risks & Mitigations
 | Risk | Impact | Mitigation |
@@ -119,4 +127,4 @@ As an operator, when live data or device statuses stop updating, I want to click
 - Logs confirm reconnect attempts with outcomes.
 
 ---
-Last Updated: 2025-09-25
+Last Updated: 2025-09-26
