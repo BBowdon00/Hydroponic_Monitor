@@ -14,6 +14,7 @@ class SensorTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.trend,
+    this.lastUpdated,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class SensorTile extends StatelessWidget {
   final IconData icon;
   final Color color;
   final SensorTrend trend;
+  final DateTime? lastUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +63,12 @@ class SensorTile extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
+
+            // Stale data indicator
+            if (_isDataStale()) ...[
+              const SizedBox(height: AppTheme.spaceXs),
+              _buildStaleIndicator(theme),
+            ],
 
             const SizedBox(height: AppTheme.spaceSm),
 
@@ -119,5 +127,62 @@ class SensorTile extends StatelessWidget {
     }
 
     return Icon(iconData, color: iconColor, size: 16);
+  }
+
+  /// Checks if sensor data is considered stale (older than 60 seconds).
+  bool _isDataStale() {
+    if (lastUpdated == null) return false;
+    final now = DateTime.now();
+    final difference = now.difference(lastUpdated!);
+    return difference.inSeconds > 60;
+  }
+
+  /// Builds the stale data indicator widget.
+  Widget _buildStaleIndicator(ThemeData theme) {
+    if (lastUpdated == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final difference = now.difference(lastUpdated!);
+    final elapsedTime = _formatElapsedTime(difference);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spaceXs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.orange.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule, size: 12, color: Colors.orange.shade700),
+          const SizedBox(width: 2),
+          Text(
+            'Stale ($elapsedTime)',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.orange.shade700,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Formats elapsed time for display.
+  String _formatElapsedTime(Duration difference) {
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ${difference.inSeconds % 60}s ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ${difference.inMinutes % 60}m ago';
+    } else {
+      return '${difference.inDays}d ${difference.inHours % 24}h ago';
+    }
   }
 }
