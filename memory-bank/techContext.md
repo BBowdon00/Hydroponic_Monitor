@@ -6,94 +6,64 @@
 
 ### Frontend Framework
 
-#### Flutter 3.35.2+
-- **Language**: Dart 3.9.0+
-- **Rationale**: Cross-platform native performance with single codebase
-- **Platforms**: Web (primary), Android, Windows
-- **Architecture**: Widget-based reactive UI with hot reload
-
-#### Key Flutter Features Used
-- **Material 3 Design**: Modern adaptive theming
-- **Platform Channels**: Native integration when needed
-- **WebAssembly**: High performance web deployment
-- **Hot Reload**: Rapid development iteration
+#### Flutter 3.35.x (Dart 3.9)
+- **Targets**: Web (primary), Android, desktop shells for validation
+- **UI Stack**: Material 3 theming via custom spacing/typography tokens (`core/theme.dart`)
+- **Routing**: `go_router` shell navigation with bottom navigation scaffold
+- **State**: Riverpod-driven widgets (ConsumerWidget / ConsumerStatefulWidget) for fine-grained rebuilds
 
 ### State Management
 
-#### Riverpod (hooks_riverpod ^2.6.1)
-- **Pattern**: Provider-based dependency injection and state management
-- **Benefits**: Compile-time safety, testability, reactive programming
-- **Features**: StateNotifier, StreamProvider, FutureProvider patterns
-- **Testing**: Built-in mocking and testing utilities
+#### Riverpod (hooks_riverpod ^2.6)
+- **Providers**: `Provider` (services), `StateNotifierProvider` (VideoState, DeviceControls), `StreamProvider` (sensor data), `FutureProvider` (repository initialization)
+- **Testability**: ProviderContainer harness + overrides used across test suite
+- **Lifecycle**: AutoDispose for page-specific streams (video) to avoid background resource usage
 
 ### Navigation
 
-#### go_router ^16.2.1
-- **Pattern**: Declarative routing with type safety
-- **Features**: Named routes, path parameters, guards
-- **Deep Linking**: Web URL support and mobile deep links
-- **State Integration**: Router state synchronized with app state
+#### go_router ^16
+- Shell route hosts dashboard/devices/video/charts/settings tabs
+- Bottom navigation -> `context.go()` transitions maintain URL for web deep links
+- Future-proof for guarded routes (e.g., auth) via provider lookups
 
 ### Network & Data
 
-#### MQTT Communication
-- **Package**: mqtt_client ^10.11.0
-- **Protocol**: MQTT 3.1.1 with TLS support
-- **QoS**: Quality of service levels 0, 1, 2
-- **Features**: Auto-reconnection, last will testament
-- **Topics**: Structured namespacing (grow/{node}/{category})
+#### MQTT
+- **Package**: `mqtt_client` (server + browser implementations)
+- **Usage**: `MqttService` handles connect/reconnect, topic subscriptions (`grow/{node}/sensor|actuator|device`), publishes commands, replays status cache for late subscribers.
+- **Web Support**: Attempts `MqttBrowserClient` over WebSocket (`ws://host:9001`), falls back to TCP client for tests.
 
-#### HTTP Client
-- **Primary**: dio ^5.7.0 for advanced HTTP features
-- **Secondary**: http ^1.2.2 for simple requests
-- **Features**: Interceptors, retries, timeout handling
-- **Certificates**: Custom certificate support for self-signed
+#### MJPEG Streaming
+- **Native**: `dart:io` HttpClient parser with boundary scanning + resolution events
+- **Web**: Fetch + ReadableStream via `package:web`, manual multipart parsing, AbortController for teardown
+- **State**: `VideoStateNotifier` enforces 5s connection timeout, phase transitions, simulation fallback when `REAL_MJPEG=false`
 
-#### InfluxDB Time-Series
-- **Package**: influxdb_client ^2.11.0
-- **Version**: InfluxDB 2.x with Flux query language
-- **Features**: Streaming queries, aggregation functions
-- **Performance**: Optimized for time-series data patterns
+#### Time-Series Data (InfluxDB)
+- **Package**: `influxdb_client`
+- **Service**: `InfluxDbService` writes via `Point` API, queries via Flux with dummy fallback when server not reachable (development/testing)
+- **Planned**: Historical chart queries (range + aggregation) pending TASK TBD
+
+#### HTTP / REST
+- `http` and `dio` are available for ancillary REST calls; currently unused in production flows (reserved for future modules).
 
 ### Data Modeling
 
-#### Code Generation
-- **Serialization**: json_annotation ^4.9.0 + json_serializable ^6.11.0
-- **Immutability**: freezed ^3.2.0 for sealed classes and unions
-- **Build System**: build_runner ^2.7.0 for code generation
-
-#### Data Patterns
-- **Entities**: Immutable domain models with freezed
-- **DTOs**: JSON serializable data transfer objects  
-- **Result Types**: Sealed classes for error handling
-- **Streams**: Reactive data flow with StreamController
+- **Domain Entities**: Hand-authored immutable classes (`SensorData`, `Device`) in `domain/entities`
+- **Result Types**: Lightweight `Result` sealed classes (`Success`, `Failure`) defined in `core/errors.dart`
+- **Streams**: StreamControllers within services (MQTT sensor/device streams) with replay buffers for device status
+- **Codegen**: `json_serializable` / `freezed` dependencies available but not yet leveraged (future-proofing)
 
 ### UI & Visualization
 
-#### Charts
-- **Package**: fl_chart ^1.0.0
-- **Types**: Line charts, bar charts, pie charts
-- **Features**: Interactive touch handling, animations
-- **Performance**: Efficient rendering for large datasets
-
-#### Material Design
-- **System**: Material 3 with dynamic theming
-- **Components**: Standard Material widgets
-- **Theming**: Color schemes, typography, spacing tokens
-- **Accessibility**: Semantic labels and navigation
+- **Charts**: `ChartsPage` currently hosts time-range chip selector + placeholder; fl_chart integration planned alongside historical data task.
+- **Dashboards**: Sensor tiles show live readings with fallback copy (“Waiting…”, “No Data”); Device cards provide toggles/sliders with pending indicators.
+- **Status Indicators**: `StatusBadge`, `ConnectionNotification` reflect provider health signals.
+- **Accessibility**: Copy-driven phases for video page improve screen reader clarity.
 
 ### Storage & Configuration
 
-#### Secure Storage
-- **Package**: flutter_secure_storage ^9.2.2
-- **Use Cases**: MQTT credentials, InfluxDB tokens
-- **Security**: Platform-native secure storage mechanisms
-
-#### Environment Configuration
-- **Package**: flutter_dotenv ^6.0.0
-- **Files**: .env for development, dart-define for production
-- **Security**: No secrets in source code or builds
-- **Flexibility**: Different configs per environment
+- **Environment**: `flutter_dotenv` + OS environment variables (prefers OS for non-web) configured via `Env` helper (MQTT, Influx, MJPEG feature flag).
+- **Secure Storage**: `flutter_secure_storage` dependency available for future secrets (not yet in active use).
 
 ### Development Tools
 
@@ -184,33 +154,21 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 - **Storage**: Platform-specific secure storage limitations
 - **Notifications**: Background notification capabilities
 
-## Testing Infrastructure
+### Testing Infrastructure
 
-### Automated Testing
-```yaml
-Unit Tests: 70+ tests covering business logic
-Widget Tests: UI component testing
-Integration Tests: 5+ end-to-end scenarios
-```
+#### Automated Testing
+- `scripts/test-runner.sh` orchestrates unit (`flutter test --exclude-tags=integration`) and Docker-backed integration suites (`--tags=integration`).
+- Unit/provider tests cover MQTT parsing, repositories, providers, and video state transitions.
+- Integration tests validate MQTT publish/confirm flows, video notifier behavior, and environment configuration fallback.
+- Widget tests exercise key UI states (VideoPage, DevicesPage, connection notifications).
 
-### CI/CD Pipeline
-```yaml
-Quality Gates:
-  - Code formatting (dart format)
-  - Static analysis (flutter analyze)  
-  - Unit tests (flutter test)
-  - Build verification (web, android)
-  - Integration tests (Docker compose)
-```
+#### CI/CD
+- GitHub Actions pipeline (formatting, analysis, tests) ensures quality gates prior to merge.
+- Integration suite optional due to Docker dependencies (manual trigger recommended before release).
 
-### Test Environment
-```yaml
-Docker Services:
-  - MQTT Broker (Mosquitto)
-  - InfluxDB with test data
-  - Mock video stream
-  - Network simulation tools
-```
+#### Test Environment
+- Docker Compose stack (Mosquitto, InfluxDB, Telegraf, optional fake MJPEG server) under `test/integration/`.
+- Test utilities include `test/test_utils/fake_mjpeg_server.dart` for deterministic MJPEG parsing tests.
 
 ### Testing Procedure
 For complete testing instructions, procedures, and troubleshooting, see the **[Testing Procedure](./testing-procedure.md)** document.

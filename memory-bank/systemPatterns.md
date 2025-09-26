@@ -237,28 +237,27 @@ The system implements comprehensive real-time sensor data integration with the f
 
 **Data Flow Pattern**:
 ```
-MQTT Broker → MqttService → SensorRepository → Providers → UI Widgets
+MQTT Broker → MqttService → SensorRepository → Riverpod Providers → UI Widgets
 ```
 
 **Key Components**:
-- **MqttService**: Handles MQTT connection, subscription to `grow/+/sensor` topic pattern, and message parsing
-- **SensorRepository**: Aggregates real-time MQTT data with historical InfluxDB data
-- **realTimeSensorDataByTypeProvider**: Riverpod provider that accumulates latest sensor readings by type
-- **latestSensorDataProvider**: UI-specific provider that exposes latest data for dashboard tiles
+- **MqttService**: Manages MQTT connections (server or browser client), subscribes to `grow/+/sensor` / `grow/+/device` / `grow/+/actuator`, parses payloads, and publishes device commands.
+- **SensorRepository**: Fuses live MQTT streams with InfluxDB lookups (with dummy fallback when Influx unavailable) and exposes typed streams.
+- **realTimeSensorDataByTypeProvider / latestSensorDataProvider**: Riverpod providers that accumulate fresh readings per `SensorType` and surface them to widgets.
+- **hasSensorDataProvider**: Signals dashboard connection status indicators.
 
 **Error Handling**:
-- MQTT connection timeout handling with automatic retry logic
-- Graceful degradation when services are unavailable (fallback to dummy data)
-- Malformed JSON payload handling without application crashes
-- Provider error states properly managed in UI components
+- MQTT auto-reconnect & guard against duplicate connect attempts.
+- Defensive JSON parsing with silent drops for malformed payloads.
+- InfluxDB unavailability triggers dummy data generation to keep UI responsive.
+- Provider error states mapped to UI copy (“No Data”, “Waiting…”).
 
 **Testing Coverage**:
-- Unit tests: 78+ tests passing for all service classes and entities
-- Integration tests: 11 tests passing for full MQTT → Provider → UI data flow
-- Widget tests with proper provider mocking
-- End-to-end testing using Docker services for realistic scenarios
+- Provider/unit suites validate MQTT parsing, repository initialization, and provider accumulation semantics.
+- Integration tests (tagged) exercise MQTT command/confirmation flows with Docker services.
+- Widget tests assert dashboard + video state transitions via Riverpod harnesses.
 
-**Current Status**: ✅ **COMPLETE** - All real-time data integration is functional and thoroughly tested 
+**Current Status**: ✅ **COMPLETE** – Real-time monitoring pipeline is stable with ongoing refinements for analytics.
 
 ### InfluxDB Time-Series Database
 
@@ -271,32 +270,38 @@ InfluxDB stores historical sensor data and device states for analytics and chart
 
 This structure enables efficient querying for historical charts with customizable time ranges (1h, 24h, 7d, 30d) and aggregation functions.
 
-### Actuator Control Flow
+### Actuator Control Flow (TASK005)
 
-The app **will** implement a robust control system for managing actuators:
+The dashboard delivers node-aware actuator control with confirmation feedback:
 
-1. **Command Publishing**: App publishes control messages to device-specific topics (e.g., `grow/esp32_1/actuator/set`)
-2. **Device Processing**: Target device receives command and attempts state change
-3. **State Confirmation**: Device publishes actual state via status messages
-4. **Monitoring Loop**: App monitors for confirmation within timeout period
-5. **Failure Handling**: Retry logic and error reporting for failed commands
+1. **Command Publishing**: `DeviceControlsNotifier` issues MQTT commands via `MqttService.publishDeviceCommand` using topic `grow/{node}/actuator/set` and timestamp metadata.
+2. **Device Processing**: Edge nodes execute commands; status/heartbeat messages arrive on `grow/{node}/actuator` and `grow/{node}/device`.
+3. **State Confirmation**: `DeviceRepository` maps MQTT payloads into `Device` entities which feed `DeviceControlsNotifier` (clearing pending state, updating status badge, caching last values).
+4. **Monitoring Loop**: Pending commands schedule a 10s timeout (configurable in tests). If confirmation not observed, state flips to `DeviceStatus.error` and UI disables controls.
+5. **Node Gating**: Commands are blocked when aggregated node status ≠ Online (with test hook overrides). Emergency stop clears all pending devices.
 
-This architecture ensures reliable control with feedback verification, preventing assumptions about successful state changes and providing visibility into system responsiveness.
+**Enhancements Planned**: extend command payload schema (request ID, reason), integrate MQTT LWT for node offline detection, and add integration smoke tests for publish/ack parity.
 
-### Video Streaming Pattern
+### Video Streaming Pattern (TASK007)
 
-#### MJPEG Stream Handler
+#### Phase-Based MJPEG Handler
 ```mermaid
 stateDiagram-v2
-    [*] --> Disconnected
-    Disconnected --> Connecting : start()
-    Connecting --> Connected : success
-    Connecting --> Failed : error
-    Failed --> Connecting : retry()
-    Connected --> Disconnected : stop()
-    Connected --> Failed : connection lost
-    Failed --> Disconnected : max retries
+    [*] --> Idle
+    Idle --> Connecting : connect()
+    Connecting --> WaitingFirstFrame : StreamStarted
+    Connecting --> Error : Timeout / StreamError
+    WaitingFirstFrame --> Playing : FrameBytes
+    WaitingFirstFrame --> Error : Timeout / StreamError
+    Playing --> Idle : disconnect()
+    Playing --> Error : StreamError / abort()
+    Error --> Connecting : retry()/connect()
 ```
+
+- **Controllers**: `MjpegStreamController` (IO + Web) parse multipart boundaries; Web version leverages Fetch + ReadableStream and emits `FrameResolution` before first frame rendering.
+- **Timeouts**: `VideoStateNotifier` triggers a 5s timeout if first frame is not received, transitioning to `error` with user-facing message.
+- **UI States**: `VideoPage` renders explicit copy for idle, connecting, waiting for first frame, playing, and error phases. Simulation mode is labeled when `Env.enableRealMjpeg == false`.
+- **Resource Cleanup**: Provider auto-dispose plus `shutdown()` prevents provider reads during widget teardown.
 
 ## Performance Patterns
 

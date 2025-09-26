@@ -5,70 +5,72 @@
 ## Current Development Status
 
 ### Recent Milestones
-**Real-Time Sensor Data Integration Complete (TASK004)** ✅ *(Completed: Sept 24, 2025)*
-- Live MQTT-driven dashboard operational with comprehensive tests
-- 78+ unit tests, 11 integration tests, 3 widget tests, 4 error handling tests passing
+**Real-Time Sensor Data Integration (TASK004)** ✅ *(Completed: Sept 24, 2025)*
+- Live MQTT-driven dashboard operational with provider-driven streams
+- Broad automated test coverage across repositories, providers, and widgets
+
+**Actuator Control Foundation (TASK005)** ✅ *(Completed core: Sept 25, 2025)*
+- DeviceControlsNotifier orchestrates command publish, pending timeouts, node gating
+- Devices page groups actuators by node with status badges and emergency stop
+- Provider tests cover command flow, pending → confirmed/timeout transitions
+- Remaining enhancements tracked (payload enrichment, LWT node health, integration tests)
 
 **Web MJPEG Streaming Support (TASK007)** ✅ *(Completed: Sept 25, 2025)*
 - Unified phase model: idle → connecting → waitingFirstFrame → playing → error
-- Web-compatible streaming path implemented with fetch-based controller
-- 5s connection timeout prevents long hangs; clear error surfaced
-- Simulation mode clearly labeled (no misleading placeholders)
-- Updated widget tests reflecting new phases; disposal safety (`shutdown()`) pattern added
+- Web-compatible fetch-based controller with JPEG boundary parsing + resolution events
+- 5s connection timeout prevents long hangs; clear error surfaced in UI
+- Simulation mode badge clarifies feature-flagged runs; widget tests updated
 
-### Current Development Focus: **Historical Data Integration (Charts) Preparation** 🎯
-*Status: In Planning (September 25, 2025)*
-- Designing time-series chart architecture (fl_chart evaluation)
-- Defining InfluxDB query patterns (range + aggregation)
-- Identifying caching and sampling strategies for performance
+### Current Development Focus: **Manual Reconnect & Historical Data Spike** 🎯
+*Status: In Planning (September 26, 2025)*
+- TASK008 manual reconnect: design `ConnectionRecoveryService` for MQTT + Influx retries
+- Validate dashboard Refresh UX (progress indicator + snackbar outcomes)
+- Historical charts spike: evaluate fl_chart, finalize Influx query windows & caching strategy
 
 ### Upcoming: **Historical Data Integration (TASK - TBD)** 📊
 *Status: Queued (September 2025)*
-- InfluxDB historical data charts (1h, 24h, 7d, 30d)
-- Aggregation & downsampling strategy
-- Combine real-time + historical perspectives in unified dashboard
+- Implement chart rendering (line charts with fl_chart) fed by Influx queries
+- Provide time range controls (1h, 24h, 7d, 30d) + aggregation mode toggles
+- Merge historical metrics alongside live dashboard tiles
 
 ## Active Work Items
 
-#### 1. Actuator Control Implementation
-**Priority**: High  
-**Status**: Active  
-**Estimated Completion**: October 02, 2025
+#### 1. Actuator Control Enhancements (TASK005 follow-ups)
+**Priority**: Medium  
+**Status**: Refinement  
+**ETA**: October 02, 2025
 
-**Planned Tasks**:
-- [ ] Implement data layer for actuators (MQTT publish/subscribe, LWT readiness)
-- [ ] Add providers: command pending/timeout handling, devices-by-node, node status
-- [ ] Update Devices UI: group by node, status badges, control cards
-- [ ] Testing: unit/provider tests for command/state transitions and node status
-- [ ] Documentation updates (systemPatterns.md)
+**Remaining Tasks**:
+- [ ] Enrich command payload schema (deviceNode/deviceType/parameters envelope/requestID)
+- [ ] Incorporate MQTT LWT for node offline detection + smoothing
+- [ ] Add integration coverage for publish/ack payload round trip
+- [ ] Document final schema + node gating rules in systemPatterns.md
 
-**Acceptance Criteria**:
-- Commands publish successfully for rpi, esp1, esp2 via `grow/{node}/actuator/set`
-- UI reflects confirmed state changes and timeouts
-- Devices grouped by node with Online/Offline badges
-- Tests cover command flow and node status aggregation
+**Success Criteria**:
+- Command payloads align with broker contract and include metadata for observability
+- Node-level offline detection drives UI disable states without false positives
+- Integration tests validate `grow/{node}/actuator/set` + status echo
+- Documentation updated to capture finalized control flow
 
-#### 2. Manual Reconnect Feature Request (TASK008 - Pending)
-User-requested enhancement: dashboard Refresh button should perform a manual reconnection attempt for both MQTT and InfluxDB (teardown + re-init + health check) with clear success/partial/failure feedback. Task document added (`TASK008-dashboard-refresh-reconnect.md`) and indexed under Pending.
+#### 2. Manual Reconnect Workflow (TASK008)
+User-requested enhancement: dashboard Refresh should tear down and reinitialize MQTT & InfluxDB with explicit success/partial/failure messaging. Task spec documented (`TASK008-dashboard-refresh-reconnect.md`); awaiting implementation kickoff.
 
 ### Immediate Next Steps (Next 7 Days)
 
-#### 1. Historical Data Architecture Spike
-- Evaluate fl_chart capabilities for large time ranges
-- Draft repository + provider interfaces for historical queries
-- Define query batching & cache invalidation rules
+#### 1. Manual Reconnect Service Spike
+- Draft `ConnectionRecoveryService` API + provider wiring
+- UX spec for dashboard Refresh (loading indicator + snackbar states)
+- Add structured logging for attempts
 
-#### 2. Documentation & Memory Sync
-- Update progress and system patterns with streaming architecture changes
-- Add README section for enabling real MJPEG on web
+#### 2. Historical Charts Prototype
+- Validate fl_chart with sample data (line chart + tooltip interactions)
+- Prototype repository method for time-ranged Influx queries with fallback
+- Determine caching/aggregation rules per range
 
-#### 3. Prepare Historical Data Foundation
-- Early design for chart architecture (fl_chart evaluation)
-- Identify InfluxDB query patterns & indexes
-
-#### 4. Actuator Control (Preliminary Research)
-- Map required MQTT command topics & acknowledgment patterns
-- Draft provisional provider interfaces (deferred implementation)
+#### 3. Actuator Control Polish
+- Finalize payload metadata schema + broker documentation
+- Add provider-level integration smoke test harness (using mocks/fake MQTT)
+- Update systemPatterns.md with finalized control flow diagrams
 
 ## Development Workflow Status
 

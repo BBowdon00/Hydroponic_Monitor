@@ -4,7 +4,7 @@
 
 ## Project Status Overview
 
-The Hydroponic Monitor is in **Active Development** state with core real-time functionality complete. Web-compatible MJPEG streaming (TASK007) has been completed; current focus shifts to planning historical data visualization.
+The Hydroponic Monitor is in **Active Development** with core real-time monitoring, actuator control, and web MJPEG streaming landed. Current efforts focus on manual reconnect tooling and historical analytics groundwork.
 
 ## Feature Completion Status
 
@@ -18,12 +18,13 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Multi-sensor Support**: Temperature, humidity, pH, EC, water level, light, power ✅ **COMPLETED**
 - [x] **Comprehensive Testing**: 78+ unit tests, 11+ integration tests, full coverage ✅ **COMPLETED**
 
-#### Actuator Control System (Active)
-- [x] **MQTT Commands**: Send control commands to devices via MQTT (`grow/{node}/actuator/set`)
-- [x] **State Confirmation**: Verify actuator state changes via status feedback (`grow/+/actuator`, `grow/+/device`)
-- [x] **Node Status Display**: Group devices by node with Online/Offline/Pending/Error badges; controls disabled when node Offline/Error
-- [x] **Safety Systems**: Command pending -> timeout -> error handling; provider enforcement of node-online requirement (test hooks available)
-- [x] **Testing**: Unit/provider tests for command/state transitions and node aggregation; Added integration test for actuator confirmation (task005)
+#### Actuator Control System ✅ FOUNDATION DELIVERED (TASK005)
+- [x] **MQTT Commands**: Publish device commands via `grow/{node}/actuator/set` with timestamp metadata
+- [x] **State Confirmation**: Consume status feedback (`grow/+/actuator`, `grow/+/device`) into provider state
+- [x] **Node Status Display**: Devices page groups actuators by node with live status badge + emergency stop controls
+- [x] **Safety Systems**: Pending → timeout handling, node-online enforcement, test hooks for deterministic provider tests
+- [x] **Testing**: Provider/unit suite covers command flow, node aggregation, and timeout behavior
+- [ ] **Follow-ups** *(tracked in TASK005)*: payload enrichment (requestID/parameters envelope) + integration coverage
 
 
 #### Application Infrastructure  
@@ -56,29 +57,30 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 - [x] **Web Application**: Primary platform
 - [x] **Android Application**: Native mobile experience
 
-### Features In Development 🚧 IN PROGRESS
+### Features In Flight 🚧
 
+#### Manual Reconnect Orchestration (TASK008)
+- [ ] `ConnectionRecoveryService` to tear down + reinitialize MQTT & InfluxDB
+- [ ] Dashboard refresh UX (progress indicator + success/partial/failure snackbar)
+- [ ] Structured logging + provider state for last reconnect attempt
 
-#### Historical Data Analytics (Next)
-- [ ] **Time-Series Charts**: Interactive charts using fl_chart package
-- [ ] **InfluxDB Integration**: Historical sensor data queries with time ranges
-- [ ] **Data Aggregation**: Multiple aggregation functions for different time scales
-- [ ] **Time Range Controls**: User selectable ranges (1h, 24h, 7d, 30d)
-- [ ] **Chart Widgets**: Dashboard integration with historical visualization
+#### Historical Data Analytics (Planning)
+- [ ] **Time-Series Charts**: Implement fl_chart line charts fed by Influx queries
+- [ ] **InfluxDB Queries**: Range/aggregation helpers with graceful fallback when Influx unavailable
+- [ ] **Time Range Controls**: UI toggle for 1h / 24h / 7d / 30d windows
+- [ ] **Dashboard Integration**: Blend historical trends with real-time sensor tiles
 
-#### Advanced Features (Future)
-- [ ] **MJPEG Stream Testing**: Complete video integration testing
-- [ ] **Node Status Display**: Grouped actuator widgets by controlling node  
-- [ ] **Full Stack Automation**: Playwright-based end-to-end testing
-- [ ] **Dynamic device + sensor discovery**: Dynamically add sensor and device tiles when MQTT messages are received. Maybe create a cache for known devices/sensors to seed the app on a restart.
-- [ ] **Refactor Dashboard page**: Change it to a sensor page display only. Keep the devices only on the device page.
-- [ ] **Manual Reconnect (TASK008)**: Dashboard refresh button to trigger explicit MQTT + InfluxDB reconnection sequence with user feedback.
+#### Future Enhancements
+- [ ] **MJPEG Stress Testing**: Broaden coverage for error/waitingFirstFrame/fullscreen flows
+- [ ] **Dynamic Device Discovery**: Add repository/provider cache to seed device lists across sessions
+- [ ] **Full-stack Automation**: Playwright suite for critical user journeys
+- [ ] **Dashboard Layout Refinement**: Split sensor vs device panels per product feedback
 
 ## Known Issues & Technical Debt
 
 ### Current Known Issues
-// (Resolved) Web MJPEG previously unsupported; completed via TASK007 (phase-based streaming + timeout)
-- **Video Stream Testing**: Needs expanded coverage for error / waitingFirstFrame / fullscreen behaviors
+- **Charts Page Placeholder**: `ChartsPage` currently surfaces placeholder UI; pending historical data implementation
+- **Video Stream Testing**: Expand widget/integration coverage for error, waitingFirstFrame, fullscreen scenarios
 
 ### Technical Debt Items  
 - **Code Documentation**: Some utility functions need more comprehensive inline documentation
@@ -90,10 +92,9 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ## Development Metrics (Current)
 
 ### Test Coverage
-- **Unit Tests**: 78+ tests passing (core business logic)
-- **Integration Tests**: 11+ tests passing (end-to-end data flow) 
-- **Widget Tests**: 3+ tests passing (UI component validation)
-- **Error Handling Tests**: 4+ tests passing (failure scenario coverage)
+- **Unit / Provider Tests**: Extensive coverage across MQTT repositories, Influx fallback, actuator controls, video state
+- **Widget Tests**: Key screens (VideoPage, DevicesPage controls) validated via Riverpod harnesses
+- **Integration Tests**: Tagged suites exercise MQTT + video workflows with Docker services (manual opt-in)
 
 ### Code Quality
 - **Static Analysis**: All flutter analyze checks passing
@@ -104,8 +105,9 @@ The Hydroponic Monitor is in **Active Development** state with core real-time fu
 ### Future Roadmap
 
 ### Next Development Cycle (Priority Order)
-1. **Historical Data Charts**: Implement fl_chart time-series visualization with InfluxDB integration
-3. **Enhanced Testing**: Playwright automation for full-stack validation
+1. Manual reconnect service + dashboard UX polish (TASK008)
+2. Historical chart prototype feeding from Influx queries
+3. MJPEG stream resiliency tests + automation groundwork
 
   
 ---
