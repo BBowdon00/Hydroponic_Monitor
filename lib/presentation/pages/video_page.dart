@@ -5,6 +5,8 @@ import 'dart:async';
 
 import '../../core/env.dart';
 import '../../core/video/mjpeg_stream_controller.dart';
+import '../providers/config_controller.dart';
+import '../../domain/entities/app_config.dart';
 
 import '../widgets/status_badge.dart';
 import '../../core/theme.dart';
@@ -695,21 +697,23 @@ final mjpegStreamControllerProvider = Provider<MjpegStreamController>((ref) {
 
 final videoStateProvider =
     StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
-      return VideoStateNotifier(ref);
+      // Watch config and pass it to the notifier
+      final configAsync = ref.watch(configControllerProvider);
+      final videoConfig = configAsync.whenData((config) => config.video).value ?? VideoConfig.fromEnv();
+      
+      return VideoStateNotifier(ref, videoConfig);
     });
 
 class VideoStateNotifier extends StateNotifier<VideoState> {
-  VideoStateNotifier(this._ref)
-    : super(
-        const VideoState(
-          streamUrl: 'http://192.168.1.100:8080/stream',
-          phase: VideoConnectionPhase.idle,
-          hasAttempted: false,
-          resolution: Size(640, 480),
-          fps: 30,
-          latency: 150,
-        ),
-      );
+  VideoStateNotifier(this._ref, VideoConfig videoConfig)
+    : super(VideoState(
+        streamUrl: videoConfig.mjpegUrl,
+        phase: VideoConnectionPhase.idle,
+        hasAttempted: false,
+        resolution: const Size(640, 480),
+        fps: 30,
+        latency: 150,
+      ));
 
   final Ref _ref;
   StreamSubscription<FrameEvent>? _eventSub;
@@ -717,6 +721,9 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
 
   void setStreamUrl(String url) {
     state = state.copyWith(streamUrl: url);
+    // Update video config in the controller when URL changes
+    final configController = _ref.read(configControllerProvider.notifier);
+    configController.updateVideoConfig(VideoConfig(mjpegUrl: url, autoReconnect: true));
   }
 
   void connect() {

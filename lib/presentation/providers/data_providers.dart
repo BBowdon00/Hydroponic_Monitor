@@ -6,30 +6,48 @@ import '../../data/repos/sensor_repository.dart';
 import '../../data/repos/device_repository.dart';
 import '../../domain/entities/sensor_data.dart';
 import '../../domain/entities/device.dart';
+import '../../domain/entities/app_config.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
 import '../../core/env.dart';
+import 'config_controller.dart';
 
 /// Provider for MQTT service configuration.
+/// Watches configuration changes and recreates service with new settings.
 final mqttServiceProvider = Provider<MqttService>((ref) {
+  // Watch configuration, falling back to environment if config not loaded
+  final configAsync = ref.watch(configControllerProvider);
+  final config = configAsync.whenData((config) => config.mqtt).value ?? MqttConfig.fromEnv();
+  
+  Logger.info('Creating MQTT service with host: ${config.host}:${config.port}', 
+      tag: 'DataProviders');
+
   return MqttService(
-    host: Env.mqttHost, // <-- MQTT broker host
-    port: Env.mqttPort, // <-- MQTT broker port
+    host: config.host,
+    port: config.port,
     clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
-    username: Env.mqttUsername.isNotEmpty ? Env.mqttUsername : null,
-    password: Env.mqttPassword.isNotEmpty ? Env.mqttPassword : null,
+    username: config.username.isNotEmpty ? config.username : null,
+    password: config.password.isNotEmpty ? config.password : null,
     // Disable auto reconnect during tests to avoid connection loops; enabled by default otherwise.
     autoReconnect: !Env.isTest ? true : false,
   );
 });
 
 /// Provider for InfluxDB service configuration.
+/// Watches configuration changes and recreates service with new settings.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
+  // Watch configuration, falling back to environment if config not loaded
+  final configAsync = ref.watch(configControllerProvider);
+  final config = configAsync.whenData((config) => config.influx).value ?? InfluxConfig.fromEnv();
+  
+  Logger.info('Creating InfluxDB service with URL: ${config.url}', 
+      tag: 'DataProviders');
+
   return InfluxDbService(
-    url: Env.influxUrl,
-    token: Env.influxToken,
-    organization: Env.influxOrg,
-    bucket: Env.influxBucket,
+    url: config.url,
+    token: config.token,
+    organization: config.organization,
+    bucket: config.bucket,
   );
 });
 
@@ -58,22 +76,21 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
   // Initialize the repository
   final result = await repository.initialize();
 
-  return result.when(
-    success: (_) {
-      Logger.info(
-        'Sensor repository initialized successfully',
-        tag: 'DataProviders',
-      );
-      return repository;
-    },
-    failure: (error) {
-      Logger.error(
-        'Failed to initialize sensor repository: $error',
-        tag: 'DataProviders',
-      );
-      throw Exception('Failed to initialize sensor repository: $error');
-    },
-  );
+  return result is Success
+      ? (() {
+          Logger.info(
+            'Sensor repository initialized successfully',
+            tag: 'DataProviders',
+          );
+          return repository;
+        })()
+      : (() {
+          Logger.error(
+            'Failed to initialize sensor repository: ${(result as Failure).error}',
+            tag: 'DataProviders',
+          );
+          throw Exception('Failed to initialize sensor repository: ${(result as Failure).error}');
+        })();
 });
 
 /// Provider for device repository.
@@ -116,16 +133,15 @@ final sensorTypeHistoryProvider =
         limit: 100,
       );
 
-      return result.when(
-        success: (data) => data,
-        failure: (error) {
-          Logger.error(
-            'Failed to get sensor type history: $error',
-            tag: 'DataProviders',
-          );
-          throw Exception('Failed to load historical data');
-        },
-      );
+      return result is Success
+          ? (result as Success).data
+          : (() {
+              Logger.error(
+                'Failed to get sensor type history: ${(result as Failure).error}',
+                tag: 'DataProviders',
+              );
+              throw Exception('Failed to load historical data');
+            })();
     });
 
 /// Extension to handle Result types more easily.
