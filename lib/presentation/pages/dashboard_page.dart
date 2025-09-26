@@ -25,28 +25,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        actions: [
-          // Connection status indicators
-          IconButton(
-            icon: Icon(
-              hasSensorData ? Icons.wifi : Icons.wifi_off,
-              color: hasSensorData ? Colors.green : Colors.orange,
-            ),
-            onPressed: () {
-              // Show connection status dialog
-              _showConnectionStatus(context);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Trigger data refresh by invalidating providers
-              ref.invalidate(realTimeSensorDataProvider);
-              ref.invalidate(realTimeSensorDataByTypeProvider);
-              ref.invalidate(latestSensorReadingsProvider);
-            },
-          ),
-        ],
       ),
       body: _buildDashboardContent(),
     );

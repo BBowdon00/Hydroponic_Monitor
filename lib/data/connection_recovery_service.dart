@@ -84,9 +84,13 @@ class ConnectionRecoveryService {
       // Test InfluxDB connection
       try {
         Logger.info('Attempting InfluxDB health check...', tag: 'ConnectionRecovery');
-        await _testInfluxConnection();
-        influxOk = true;
-        Logger.info('InfluxDB health check successful', tag: 'ConnectionRecovery');
+        final ok = await _testInfluxConnection();
+        influxOk = ok;
+        if (ok) {
+          Logger.info('InfluxDB health check successful', tag: 'ConnectionRecovery');
+        } else {
+          Logger.warning('InfluxDB health check reported NOT healthy', tag: 'ConnectionRecovery');
+        }
       } catch (e) {
         final error = 'InfluxDB health check failed: $e';
         Logger.warning(error, tag: 'ConnectionRecovery');
@@ -135,16 +139,11 @@ class ConnectionRecoveryService {
   }
 
   /// Tests the InfluxDB connection with a lightweight health check query.
-  Future<void> _testInfluxConnection() async {
+  Future<bool> _testInfluxConnection() async {
     try {
-      // Reinitialize the InfluxDB service
-      final result = await influxService.initialize();
-      if (result is Success) {
-        // Simple test: try to query the latest sensor data (with limit 1)
-        await influxService.queryLatestSensorData();
-      } else if (result is Failure) {
-        throw Exception('InfluxDB initialization failed: ${result.error}');
-      }
+      // Attempt a health check without re-initializing if already created
+      final healthy = await influxService.checkHealth();
+      return healthy;
     } catch (e) {
       throw Exception('InfluxDB health check failed: $e');
     }

@@ -84,6 +84,15 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
       );
     }
 
+    if (!mounted) {
+      return ReconnectResult(
+        mqttOk: false,
+        influxOk: false,
+        elapsed: Duration.zero,
+        errorMessage: 'Reconnect request discarded - notifier unmounted',
+      );
+    }
+
     // Set in-progress state
     state = state.copyWith(
       inProgress: true,
@@ -94,10 +103,12 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
       final result = await _connectionRecoveryService.manualReconnect(force: force);
       
       // Update state with result
-      state = state.copyWith(
-        inProgress: false,
-        lastResult: result,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          inProgress: false,
+          lastResult: result,
+        );
+      }
 
       return result;
     } catch (e) {
@@ -109,10 +120,12 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
         errorMessage: 'Unexpected error during reconnection: $e',
       );
 
-      state = state.copyWith(
-        inProgress: false,
-        lastResult: result,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          inProgress: false,
+          lastResult: result,
+        );
+      }
 
       return result;
     }

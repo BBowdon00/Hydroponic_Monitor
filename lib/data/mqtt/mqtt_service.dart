@@ -582,6 +582,15 @@ class MqttService {
   void _onUnsubscribed(String? topic) {
     Logger.debug('Unsubscribed from topic: $topic', tag: 'MQTT');
   }
+
+  /// Dispose resources (for parity with repository expectations).
+  Future<void> dispose() async {
+    try {
+      await disconnect();
+    } catch (e) {
+      Logger.warning('Error during MQTT dispose: $e', tag: 'MQTT');
+    }
+  }
 }
 
 /// Custom MQTT message container for raw topic and payload data.

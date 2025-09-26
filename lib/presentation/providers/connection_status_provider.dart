@@ -84,7 +84,8 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
       StreamSubscription<String>? influxSubscription;
 
       void updateMqttStatus(String status) {
-        final isConnected = status == 'connected';
+        // Treat 'connected' and 'reconnected' as connected states.
+        final isConnected = status == 'connected' || status == 'reconnected';
         final now = DateTime.now();
 
         currentStatus = currentStatus.copyWith(
@@ -98,6 +99,7 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
       }
 
       void updateInfluxStatus(String status) {
+        // Only explicit 'connected' means healthy; anything else treat as disconnected
         final isConnected = status == 'connected';
         final now = DateTime.now();
 
