@@ -62,6 +62,26 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # Nginx reverse proxy to unify access (test environment)
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: hydroponic_test_nginx
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    ports:
+      - "8081:80"   # Use 8081 here to avoid clashing with root compose proxy (8080)
+    volumes:
+      - ../../config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   influxdb_data:
     driver: local

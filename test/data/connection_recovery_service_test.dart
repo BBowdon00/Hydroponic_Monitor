@@ -36,8 +36,8 @@ void main() {
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
       when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
       when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  // In new implementation we only perform a health check instead of initialize()+queryLatestSensorData()
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Act
       final result = await service.manualReconnect();
@@ -52,16 +52,14 @@ void main() {
       verify(() => mockMqttService.disconnect()).called(1);
       verify(() => mockMqttService.connect()).called(1);
       verify(() => mockMqttService.ensureInitialized()).called(1);
-      verify(() => mockInfluxService.initialize()).called(1);
-      verify(() => mockInfluxService.queryLatestSensorData()).called(1);
+  verify(() => mockInfluxService.checkHealth()).called(1);
     });
 
     test('should handle MQTT failure gracefully', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
       when(() => mockMqttService.connect()).thenAnswer((_) async => const Failure(MqttError('Connection failed')));
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Act
       final result = await service.manualReconnect();
@@ -77,9 +75,10 @@ void main() {
     test('should handle InfluxDB failure gracefully', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Failure(InfluxError('DB unavailable')));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+  when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+  // Simulate an exception during health check to mirror old failure surface
+  when(() => mockInfluxService.checkHealth()).thenThrow(Exception('DB unavailable'));
 
       // Act
       final result = await service.manualReconnect();
@@ -88,15 +87,15 @@ void main() {
       expect(result.mqttOk, isTrue);
       expect(result.influxOk, isFalse);
       expect(result.partialSuccess, isTrue);
-      expect(result.errorMessage, contains('InfluxDB health check failed'));
-      expect(result.errorMessage, contains('DB unavailable'));
+  expect(result.errorMessage, contains('InfluxDB health check failed'));
+  expect(result.errorMessage, contains('DB unavailable'));
     });
 
     test('should handle both services failing', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Failure(MqttError('MQTT down')));
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Failure(InfluxError('Influx down')));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Failure(MqttError('MQTT down')));
+  when(() => mockInfluxService.checkHealth()).thenThrow(Exception('Influx down'));
 
       // Act
       final result = await service.manualReconnect();
@@ -112,10 +111,9 @@ void main() {
     test('should throttle consecutive attempts', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+  when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Act - first attempt
       final result1 = await service.manualReconnect();
@@ -136,10 +134,9 @@ void main() {
     test('should allow forced reconnection even when throttled', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+  when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Act - first attempt
       final result1 = await service.manualReconnect();
@@ -160,10 +157,9 @@ void main() {
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {
         await Future.delayed(const Duration(milliseconds: 100));
       });
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+  when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Act - start first attempt (will be slow due to delay)
       final future1 = service.manualReconnect();
@@ -192,10 +188,9 @@ void main() {
     test('should provide progress information via properties', () async {
       // Arrange
       when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
-      when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
-      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
-      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Success(null));
-      when(() => mockInfluxService.queryLatestSensorData()).thenAnswer((_) async => const Success([]));
+  when(() => mockMqttService.connect()).thenAnswer((_) async => const Success(null));
+  when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+  when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
 
       // Assert initial state
       expect(service.isInProgress, isFalse);

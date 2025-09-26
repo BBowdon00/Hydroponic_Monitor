@@ -108,23 +108,29 @@ class InfluxDbService {
 
       var healthy = false;
       // Step 1: ping
+      bool pingIndicatesReachable = false;
       try {
         await _client!.getPingApi().getPing();
-        healthy = true; // reachable
+        pingIndicatesReachable = true; // reachable
       } catch (e) {
-        Logger.debug('Ping failed: $e', tag: 'InfluxDB');
-        healthy = false;
+        // In some InfluxDB setups the ping endpoint can return a 400 while the instance is otherwise healthy.
+        // If we detect a 400 ApiException, we will proceed to the READY check before declaring failure.
+        if (e is ApiException && e.code == 400) {
+          Logger.debug('Ping returned 400 (tolerated) – proceeding to READY check', tag: 'InfluxDB');
+          pingIndicatesReachable = true; // treat as soft success, defer real decision to READY
+        } else {
+          Logger.debug('Ping failed: $e', tag: 'InfluxDB');
+        }
       }
 
-      // Step 2: ready (only if ping succeeded)
-      if (healthy) {
-        try {
-          final ready = await _client!.getReadyApi().getReady();
-          healthy = (ready.status == ReadyStatusEnum.ready);
-        } catch (e) {
-          Logger.debug('Ready check failed: $e', tag: 'InfluxDB');
-          healthy = false;
-        }
+      // Step 2: always attempt ready (even if ping failed) – it gives definitive cluster readiness.
+      try {
+        final ready = await _client!.getReadyApi().getReady();
+        healthy = (ready.status == ReadyStatusEnum.ready);
+      } catch (e) {
+        // If READY fails but ping looked fine, log separately for diagnostics.
+        Logger.debug('Ready check failed: $e (pingReachable=$pingIndicatesReachable)', tag: 'InfluxDB');
+        healthy = false;
       }
       if (healthy) {
         if (_lastConnectionStatus != 'connected') {

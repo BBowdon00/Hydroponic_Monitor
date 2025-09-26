@@ -87,7 +87,7 @@ lib/
 4. **Run the application:**
    ```bash
    # Web (recommended for development)
-   flutter run -d web-server --web-port 8080
+   flutter run -d web-server --web-port 8080  # App will target m0rb1d-server.mynetworksettings.com by default
    
    # Android
    flutter run -d android

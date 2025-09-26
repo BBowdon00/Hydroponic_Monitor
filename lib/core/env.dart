@@ -5,7 +5,7 @@ import 'dart:io' show Platform;
 /// Environment configuration helper.
 /// Loads configuration from .env file or environment variables.
 class Env {
-  static String get mqttHost => dotenv.env['MQTT_HOST'] ?? 'localhost';
+  static String get mqttHost => dotenv.env['MQTT_HOST'] ?? 'm0rb1d-server.mynetworksettings.com';
   static String get mqttUsername => dotenv.env['MQTT_USERNAME'] ?? '';
   static String get mqttPassword => dotenv.env['MQTT_PASSWORD'] ?? '';
   static int get mqttPort =>
@@ -15,10 +15,21 @@ class Env {
   // so tests can inject tokens/urls without modifying .env file.
   // Note: Platform.environment is not available on web, so use dotenv only
   static String get influxUrl => kIsWeb
-      ? dotenv.env['INFLUX_URL'] ?? 'http://localhost:8086'
+      ? dotenv.env['INFLUX_URL'] ?? 'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
       : Platform.environment['INFLUX_URL'] ??
             dotenv.env['INFLUX_URL'] ??
-            'http://localhost:8086';
+            _defaultInfluxUrl;
+
+  // Provide a smarter default that respects TEST_ENV so integration tests
+  // (which spin up a local InfluxDB on 8086) don't accidentally point at
+  // the production reverse proxy if .env.test wasn't loaded yet.
+  static String get _defaultInfluxUrl {
+    final testFlag = dotenv.env['TEST_ENV']?.toLowerCase();
+    if (testFlag == 'true') {
+      return 'http://localhost:8086';
+    }
+    return 'http://m0rb1d-server.mynetworksettings.com:8080/influxdb';
+  }
 
   static String get influxToken => kIsWeb
       ? dotenv.env['INFLUX_TOKEN'] ?? ''
@@ -39,7 +50,7 @@ class Env {
             'sensors';
 
   static String get mjpegUrl =>
-      dotenv.env['MJPEG_URL'] ?? 'http://localhost:8080/stream';
+    dotenv.env['MJPEG_URL'] ?? 'http://m0rb1d-server.mynetworksettings.com:8080/stream';
 
   /// Feature flag: enable real MJPEG streaming implementation.
   /// Controlled via REAL_MJPEG environment variable ("true" to enable).
