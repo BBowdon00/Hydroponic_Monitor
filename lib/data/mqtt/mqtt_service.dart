@@ -251,10 +251,10 @@ class MqttService {
 
       // Disconnect the client
       _client?.disconnect();
-      
+
       // Reset state for potential reconnection
       _isConnecting = false;
-      
+
       // Emit disconnected status
       if (!_connectionController.isClosed) {
         _lastConnectionStatus = 'disconnected';
@@ -587,7 +587,7 @@ class MqttService {
   Future<void> reset() async {
     try {
       Logger.info('Resetting MQTT service for reconnection', tag: 'MQTT');
-      
+
       // Disconnect and dispose current client
       if (_client != null) {
         _client!.disconnect();
@@ -595,19 +595,19 @@ class MqttService {
         await Future.delayed(const Duration(milliseconds: 100));
         _client = null;
       }
-      
+
       // Reset connection state
       _isConnecting = false;
-      
+
       // Clear device status buffer but keep streams open
       _deviceStatusBuffer.clear();
-      
+
       // Reset initialization completer for new connection
       if (_initializedCompleter.isCompleted) {
         // Create new completer for the reconnection
         _initializedCompleter = Completer<void>();
       }
-      
+
       Logger.debug('MQTT service reset completed', tag: 'MQTT');
     } catch (e) {
       Logger.warning('Error during MQTT reset: $e', tag: 'MQTT');
@@ -617,14 +617,14 @@ class MqttService {
   Future<void> dispose() async {
     try {
       Logger.info('Disposing MQTT service', tag: 'MQTT');
-      
+
       // Disconnect the client
       _client?.disconnect();
       _client = null;
-      
+
       // Reset state
       _isConnecting = false;
-      
+
       // Close all streams
       if (!_sensorDataController.isClosed) {
         await _sensorDataController.close();
@@ -638,12 +638,11 @@ class MqttService {
       if (!_messageController.isClosed) {
         await _messageController.close();
       }
-      
+
       // Complete initialization completer if not already done
       if (!_initializedCompleter.isCompleted) {
         _initializedCompleter.complete();
       }
-      
     } catch (e) {
       Logger.warning('Error during MQTT dispose: $e', tag: 'MQTT');
     }

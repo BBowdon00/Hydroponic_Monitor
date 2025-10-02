@@ -33,9 +33,9 @@ class ReconnectResult {
     final status = allOk
         ? 'All services reconnected successfully'
         : partialSuccess
-            ? 'Partial reconnection: MQTT ${mqttOk ? 'OK' : 'Failed'}, InfluxDB ${influxOk ? 'OK' : 'Failed'}'
-            : 'All services failed to reconnect';
-    
+        ? 'Partial reconnection: MQTT ${mqttOk ? 'OK' : 'Failed'}, InfluxDB ${influxOk ? 'OK' : 'Failed'}'
+        : 'All services failed to reconnect';
+
     return 'ReconnectResult(${status}, elapsed: ${elapsed.inMilliseconds}ms${errorMessage != null ? ', error: $errorMessage' : ''})';
   }
 

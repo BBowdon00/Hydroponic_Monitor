@@ -24,7 +24,8 @@ class ManualReconnectState {
   /// Whether another reconnection attempt can be made (not throttled).
   bool get canAttempt {
     if (lastAttempt == null) return true;
-    return DateTime.now().difference(lastAttempt!) >= const Duration(seconds: 5);
+    return DateTime.now().difference(lastAttempt!) >=
+        const Duration(seconds: 5);
   }
 
   ManualReconnectState copyWith({
@@ -59,7 +60,8 @@ class ManualReconnectState {
 
 /// Notifier for manual reconnection state and operations.
 class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
-  ManualReconnectNotifier(this._connectionRecoveryService) : super(const ManualReconnectState());
+  ManualReconnectNotifier(this._connectionRecoveryService)
+    : super(const ManualReconnectState());
 
   final ConnectionRecoveryService _connectionRecoveryService;
 
@@ -94,20 +96,16 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
     }
 
     // Set in-progress state
-    state = state.copyWith(
-      inProgress: true,
-      lastAttempt: DateTime.now(),
-    );
+    state = state.copyWith(inProgress: true, lastAttempt: DateTime.now());
 
     try {
-      final result = await _connectionRecoveryService.manualReconnect(force: force);
-      
+      final result = await _connectionRecoveryService.manualReconnect(
+        force: force,
+      );
+
       // Update state with result
       if (mounted) {
-        state = state.copyWith(
-          inProgress: false,
-          lastResult: result,
-        );
+        state = state.copyWith(inProgress: false, lastResult: result);
       }
 
       return result;
@@ -121,10 +119,7 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
       );
 
       if (mounted) {
-        state = state.copyWith(
-          inProgress: false,
-          lastResult: result,
-        );
+        state = state.copyWith(inProgress: false, lastResult: result);
       }
 
       return result;
@@ -133,7 +128,9 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
 }
 
 /// Provider for the connection recovery service.
-final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((ref) {
+final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((
+  ref,
+) {
   final mqttService = ref.read(mqttServiceProvider);
   final influxService = ref.read(influxServiceProvider);
 
@@ -144,7 +141,10 @@ final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((r
 });
 
 /// Provider for manual reconnection state and operations.
-final manualReconnectProvider = StateNotifierProvider<ManualReconnectNotifier, ManualReconnectState>((ref) {
-  final connectionRecoveryService = ref.read(connectionRecoveryServiceProvider);
-  return ManualReconnectNotifier(connectionRecoveryService);
-});
+final manualReconnectProvider =
+    StateNotifierProvider<ManualReconnectNotifier, ManualReconnectState>((ref) {
+      final connectionRecoveryService = ref.read(
+        connectionRecoveryServiceProvider,
+      );
+      return ManualReconnectNotifier(connectionRecoveryService);
+    });

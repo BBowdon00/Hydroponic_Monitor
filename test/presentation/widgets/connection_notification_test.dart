@@ -9,7 +9,8 @@ import 'package:hydroponic_monitor/presentation/providers/manual_reconnect_provi
 import 'package:hydroponic_monitor/data/connection_recovery_service.dart';
 
 // Mock class
-class MockConnectionRecoveryService extends Mock implements ConnectionRecoveryService {}
+class MockConnectionRecoveryService extends Mock
+    implements ConnectionRecoveryService {}
 
 void main() {
   group('ConnectionNotification', () {
@@ -33,7 +34,9 @@ void main() {
               influxDisconnectedSince: null,
             );
           }),
-          connectionRecoveryServiceProvider.overrideWithValue(mockRecoveryService),
+          connectionRecoveryServiceProvider.overrideWithValue(
+            mockRecoveryService,
+          ),
         ],
       );
 
@@ -67,7 +70,9 @@ void main() {
               influxConnected: true,
             );
           }),
-          connectionRecoveryServiceProvider.overrideWithValue(mockRecoveryService),
+          connectionRecoveryServiceProvider.overrideWithValue(
+            mockRecoveryService,
+          ),
         ],
       );
 
@@ -102,7 +107,9 @@ void main() {
               influxDisconnectedSince: null,
             );
           }),
-          connectionRecoveryServiceProvider.overrideWithValue(mockRecoveryService),
+          connectionRecoveryServiceProvider.overrideWithValue(
+            mockRecoveryService,
+          ),
         ],
       );
 
@@ -130,11 +137,17 @@ void main() {
       // Create a container with loading state - simulate AsyncLoading
       final container = ProviderContainer(
         overrides: [
-          connectionStatusProvider.overrideWith((ref) => Stream.value(const ConnectionStatus(
-            mqttConnected: false,
-            influxConnected: false,
-          )).asyncMap((status) async => throw 'Loading')),
-          connectionRecoveryServiceProvider.overrideWithValue(mockRecoveryService),
+          connectionStatusProvider.overrideWith(
+            (ref) => Stream.value(
+              const ConnectionStatus(
+                mqttConnected: false,
+                influxConnected: false,
+              ),
+            ).asyncMap((status) async => throw 'Loading'),
+          ),
+          connectionRecoveryServiceProvider.overrideWithValue(
+            mockRecoveryService,
+          ),
         ],
       );
 

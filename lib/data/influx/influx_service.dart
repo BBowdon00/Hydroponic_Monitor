@@ -70,7 +70,10 @@ class InfluxDbService {
       // Perform explicit health check so we don't report connected when server is down
       final healthy = await checkHealth();
       if (healthy) {
-        Logger.info('Successfully connected to InfluxDB (health pass)', tag: 'InfluxDB');
+        Logger.info(
+          'Successfully connected to InfluxDB (health pass)',
+          tag: 'InfluxDB',
+        );
         _startHealthMonitoring();
         return Success(null);
       } else {
@@ -95,7 +98,10 @@ class InfluxDbService {
   Future<bool> checkHealth() async {
     try {
       if (_client == null) {
-        Logger.debug('Creating InfluxDB client for health check', tag: 'InfluxDB');
+        Logger.debug(
+          'Creating InfluxDB client for health check',
+          tag: 'InfluxDB',
+        );
         _client = InfluxDBClient(
           url: url,
           token: token,
@@ -116,8 +122,12 @@ class InfluxDbService {
         // In some InfluxDB setups the ping endpoint can return a 400 while the instance is otherwise healthy.
         // If we detect a 400 ApiException, we will proceed to the READY check before declaring failure.
         if (e is ApiException && e.code == 400) {
-          Logger.debug('Ping returned 400 (tolerated) – proceeding to READY check', tag: 'InfluxDB');
-          pingIndicatesReachable = true; // treat as soft success, defer real decision to READY
+          Logger.debug(
+            'Ping returned 400 (tolerated) – proceeding to READY check',
+            tag: 'InfluxDB',
+          );
+          pingIndicatesReachable =
+              true; // treat as soft success, defer real decision to READY
         } else {
           Logger.debug('Ping failed: $e', tag: 'InfluxDB');
         }
@@ -129,7 +139,10 @@ class InfluxDbService {
         healthy = (ready.status == ReadyStatusEnum.ready);
       } catch (e) {
         // If READY fails but ping looked fine, log separately for diagnostics.
-        Logger.debug('Ready check failed: $e (pingReachable=$pingIndicatesReachable)', tag: 'InfluxDB');
+        Logger.debug(
+          'Ready check failed: $e (pingReachable=$pingIndicatesReachable)',
+          tag: 'InfluxDB',
+        );
         healthy = false;
       }
       if (healthy) {
@@ -166,7 +179,10 @@ class InfluxDbService {
       if (_lastConnectionStatus == 'connected') {
         final ok = await checkHealth();
         if (!ok) {
-          Logger.warning('InfluxDB became unhealthy during periodic check', tag: 'InfluxDB');
+          Logger.warning(
+            'InfluxDB became unhealthy during periodic check',
+            tag: 'InfluxDB',
+          );
         }
       }
     });

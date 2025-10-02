@@ -221,9 +221,7 @@ void main() {
       });
 
       test('handles disposal errors gracefully', () async {
-        when(
-          () => mockMqttService.dispose(),
-        ).thenThrow('MQTT dispose error');
+        when(() => mockMqttService.dispose()).thenThrow('MQTT dispose error');
         when(() => mockInfluxService.close()).thenAnswer((_) async {});
 
         // Should not throw despite MQTT error

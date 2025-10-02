@@ -350,8 +350,8 @@ void main() {
         );
 
         // Wait for the app to settle
-  await tester.pump();
-  await pumpUntilSettled(tester);
+        await tester.pump();
+        await pumpUntilSettled(tester);
 
         // Verify that the sensor page is displayed
         expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -386,8 +386,8 @@ void main() {
         await tester.pumpWidget(
           const ProviderScope(child: HydroponicMonitorApp()),
         );
-  await tester.pump();
-  await pumpUntilSettled(tester);
+        await tester.pump();
+        await pumpUntilSettled(tester);
 
         // Ensure the connection banner is rendered with refresh control
         final connectionBanner = find.byType(ConnectionNotification);
@@ -405,7 +405,9 @@ void main() {
         );
         expect(refreshGestureFinder, findsWidgets);
 
-        final gesture = tester.widget<GestureDetector>(refreshGestureFinder.first);
+        final gesture = tester.widget<GestureDetector>(
+          refreshGestureFinder.first,
+        );
         expect(
           gesture.onTap,
           isNotNull,
@@ -475,22 +477,18 @@ void main() {
 
             final iconToUse = hasWifiIcon ? wifiIcon : wifiOffIcon;
 
-            await pumpUntilTrue(
-              tester,
-              () {
-                final bannerElements = connectionBanner.evaluate();
-                if (bannerElements.isEmpty) {
-                  return false;
-                }
-                final container = ProviderScope.containerOf(
-                  bannerElements.first,
-                  listen: false,
-                );
-                final connectionStatus = container.read(connectionStatusProvider);
-                return connectionStatus.hasValue;
-              },
-              timeout: const Duration(seconds: 15),
-            );
+            await pumpUntilTrue(tester, () {
+              final bannerElements = connectionBanner.evaluate();
+              if (bannerElements.isEmpty) {
+                return false;
+              }
+              final container = ProviderScope.containerOf(
+                bannerElements.first,
+                listen: false,
+              );
+              final connectionStatus = container.read(connectionStatusProvider);
+              return connectionStatus.hasValue;
+            }, timeout: const Duration(seconds: 15));
 
             final wifiGestureFinder = find.ancestor(
               of: iconToUse,
@@ -498,7 +496,9 @@ void main() {
             );
             expect(wifiGestureFinder, findsWidgets);
 
-            final wifiGesture = tester.widget<GestureDetector>(wifiGestureFinder.first);
+            final wifiGesture = tester.widget<GestureDetector>(
+              wifiGestureFinder.first,
+            );
             expect(wifiGesture.onLongPress, isNotNull);
 
             wifiGesture.onLongPress!.call();
@@ -523,13 +523,12 @@ void main() {
                   matching: find.byType(Text),
                 )
                 .evaluate()
-                .map(
-                  (element) => (element.widget as Text).data ?? '',
-                )
+                .map((element) => (element.widget as Text).data ?? '')
                 .join(' ')
                 .toLowerCase();
 
-            final hasStatusText = statusTexts.contains('connected') ||
+            final hasStatusText =
+                statusTexts.contains('connected') ||
                 statusTexts.contains('disconnected') ||
                 statusTexts.contains('loading') ||
                 statusTexts.contains('error');
