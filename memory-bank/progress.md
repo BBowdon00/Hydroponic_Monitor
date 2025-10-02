@@ -35,7 +35,13 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 
 #### Video Integration  
 - [x] **MJPEG Streaming**: Framework established (native/feature flagged) ✅ **COMPLETED (Baseline)**
-- [x] **Web-Compatible MJPEG Path**: Implement controller & UI state cleanup (TASK007) 🚧 **COMPLETED**
+- [x] **Web-Compatible MJPEG Path**: Implement controller & UI state cleanup (TASK007) ✅ **COMPLETED**
+
+#### Connection Management
+- [x] **Manual Reconnect System**: ConnectionRecoveryService with MQTT client recreation ✅ **COMPLETED (TASK008)**
+- [x] **Persistent Connection Banner**: Always-visible status with Wi-Fi icon and refresh controls ✅ **COMPLETED (TASK008)**
+- [x] **Granular Connection Feedback**: Individual MQTT/InfluxDB status reporting with user notifications ✅ **COMPLETED (TASK008)**
+- [x] **Connection Recovery Testing**: Comprehensive unit tests for reconnection scenarios ✅ **COMPLETED (TASK008)**
 
 ### System Infrastructure ✅ COMPLETE
 

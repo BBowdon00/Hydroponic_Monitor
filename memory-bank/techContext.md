@@ -32,6 +32,7 @@
 - **Package**: `mqtt_client` (server + browser implementations)
 - **Usage**: `MqttService` handles connect/reconnect, topic subscriptions (`grow/{node}/sensor|actuator|device`), publishes commands, replays status cache for late subscribers.
 - **Web Support**: Attempts `MqttBrowserClient` over WebSocket (`ws://host:9001`), falls back to TCP client for tests.
+- **Manual Reconnect**: Enhanced with `reset()` method for clean client recreation, preserving streams during reconnection cycles via `ConnectionRecoveryService`.
 
 #### MJPEG Streaming
 - **Native**: `dart:io` HttpClient parser with boundary scanning + resolution events
@@ -41,7 +42,8 @@
 #### Time-Series Data (InfluxDB)
 - **Package**: `influxdb_client`
 - **Service**: `InfluxDbService` writes via `Point` API, queries via Flux with dummy fallback when server not reachable (development/testing)
-- **Planned**: Historical chart queries (range + aggregation) pending TASK TBD
+- **Health Monitoring**: Enhanced with `checkHealth()` using Ping + Ready APIs, automatic connection status emission
+- **Planned**: Historical chart queries (range + aggregation) pending TASK011
 
 #### HTTP / REST
 - `http` and `dio` are available for ancillary REST calls; currently unused in production flows (reserved for future modules).
