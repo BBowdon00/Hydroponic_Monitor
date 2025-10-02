@@ -89,6 +89,14 @@ class MqttService {
     }, isBroadcast: true);
   }
 
+  /// Re-emit the last known connection status to listeners (useful after manual
+  /// reconnect flows to force UI refresh if no transition event was observed).
+  void emitCurrentStatus() {
+    if (_lastConnectionStatus != null && !_connectionController.isClosed) {
+      _connectionController.add(_lastConnectionStatus!);
+    }
+  }
+
   /// Current connection status.
   MqttConnectionState? get connectionStatus => _client?.connectionStatus?.state;
 

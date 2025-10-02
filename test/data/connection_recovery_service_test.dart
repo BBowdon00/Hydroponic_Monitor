@@ -141,6 +141,8 @@ void main() {
       expect(result2.allFailed, isTrue);
       expect(result2.errorMessage, contains('Please wait 5s'));
       expect(result2.elapsed, equals(Duration.zero));
+      // New: structured error code should include throttled
+      expect(result2.errorCodes, contains(ReconnectErrorType.throttled));
 
       // Verify reset was only called once (for the first attempt)
       verify(() => mockMqttService.reset()).called(1);
@@ -194,6 +196,13 @@ void main() {
       expect(
         result2.errorMessage,
         anyOf([contains('already in progress'), contains('Please wait 5s')]),
+      );
+      // New: structured error code should include either concurrentAttempt or throttled
+      expect(
+        result2.errorCodes.any((c) =>
+            c == ReconnectErrorType.concurrentAttempt ||
+            c == ReconnectErrorType.throttled),
+        isTrue,
       );
 
       // Wait for first attempt to complete
@@ -329,6 +338,67 @@ void main() {
 
       expect(result1, equals(result2));
       expect(result1, isNot(equals(result3)));
+    });
+  });
+
+  group('Structured error codes', () {
+    late ConnectionRecoveryService service;
+    late MockMqttService mockMqttService;
+    late MockInfluxDbService mockInfluxService;
+
+    setUp(() {
+      mockMqttService = MockMqttService();
+      mockInfluxService = MockInfluxDbService();
+      service = ConnectionRecoveryService(
+        mqttService: mockMqttService,
+        influxService: mockInfluxService,
+      );
+    });
+
+    test('includes mqttUnknown when MQTT connect fails', () async {
+      when(() => mockMqttService.reset()).thenAnswer((_) async {});
+      when(() => mockMqttService.connect())
+          .thenAnswer((_) async => const Failure(MqttError('boom')));
+      when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => true);
+
+      final result = await service.manualReconnect();
+      expect(result.mqttOk, isFalse);
+      expect(result.influxOk, isTrue);
+      expect(result.errorCodes, contains(ReconnectErrorType.mqttUnknown));
+    });
+
+    test('includes influxInitFailed when health check throws', () async {
+      when(() => mockMqttService.reset()).thenAnswer((_) async {});
+      when(() => mockMqttService.connect())
+          .thenAnswer((_) async => const Success(null));
+      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+      when(() => mockInfluxService.checkHealth()).thenThrow(Exception('down'));
+
+      final result = await service.manualReconnect();
+      expect(result.mqttOk, isTrue);
+      expect(result.influxOk, isFalse);
+      expect(result.errorCodes, contains(ReconnectErrorType.influxInitFailed));
+    });
+
+    test('includes influxUnhealthy when health check false then init fails', () async {
+      when(() => mockMqttService.reset()).thenAnswer((_) async {});
+      when(() => mockMqttService.connect())
+          .thenAnswer((_) async => const Success(null));
+      when(() => mockMqttService.ensureInitialized()).thenAnswer((_) async {});
+      // First health check returns false; second path will call initialize()
+      when(() => mockInfluxService.checkHealth()).thenAnswer((_) async => false);
+      // initialize() returns Failure so final result should be false without exception (mapped to unhealthy OR initFailed)
+      when(() => mockInfluxService.initialize()).thenAnswer((_) async => const Failure(InfluxError('init fail')));
+
+      final result = await service.manualReconnect();
+      expect(result.mqttOk, isTrue);
+      expect(result.influxOk, isFalse);
+      // Implementation adds influxUnhealthy for false health and influxInitFailed for exception/failed init.
+      // Because our scenario triggers a failed init, we assert at least one of these codes appears.
+      expect(
+        result.errorCodes.any((c) => c == ReconnectErrorType.influxUnhealthy || c == ReconnectErrorType.influxInitFailed),
+        isTrue,
+      );
     });
   });
 }

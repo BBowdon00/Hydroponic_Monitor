@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../data/connection_recovery_service.dart';
 import '../../domain/entities/reconnect_result.dart';
 import 'data_providers.dart';
+import 'device_control_providers.dart'; // Added for deviceControlsProvider hook
 
 /// State for manual reconnection attempts.
 class ManualReconnectState {
@@ -74,6 +75,7 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
         influxOk: false,
         elapsed: Duration.zero,
         errorMessage: 'Reconnection already in progress',
+        errorCodes: const [ReconnectErrorType.concurrentAttempt],
       );
     }
 
@@ -83,6 +85,7 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
         influxOk: false,
         elapsed: Duration.zero,
         errorMessage: 'Please wait 5 seconds between reconnection attempts',
+        errorCodes: const [ReconnectErrorType.throttled],
       );
     }
 
@@ -92,6 +95,7 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
         influxOk: false,
         elapsed: Duration.zero,
         errorMessage: 'Reconnect request discarded - notifier unmounted',
+        errorCodes: const [ReconnectErrorType.unexpected],
       );
     }
 
@@ -116,6 +120,7 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
         influxOk: false,
         elapsed: Duration.zero,
         errorMessage: 'Unexpected error during reconnection: $e',
+        errorCodes: const [ReconnectErrorType.unexpected],
       );
 
       if (mounted) {
@@ -137,6 +142,11 @@ final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((
   return ConnectionRecoveryService(
     mqttService: mqttService,
     influxService: influxService,
+    onMqttReconnect: () {
+      // Normalize device control pending states after fresh session.
+      final notifier = ref.read(deviceControlsProvider.notifier);
+      notifier.onReconnect();
+    },
   );
 });
 

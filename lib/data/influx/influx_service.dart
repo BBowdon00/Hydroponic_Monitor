@@ -52,6 +52,15 @@ class InfluxDbService {
     }, isBroadcast: true);
   }
 
+  /// Re-emit the last known connection status (e.g., after manual reconnect) so
+  /// any dependent combined status providers can refresh without waiting for
+  /// another periodic health check.
+  void emitCurrentStatus() {
+    if (_lastConnectionStatus != null && !_connectionController.isClosed) {
+      _connectionController.add(_lastConnectionStatus!);
+    }
+  }
+
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
     try {
