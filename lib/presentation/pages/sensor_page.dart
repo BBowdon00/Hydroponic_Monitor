@@ -20,9 +20,7 @@ class _SensorPageState extends ConsumerState<SensorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sensor'),
-      ),
+      appBar: AppBar(title: const Text('Sensor')),
       body: _buildSensorContent(),
     );
   }

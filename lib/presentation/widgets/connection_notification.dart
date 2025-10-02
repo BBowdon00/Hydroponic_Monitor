@@ -120,7 +120,8 @@ class _ConnectionNotificationState
     final manualReconnectState = ref.watch(manualReconnectProvider);
 
     return connectionStatusAsync.when(
-      data: (status) => _buildConnectionBanner(context, status, manualReconnectState),
+      data: (status) =>
+          _buildConnectionBanner(context, status, manualReconnectState),
       loading: () => _buildLoadingBanner(context),
       error: (error, stack) => _buildErrorBanner(context),
     );
@@ -132,8 +133,12 @@ class _ConnectionNotificationState
     ManualReconnectState reconnectState,
   ) {
     final isConnected = status.allConnected;
-    final backgroundColor = isConnected ? Colors.green.shade100 : Colors.red.shade100;
-    final foregroundColor = isConnected ? Colors.green.shade800 : Colors.red.shade700;
+    final backgroundColor = isConnected
+        ? Colors.green.shade100
+        : Colors.red.shade100;
+    final foregroundColor = isConnected
+        ? Colors.green.shade800
+        : Colors.red.shade700;
 
     // Build list of disconnected services for messaging
     final disconnectedServices = <String>[];
@@ -143,8 +148,8 @@ class _ConnectionNotificationState
     final messageText = isConnected
         ? 'All services connected'
         : disconnectedServices.isEmpty
-            ? 'Connection Lost'
-            : '${disconnectedServices.join(', ')} disconnected';
+        ? 'Connection Lost'
+        : '${disconnectedServices.join(', ')} disconnected';
 
     return Container(
       width: double.infinity,
@@ -158,12 +163,23 @@ class _ConnectionNotificationState
         child: Row(
           children: [
             // Wi-Fi Icon with reconnect functionality
-            _buildWifiIcon(context, isConnected, foregroundColor, reconnectState),
+            _buildWifiIcon(
+              context,
+              isConnected,
+              foregroundColor,
+              reconnectState,
+            ),
             const SizedBox(width: AppTheme.spaceSm),
 
             // Status message
             Expanded(
-              child: _buildStatusMessage(context, messageText, foregroundColor, status, isConnected),
+              child: _buildStatusMessage(
+                context,
+                messageText,
+                foregroundColor,
+                status,
+                isConnected,
+              ),
             ),
 
             // Refresh button
@@ -258,7 +274,9 @@ class _ConnectionNotificationState
               )
             : Icon(
                 Icons.refresh,
-                color: canAttempt ? foregroundColor : foregroundColor.withAlpha(120),
+                color: canAttempt
+                    ? foregroundColor
+                    : foregroundColor.withAlpha(120),
                 size: 20,
               ),
       ),
@@ -331,14 +349,19 @@ class _ConnectionNotificationState
     );
   }
 
-  void _handleWifiIconTap(BuildContext context, ManualReconnectState reconnectState) {
+  void _handleWifiIconTap(
+    BuildContext context,
+    ManualReconnectState reconnectState,
+  ) {
     _handleRefreshTap(context);
   }
 
   void _handleRefreshTap(BuildContext context) async {
     if (mounted) {
-      final result = await ref.read(manualReconnectProvider.notifier).attemptReconnect();
-      
+      final result = await ref
+          .read(manualReconnectProvider.notifier)
+          .attemptReconnect();
+
       if (mounted) {
         _showReconnectFeedback(context, result);
       }
@@ -359,8 +382,14 @@ class _ConnectionNotificationState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDiagnosticRow('MQTT', status.mqttConnected ? 'Connected' : 'Disconnected'),
-                _buildDiagnosticRow('InfluxDB', status.influxConnected ? 'Connected' : 'Disconnected'),
+                _buildDiagnosticRow(
+                  'MQTT',
+                  status.mqttConnected ? 'Connected' : 'Disconnected',
+                ),
+                _buildDiagnosticRow(
+                  'InfluxDB',
+                  status.influxConnected ? 'Connected' : 'Disconnected',
+                ),
                 if (status.earliestDisconnection != null) ...[
                   const SizedBox(height: AppTheme.spaceMd),
                   Text('Disconnected: ${_formatDurationForStatus(status)} ago'),
@@ -402,16 +431,17 @@ class _ConnectionNotificationState
 
   void _showReconnectFeedback(BuildContext context, ReconnectResult result) {
     final messenger = ScaffoldMessenger.of(context);
-    
+
     Color backgroundColor;
     String message;
-    
+
     if (result.allOk) {
       backgroundColor = Colors.green;
       message = 'Successfully reconnected to all services';
     } else if (result.partialSuccess) {
       backgroundColor = Colors.orange;
-      message = 'Partial reconnection: ${result.mqttOk ? 'MQTT OK' : 'MQTT Failed'}, ${result.influxOk ? 'InfluxDB OK' : 'InfluxDB Failed'}';
+      message =
+          'Partial reconnection: ${result.mqttOk ? 'MQTT OK' : 'MQTT Failed'}, ${result.influxOk ? 'InfluxDB OK' : 'InfluxDB Failed'}';
     } else {
       backgroundColor = Colors.red;
       message = result.errorMessage ?? 'Failed to reconnect to all services';
@@ -419,10 +449,7 @@ class _ConnectionNotificationState
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white),
-        ),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: backgroundColor,
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,

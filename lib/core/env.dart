@@ -5,7 +5,8 @@ import 'dart:io' show Platform;
 /// Environment configuration helper.
 /// Loads configuration from .env file or environment variables.
 class Env {
-  static String get mqttHost => dotenv.env['MQTT_HOST'] ?? 'm0rb1d-server.mynetworksettings.com';
+  static String get mqttHost =>
+      dotenv.env['MQTT_HOST'] ?? 'm0rb1d-server.mynetworksettings.com';
   static String get mqttUsername => dotenv.env['MQTT_USERNAME'] ?? '';
   static String get mqttPassword => dotenv.env['MQTT_PASSWORD'] ?? '';
   static int get mqttPort =>
@@ -15,7 +16,8 @@ class Env {
   // so tests can inject tokens/urls without modifying .env file.
   // Note: Platform.environment is not available on web, so use dotenv only
   static String get influxUrl => kIsWeb
-      ? dotenv.env['INFLUX_URL'] ?? 'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
+      ? dotenv.env['INFLUX_URL'] ??
+            'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
       : Platform.environment['INFLUX_URL'] ??
             dotenv.env['INFLUX_URL'] ??
             _defaultInfluxUrl;
@@ -50,7 +52,8 @@ class Env {
             'sensors';
 
   static String get mjpegUrl =>
-    dotenv.env['MJPEG_URL'] ?? 'http://m0rb1d-server.mynetworksettings.com:8080/stream';
+      dotenv.env['MJPEG_URL'] ??
+      'http://m0rb1d-server.mynetworksettings.com:8080/stream';
 
   /// Feature flag: enable real MJPEG streaming implementation.
   /// Controlled via REAL_MJPEG environment variable ("true" to enable).

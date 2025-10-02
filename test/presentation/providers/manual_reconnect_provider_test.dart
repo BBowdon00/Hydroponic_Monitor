@@ -8,7 +8,8 @@ import 'package:hydroponic_monitor/domain/entities/reconnect_result.dart';
 import 'package:hydroponic_monitor/presentation/providers/manual_reconnect_provider.dart';
 
 // Mock classes
-class MockConnectionRecoveryService extends Mock implements ConnectionRecoveryService {}
+class MockConnectionRecoveryService extends Mock
+    implements ConnectionRecoveryService {}
 
 void main() {
   group('ManualReconnectProvider', () {
@@ -49,8 +50,9 @@ void main() {
         elapsed: Duration(milliseconds: 300),
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async => expectedResult);
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenAnswer((_) async => expectedResult);
 
       final notifier = container.read(manualReconnectProvider.notifier);
 
@@ -75,8 +77,9 @@ void main() {
         errorMessage: 'Both services failed',
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async => expectedResult);
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenAnswer((_) async => expectedResult);
 
       final notifier = container.read(manualReconnectProvider.notifier);
 
@@ -99,8 +102,9 @@ void main() {
         elapsed: Duration(milliseconds: 300),
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async {
+      when(() => mockService.manualReconnect(force: false)).thenAnswer((
+        _,
+      ) async {
         await Future.delayed(const Duration(milliseconds: 50));
         return expectedResult;
       });
@@ -109,7 +113,7 @@ void main() {
 
       // Act - start the reconnect (don't await yet)
       final futureResult = notifier.attemptReconnect();
-      
+
       // Check state immediately (should be in progress)
       var currentState = container.read(manualReconnectProvider);
       expect(currentState.inProgress, isTrue);
@@ -130,8 +134,9 @@ void main() {
         elapsed: Duration(milliseconds: 300),
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async {
+      when(() => mockService.manualReconnect(force: false)).thenAnswer((
+        _,
+      ) async {
         await Future.delayed(const Duration(milliseconds: 100));
         return result1;
       });
@@ -140,7 +145,7 @@ void main() {
 
       // Act - start first attempt
       final future1 = notifier.attemptReconnect();
-      
+
       // Act - try second attempt immediately
       final result2 = await notifier.attemptReconnect();
 
@@ -164,8 +169,9 @@ void main() {
         elapsed: Duration(milliseconds: 200),
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async => previousResult);
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenAnswer((_) async => previousResult);
 
       final notifier = container.read(manualReconnectProvider.notifier);
 
@@ -199,10 +205,12 @@ void main() {
         errorMessage: 'InfluxDB failed on retry',
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async => result1);
-      when(() => mockService.manualReconnect(force: true))
-          .thenAnswer((_) async => result2);
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenAnswer((_) async => result1);
+      when(
+        () => mockService.manualReconnect(force: true),
+      ).thenAnswer((_) async => result2);
 
       final notifier = container.read(manualReconnectProvider.notifier);
 
@@ -221,8 +229,9 @@ void main() {
 
     test('should handle service exceptions gracefully', () async {
       // Arrange
-      when(() => mockService.manualReconnect(force: false))
-          .thenThrow(Exception('Service crashed'));
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenThrow(Exception('Service crashed'));
 
       final notifier = container.read(manualReconnectProvider.notifier);
 
@@ -231,9 +240,12 @@ void main() {
 
       // Assert
       expect(result.allFailed, isTrue);
-      expect(result.errorMessage, contains('Unexpected error during reconnection'));
+      expect(
+        result.errorMessage,
+        contains('Unexpected error during reconnection'),
+      );
       expect(result.errorMessage, contains('Service crashed'));
-      
+
       final finalState = container.read(manualReconnectProvider);
       expect(finalState.inProgress, isFalse);
       expect(finalState.lastResult, equals(result));
@@ -254,10 +266,12 @@ void main() {
         elapsed: Duration(milliseconds: 300),
       );
 
-      when(() => mockService.manualReconnect(force: false))
-          .thenAnswer((_) async => result1);
-      when(() => mockService.manualReconnect(force: true))
-          .thenAnswer((_) async => result2);
+      when(
+        () => mockService.manualReconnect(force: false),
+      ).thenAnswer((_) async => result1);
+      when(
+        () => mockService.manualReconnect(force: true),
+      ).thenAnswer((_) async => result2);
 
       final notifier = container.read(manualReconnectProvider.notifier);
 

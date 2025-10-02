@@ -21,7 +21,7 @@ class ConnectionRecoveryService {
   bool _inProgress = false;
 
   /// Performs a manual reconnection of both MQTT and InfluxDB services.
-  /// 
+  ///
   /// Returns a [ReconnectResult] with the outcome of both reconnection attempts.
   /// If [force] is false and a reconnection was attempted less than 5 seconds ago,
   /// this method will return immediately with the previous result status.
@@ -29,8 +29,8 @@ class ConnectionRecoveryService {
     final now = DateTime.now();
 
     // Throttle consecutive attempts
-    if (!force && 
-        _lastAttempt != null && 
+    if (!force &&
+        _lastAttempt != null &&
         now.difference(_lastAttempt!) < _throttleInterval) {
       Logger.debug(
         'Manual reconnect throttled - last attempt was ${now.difference(_lastAttempt!).inSeconds}s ago',
@@ -40,13 +40,17 @@ class ConnectionRecoveryService {
         mqttOk: false,
         influxOk: false,
         elapsed: Duration.zero,
-        errorMessage: 'Please wait ${_throttleInterval.inSeconds}s between reconnection attempts',
+        errorMessage:
+            'Please wait ${_throttleInterval.inSeconds}s between reconnection attempts',
       );
     }
 
     // Prevent concurrent attempts
     if (_inProgress) {
-      Logger.debug('Manual reconnect already in progress', tag: 'ConnectionRecovery');
+      Logger.debug(
+        'Manual reconnect already in progress',
+        tag: 'ConnectionRecovery',
+      );
       return ReconnectResult(
         mqttOk: false,
         influxOk: false,
@@ -71,7 +75,10 @@ class ConnectionRecoveryService {
     try {
       // Reconnect MQTT
       try {
-        Logger.info('Attempting MQTT reconnection...', tag: 'ConnectionRecovery');
+        Logger.info(
+          'Attempting MQTT reconnection...',
+          tag: 'ConnectionRecovery',
+        );
         await _reconnectMqtt();
         mqttOk = true;
         Logger.info('MQTT reconnection successful', tag: 'ConnectionRecovery');
@@ -83,20 +90,28 @@ class ConnectionRecoveryService {
 
       // Test InfluxDB connection
       try {
-        Logger.info('Attempting InfluxDB health check...', tag: 'ConnectionRecovery');
+        Logger.info(
+          'Attempting InfluxDB health check...',
+          tag: 'ConnectionRecovery',
+        );
         final ok = await _testInfluxConnection();
         influxOk = ok;
         if (ok) {
-          Logger.info('InfluxDB health check successful', tag: 'ConnectionRecovery');
+          Logger.info(
+            'InfluxDB health check successful',
+            tag: 'ConnectionRecovery',
+          );
         } else {
-          Logger.warning('InfluxDB health check reported NOT healthy', tag: 'ConnectionRecovery');
+          Logger.warning(
+            'InfluxDB health check reported NOT healthy',
+            tag: 'ConnectionRecovery',
+          );
         }
       } catch (e) {
         final error = 'InfluxDB health check failed: $e';
         Logger.warning(error, tag: 'ConnectionRecovery');
         errors.add(error);
       }
-
     } finally {
       _inProgress = false;
     }
@@ -135,12 +150,18 @@ class ConnectionRecoveryService {
       if (result is Success) {
         // Step 4: Wait for initialization and topic subscriptions
         await mqttService.ensureInitialized();
-        Logger.debug('MQTT client successfully recreated and subscribed', tag: 'ConnectionRecovery');
+        Logger.debug(
+          'MQTT client successfully recreated and subscribed',
+          tag: 'ConnectionRecovery',
+        );
       } else if (result is Failure) {
         throw Exception('MQTT connection failed: ${result.error}');
       }
     } catch (e) {
-      Logger.error('Error during MQTT reconnection: $e', tag: 'ConnectionRecovery');
+      Logger.error(
+        'Error during MQTT reconnection: $e',
+        tag: 'ConnectionRecovery',
+      );
       rethrow;
     }
   }

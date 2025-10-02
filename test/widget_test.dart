@@ -44,10 +44,7 @@ ProviderScope _buildTestApp() {
       }),
       connectionStatusProvider.overrideWith(
         (ref) => Stream.value(
-          ConnectionStatus(
-            mqttConnected: true,
-            influxConnected: true,
-          ),
+          ConnectionStatus(mqttConnected: true, influxConnected: true),
         ),
       ),
       manualReconnectProvider.overrideWith(
@@ -98,15 +95,15 @@ void main() {
 
 class _TestMqttService extends MqttService {
   _TestMqttService()
-      : _sensorController = StreamController<SensorData>.broadcast(),
-        _deviceController = StreamController<Device>.broadcast(),
-        _connectionController = StreamController<String>.broadcast(),
-        super(
-          host: 'localhost',
-          port: 1883,
-          clientId: 'test-client',
-          autoReconnect: false,
-        );
+    : _sensorController = StreamController<SensorData>.broadcast(),
+      _deviceController = StreamController<Device>.broadcast(),
+      _connectionController = StreamController<String>.broadcast(),
+      super(
+        host: 'localhost',
+        port: 1883,
+        clientId: 'test-client',
+        autoReconnect: false,
+      );
 
   final StreamController<SensorData> _sensorController;
   final StreamController<Device> _deviceController;
@@ -133,7 +130,9 @@ class _TestMqttService extends MqttService {
   }
 
   @override
-  Future<void> ensureInitialized({Duration timeout = const Duration(seconds: 5)}) async {
+  Future<void> ensureInitialized({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     _connectionController.add('connected');
   }
 
@@ -163,13 +162,13 @@ class _TestMqttService extends MqttService {
 
 class _TestInfluxDbService extends InfluxDbService {
   _TestInfluxDbService()
-      : _connectionController = StreamController<String>.broadcast(),
-        super(
-          url: 'http://localhost:8086',
-          token: '',
-          organization: 'test-org',
-          bucket: 'test-bucket',
-        );
+    : _connectionController = StreamController<String>.broadcast(),
+      super(
+        url: 'http://localhost:8086',
+        token: '',
+        organization: 'test-org',
+        bucket: 'test-bucket',
+      );
 
   final StreamController<String> _connectionController;
 
@@ -196,12 +195,12 @@ class _TestInfluxDbService extends InfluxDbService {
 
 class _TestManualReconnectNotifier extends ManualReconnectNotifier {
   _TestManualReconnectNotifier()
-      : super(
-          ConnectionRecoveryService(
-            mqttService: _TestMqttService(),
-            influxService: _TestInfluxDbService(),
-          ),
-        );
+    : super(
+        ConnectionRecoveryService(
+          mqttService: _TestMqttService(),
+          influxService: _TestInfluxDbService(),
+        ),
+      );
 
   @override
   Future<ReconnectResult> attemptReconnect({bool force = false}) async {
