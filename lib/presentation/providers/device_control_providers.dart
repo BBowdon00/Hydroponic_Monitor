@@ -219,11 +219,17 @@ class DeviceControlsNotifier extends StateNotifier<DeviceControlsState> {
   /// Called after a successful manual MQTT reconnect to normalize pending state.
   /// Clears all pending flags & timers while preserving last known enabled/status.
   void onReconnect() {
-    Logger.info('Normalizing device control state after reconnect', tag: 'DeviceControls');
+    Logger.info(
+      'Normalizing device control state after reconnect',
+      tag: 'DeviceControls',
+    );
     final newDevices = <String, DeviceControlState>{};
     for (final entry in state.devices.entries) {
       final d = entry.value;
-      newDevices[entry.key] = d.copyWith(isPending: false, pendingCommandId: null);
+      newDevices[entry.key] = d.copyWith(
+        isPending: false,
+        pendingCommandId: null,
+      );
     }
     // Cancel all pending timers as their confirmations belong to the previous session.
     for (final timer in _pendingTimeouts.values) {

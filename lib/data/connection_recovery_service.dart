@@ -17,6 +17,7 @@ class ConnectionRecoveryService {
 
   final MqttService mqttService;
   final InfluxDbService influxService;
+
   /// Optional callback invoked after a successful MQTT client recreation & initialization.
   final void Function()? onMqttReconnect;
 
@@ -33,7 +34,9 @@ class ConnectionRecoveryService {
     final now = DateTime.now();
 
     // Throttle consecutive attempts
-    if (!force && _lastAttempt != null && now.difference(_lastAttempt!) < _throttleInterval) {
+    if (!force &&
+        _lastAttempt != null &&
+        now.difference(_lastAttempt!) < _throttleInterval) {
       final wait = _throttleInterval - now.difference(_lastAttempt!);
       Logger.debug(
         'Manual reconnect throttled - retry in ${wait.inMilliseconds}ms',
@@ -50,7 +53,10 @@ class ConnectionRecoveryService {
 
     // Prevent concurrent attempts
     if (_inProgress) {
-      Logger.debug('Manual reconnect already in progress', tag: 'ConnectionRecovery');
+      Logger.debug(
+        'Manual reconnect already in progress',
+        tag: 'ConnectionRecovery',
+      );
       return ReconnectResult(
         mqttOk: false,
         influxOk: false,
@@ -73,24 +79,27 @@ class ConnectionRecoveryService {
     final jitter = Duration(milliseconds: 50 + Random().nextInt(150));
     await Future.delayed(jitter);
 
-  bool mqttOk = false;
-  bool influxOk = false;
-  final errors = <String>[];
-  final errorCodes = <ReconnectErrorType>[];
+    bool mqttOk = false;
+    bool influxOk = false;
+    final errors = <String>[];
+    final errorCodes = <ReconnectErrorType>[];
 
-  // NOTE: We previously considered toggling autoReconnect during manual cycles.
-  // Removed direct access to avoid dependency on mock implementations; revisit if setter is exposed.
+    // NOTE: We previously considered toggling autoReconnect during manual cycles.
+    // Removed direct access to avoid dependency on mock implementations; revisit if setter is exposed.
 
     try {
       // Reconnect MQTT
       try {
-        Logger.info('Attempting MQTT reconnection...', tag: 'ConnectionRecovery');
+        Logger.info(
+          'Attempting MQTT reconnection...',
+          tag: 'ConnectionRecovery',
+        );
         // Auto-reconnect suppression skipped (no safe toggle available)
-  await _reconnectMqtt();
+        await _reconnectMqtt();
         mqttOk = true;
         Logger.info('MQTT reconnection successful', tag: 'ConnectionRecovery');
-  // Invoke hook so higher layers (e.g., providers) can normalize pending state.
-  onMqttReconnect?.call();
+        // Invoke hook so higher layers (e.g., providers) can normalize pending state.
+        onMqttReconnect?.call();
       } catch (e) {
         final error = 'MQTT reconnection failed: $e';
         Logger.warning(error, tag: 'ConnectionRecovery');
@@ -100,13 +109,22 @@ class ConnectionRecoveryService {
 
       // Test InfluxDB connection
       try {
-        Logger.info('Attempting InfluxDB health check...', tag: 'ConnectionRecovery');
+        Logger.info(
+          'Attempting InfluxDB health check...',
+          tag: 'ConnectionRecovery',
+        );
         final ok = await _testInfluxConnection();
         influxOk = ok;
         if (ok) {
-          Logger.info('InfluxDB health check successful', tag: 'ConnectionRecovery');
+          Logger.info(
+            'InfluxDB health check successful',
+            tag: 'ConnectionRecovery',
+          );
         } else {
-          Logger.warning('InfluxDB health check reported NOT healthy', tag: 'ConnectionRecovery');
+          Logger.warning(
+            'InfluxDB health check reported NOT healthy',
+            tag: 'ConnectionRecovery',
+          );
           errorCodes.add(ReconnectErrorType.influxUnhealthy);
         }
       } catch (e) {
@@ -141,7 +159,10 @@ class ConnectionRecoveryService {
         influxService.emitCurrentStatus();
       }
     } catch (e) {
-      Logger.debug('Non-fatal: emitCurrentStatus failed: $e', tag: 'ConnectionRecovery');
+      Logger.debug(
+        'Non-fatal: emitCurrentStatus failed: $e',
+        tag: 'ConnectionRecovery',
+      );
     }
 
     // Log structured outcome

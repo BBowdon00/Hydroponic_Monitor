@@ -46,16 +46,16 @@ class ReconnectResult {
 
   @override
   String toString() {
-  final status = allOk
-    ? 'All services reconnected successfully'
-    : partialSuccess
-      ? 'Partial reconnection: MQTT ${mqttOk ? 'OK' : 'Failed'}, InfluxDB ${influxOk ? 'OK' : 'Failed'}'
-      : 'All services failed to reconnect';
+    final status = allOk
+        ? 'All services reconnected successfully'
+        : partialSuccess
+        ? 'Partial reconnection: MQTT ${mqttOk ? 'OK' : 'Failed'}, InfluxDB ${influxOk ? 'OK' : 'Failed'}'
+        : 'All services failed to reconnect';
 
-  final codes = errorCodes.isNotEmpty
-    ? ', codes: ${errorCodes.map((e) => e.name).join("|")}'
-    : '';
-  return 'ReconnectResult($status, elapsed: ${elapsed.inMilliseconds}ms${errorMessage != null ? ', error: $errorMessage' : ''}$codes)';
+    final codes = errorCodes.isNotEmpty
+        ? ', codes: ${errorCodes.map((e) => e.name).join("|")}'
+        : '';
+    return 'ReconnectResult($status, elapsed: ${elapsed.inMilliseconds}ms${errorMessage != null ? ', error: $errorMessage' : ''}$codes)';
   }
 
   @override
@@ -71,7 +71,13 @@ class ReconnectResult {
 
   @override
   int get hashCode {
-    return Object.hash(mqttOk, influxOk, elapsed, errorMessage, Object.hashAll(errorCodes));
+    return Object.hash(
+      mqttOk,
+      influxOk,
+      elapsed,
+      errorMessage,
+      Object.hashAll(errorCodes),
+    );
   }
 
   bool _listEquals(List<ReconnectErrorType> a, List<ReconnectErrorType> b) {
