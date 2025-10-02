@@ -58,6 +58,7 @@ dependencies:
   # Storage and environment
   flutter_secure_storage: ^9.2.2
   flutter_dotenv: ^6.0.0
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
