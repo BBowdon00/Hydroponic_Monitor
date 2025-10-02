@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../app.dart';
 import '../../core/theme.dart';
 import '../providers/config_controller.dart';
+import '../providers/connection_recovery_service.dart';
 import '../../domain/entities/app_config.dart';
 
 /// Settings page for configuring MQTT, InfluxDB, video, and app preferences.
@@ -19,6 +20,32 @@ class SettingsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Settings'),
         actions: [
+          // Explicit Save button to persist current state (even if unchanged) & force reconnect
+          IconButton(
+            tooltip: 'Save & Reconnect',
+            icon: const Icon(Icons.save),
+            onPressed: () async {
+              final controller = ref.read(configControllerProvider.notifier);
+              final current = ref.read(configControllerProvider).value;
+              if (current == null) return; // Should not happen when button enabled
+
+              // Persist explicitly (avoids relying solely on debounced per-field saves)
+              await controller.updateConfig(current);
+
+              // Invoke recovery service to ensure fresh connections
+              final recovery = ref.read(connectionRecoveryServiceProvider);
+              await recovery.reconnectAll();
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Settings saved. Reconnecting services...'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              }
+            },
+          ),
           // Reset to defaults button
           PopupMenuButton<String>(
             onSelected: (value) async {

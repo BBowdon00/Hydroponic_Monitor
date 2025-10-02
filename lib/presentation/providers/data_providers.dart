@@ -14,47 +14,91 @@ import 'config_controller.dart';
 
 /// Provider for MQTT service configuration.
 /// Watches configuration changes and recreates service with new settings.
-final mqttServiceProvider = Provider<MqttService>((ref) {
-  // Watch configuration, falling back to environment if config not loaded
-  final configAsync = ref.watch(configControllerProvider);
-  final config = configAsync.whenData((config) => config.mqtt).value ?? MqttConfig.fromEnv();
-  
-  Logger.info('Creating MQTT service with host: ${config.host}:${config.port}', 
-      tag: 'DataProviders');
+class _MqttServiceNotifier extends AutoDisposeNotifier<MqttService> {
+  MqttService? _previous;
 
-  return MqttService(
-    host: config.host,
-    port: config.port,
-    clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
-    username: config.username.isNotEmpty ? config.username : null,
-    password: config.password.isNotEmpty ? config.password : null,
-    // Disable auto reconnect during tests to avoid connection loops; enabled by default otherwise.
-    autoReconnect: !Env.isTest ? true : false,
-  );
-});
+  @override
+  MqttService build() {
+    final mqttConfig = ref.watch(configControllerProvider).maybeWhen(
+          data: (c) => c.mqtt,
+          orElse: () => MqttConfig.fromEnv(),
+        );
+
+    // Dispose previous instance before creating a new one
+    if (_previous != null) {
+      _previous!.disconnect();
+    }
+
+    final service = MqttService(
+      host: mqttConfig.host,
+      port: mqttConfig.port,
+      clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
+      username: mqttConfig.username.isNotEmpty ? mqttConfig.username : null,
+      password: mqttConfig.password.isNotEmpty ? mqttConfig.password : null,
+      autoReconnect: !Env.isTest,
+    );
+
+    Logger.info('Instantiated MQTT service (${mqttConfig.host}:${mqttConfig.port})', tag: 'DataProviders');
+
+    // Kick off connection (fire-and-forget)
+    if (!Env.isTest) {
+      // ignore: discarded_futures
+      service.connect();
+    }
+
+    _previous = service;
+
+    ref.onDispose(() {
+      service.disconnect();
+    });
+
+    return service;
+  }
+}
+
+final mqttServiceProvider = AutoDisposeNotifierProvider<_MqttServiceNotifier, MqttService>(() => _MqttServiceNotifier());
 
 /// Provider for InfluxDB service configuration.
 /// Watches configuration changes and recreates service with new settings.
-final influxServiceProvider = Provider<InfluxDbService>((ref) {
-  // Watch configuration, falling back to environment if config not loaded
-  final configAsync = ref.watch(configControllerProvider);
-  final config = configAsync.whenData((config) => config.influx).value ?? InfluxConfig.fromEnv();
-  
-  Logger.info('Creating InfluxDB service with URL: ${config.url}', 
-      tag: 'DataProviders');
+class _InfluxServiceNotifier extends AutoDisposeNotifier<InfluxDbService> {
+  InfluxDbService? _previous;
 
-  return InfluxDbService(
-    url: config.url,
-    token: config.token,
-    organization: config.organization,
-    bucket: config.bucket,
-  );
-});
+  @override
+  InfluxDbService build() {
+    final influxConfig = ref.watch(configControllerProvider).maybeWhen(
+          data: (c) => c.influx,
+          orElse: () => InfluxConfig.fromEnv(),
+        );
+
+    if (_previous != null) {
+      _previous!.close();
+    }
+
+    final service = InfluxDbService(
+      url: influxConfig.url,
+      token: influxConfig.token,
+      organization: influxConfig.organization,
+      bucket: influxConfig.bucket,
+    );
+    Logger.info('Instantiated InfluxDB service (${influxConfig.url})', tag: 'DataProviders');
+
+    if (!Env.isTest) {
+      // ignore: discarded_futures
+      service.initialize();
+    }
+    _previous = service;
+
+    ref.onDispose(() => service.close());
+    return service;
+  }
+}
+
+final influxServiceProvider = AutoDisposeNotifierProvider<_InfluxServiceNotifier, InfluxDbService>(() => _InfluxServiceNotifier());
 
 /// Provider for sensor repository.
 final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
-  final mqttService = ref.read(mqttServiceProvider);
-  final influxService = ref.read(influxServiceProvider);
+  final mqttService = ref.watch(mqttServiceProvider); // watch so it rebuilds on new service
+  final influxService = ref.watch(influxServiceProvider);
 
   return SensorRepository(
     mqttService: mqttService,
@@ -89,13 +133,13 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
             'Failed to initialize sensor repository: ${(result as Failure).error}',
             tag: 'DataProviders',
           );
-          throw Exception('Failed to initialize sensor repository: ${(result as Failure).error}');
+          throw Exception('Failed to initialize sensor repository: ${result.error}');
         })();
 });
 
 /// Provider for device repository.
 final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
-  final mqttService = ref.read(mqttServiceProvider);
+  final mqttService = ref.watch(mqttServiceProvider);
 
   return DeviceRepository(mqttService: mqttService);
 });

@@ -51,6 +51,22 @@ class InfluxDbService {
     }, isBroadcast: true);
   }
 
+  /// Close underlying client and streams.
+  Future<void> close() async {
+    try {
+      Logger.info('Closing InfluxDB client', tag: 'InfluxDB');
+      _client?.close();
+      if (!_connectionController.isClosed) {
+        await _connectionController.close();
+      }
+    } catch (e) {
+      Logger.error('Error closing InfluxDB client: $e', tag: 'InfluxDB', error: e);
+    }
+  }
+
+  /// Convenience dispose alias.
+  Future<void> dispose() async => close();
+
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
     try {
@@ -579,19 +595,4 @@ from(bucket: "$bucket")
     }
   }
 
-  /// Close the InfluxDB client.
-  Future<void> close() async {
-    try {
-      Logger.info('Closing InfluxDB client', tag: 'InfluxDB');
-      _connectionController.add('disconnected');
-      _client?.close();
-      await _connectionController.close();
-    } catch (e) {
-      Logger.error(
-        'Error closing InfluxDB client: $e',
-        tag: 'InfluxDB',
-        error: e,
-      );
-    }
-  }
 }

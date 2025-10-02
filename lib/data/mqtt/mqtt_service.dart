@@ -273,6 +273,9 @@ class MqttService {
     }
   }
 
+  /// Alias for symmetry with other services; disconnect already handles cleanup.
+  Future<void> dispose() async => disconnect();
+
   /// Subscribe to a specific topic
   Future<void> subscribe(String topic) async {
     if (isConnected) {
