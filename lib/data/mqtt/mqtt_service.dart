@@ -33,7 +33,7 @@ class MqttService {
 
   MqttClient? _client;
   bool _isConnecting = false;
-  final Completer<void> _initializedCompleter = Completer<void>();
+  Completer<void> _initializedCompleter = Completer<void>();
   final StreamController<SensorData> _sensorDataController =
       StreamController<SensorData>.broadcast();
   final StreamController<Device> _deviceStatusController =
@@ -249,21 +249,20 @@ class MqttService {
     try {
       Logger.info('Disconnecting from MQTT broker', tag: 'MQTT');
 
+      // Disconnect the client
       _client?.disconnect();
-
-      // Close streams
-      if (!_sensorDataController.isClosed) {
-        await _sensorDataController.close();
-      }
-      if (!_deviceStatusController.isClosed) {
-        await _deviceStatusController.close();
-      }
+      
+      // Reset state for potential reconnection
+      _isConnecting = false;
+      
+      // Emit disconnected status
       if (!_connectionController.isClosed) {
-        await _connectionController.close();
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
       }
-      if (!_messageController.isClosed) {
-        await _messageController.close();
-      }
+
+      // Note: Don't close streams here as they may be needed for reconnection
+      // Streams will be closed in dispose() method
     } catch (e) {
       Logger.error(
         'Error disconnecting from MQTT broker: $e',
@@ -584,9 +583,67 @@ class MqttService {
   }
 
   /// Dispose resources (for parity with repository expectations).
+  /// Reset the MQTT connection for reconnection (without closing streams).
+  Future<void> reset() async {
+    try {
+      Logger.info('Resetting MQTT service for reconnection', tag: 'MQTT');
+      
+      // Disconnect and dispose current client
+      if (_client != null) {
+        _client!.disconnect();
+        // Wait a moment for clean disconnect
+        await Future.delayed(const Duration(milliseconds: 100));
+        _client = null;
+      }
+      
+      // Reset connection state
+      _isConnecting = false;
+      
+      // Clear device status buffer but keep streams open
+      _deviceStatusBuffer.clear();
+      
+      // Reset initialization completer for new connection
+      if (_initializedCompleter.isCompleted) {
+        // Create new completer for the reconnection
+        _initializedCompleter = Completer<void>();
+      }
+      
+      Logger.debug('MQTT service reset completed', tag: 'MQTT');
+    } catch (e) {
+      Logger.warning('Error during MQTT reset: $e', tag: 'MQTT');
+    }
+  }
+
   Future<void> dispose() async {
     try {
-      await disconnect();
+      Logger.info('Disposing MQTT service', tag: 'MQTT');
+      
+      // Disconnect the client
+      _client?.disconnect();
+      _client = null;
+      
+      // Reset state
+      _isConnecting = false;
+      
+      // Close all streams
+      if (!_sensorDataController.isClosed) {
+        await _sensorDataController.close();
+      }
+      if (!_deviceStatusController.isClosed) {
+        await _deviceStatusController.close();
+      }
+      if (!_connectionController.isClosed) {
+        await _connectionController.close();
+      }
+      if (!_messageController.isClosed) {
+        await _messageController.close();
+      }
+      
+      // Complete initialization completer if not already done
+      if (!_initializedCompleter.isCompleted) {
+        _initializedCompleter.complete();
+      }
+      
     } catch (e) {
       Logger.warning('Error during MQTT dispose: $e', tag: 'MQTT');
     }

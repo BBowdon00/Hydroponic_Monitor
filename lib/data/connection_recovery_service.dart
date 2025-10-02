@@ -121,20 +121,27 @@ class ConnectionRecoveryService {
   }
 
   /// Reconnects the MQTT service by disconnecting and reconnecting.
+  /// This follows TASK008 requirements: teardown + reconnect handshake with new client.
   Future<void> _reconnectMqtt() async {
-    // Disconnect existing client
-    await mqttService.disconnect();
+    try {
+      // Step 1: Reset existing client (dispose client but keep streams)
+      await mqttService.reset();
 
-    // Small delay to ensure clean disconnect
-    await Future.delayed(const Duration(milliseconds: 100));
+      // Step 2: Small delay to ensure clean disconnect and resource cleanup
+      await Future.delayed(const Duration(milliseconds: 200));
 
-    // Reconnect
-    final result = await mqttService.connect();
-    if (result is Success) {
-      // Connection successful, wait for initialization
-      await mqttService.ensureInitialized();
-    } else if (result is Failure) {
-      throw Exception('MQTT connection failed: ${result.error}');
+      // Step 3: Reconnect with new client instance
+      final result = await mqttService.connect();
+      if (result is Success) {
+        // Step 4: Wait for initialization and topic subscriptions
+        await mqttService.ensureInitialized();
+        Logger.debug('MQTT client successfully recreated and subscribed', tag: 'ConnectionRecovery');
+      } else if (result is Failure) {
+        throw Exception('MQTT connection failed: ${result.error}');
+      }
+    } catch (e) {
+      Logger.error('Error during MQTT reconnection: $e', tag: 'ConnectionRecovery');
+      rethrow;
     }
   }
 

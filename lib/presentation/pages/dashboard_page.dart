@@ -20,8 +20,6 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   @override
   Widget build(BuildContext context) {
-    final hasSensorData = ref.watch(hasSensorDataProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),

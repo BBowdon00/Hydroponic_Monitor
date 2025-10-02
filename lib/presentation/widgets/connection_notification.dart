@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -135,7 +134,6 @@ class _ConnectionNotificationState
     final isConnected = status.allConnected;
     final backgroundColor = isConnected ? Colors.green.shade100 : Colors.red.shade100;
     final foregroundColor = isConnected ? Colors.green.shade800 : Colors.red.shade700;
-    final accentColor = isConnected ? Colors.green.shade200 : Colors.red.shade200;
 
     // Build list of disconnected services for messaging
     final disconnectedServices = <String>[];
