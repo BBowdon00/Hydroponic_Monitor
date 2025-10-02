@@ -74,6 +74,80 @@ if [ $elapsed -ge $timeout ]; then
     exit 1
 fi
 
+echo "🔍 Verifying service readiness with API calls..."
+
+# Check InfluxDB health with retries
+max_attempts=10
+attempt=1
+while [ $attempt -le $max_attempts ]; do
+    if curl -f -s http://localhost:8086/health > /dev/null 2>&1; then
+        echo "✅ InfluxDB health check passed"
+        break
+    else
+        if [ $attempt -eq $max_attempts ]; then
+            echo "❌ InfluxDB health check failed after $max_attempts attempts"
+            docker compose logs influxdb --tail=20
+            docker compose down
+            exit 1
+        fi
+        echo "⏳ InfluxDB not ready, attempt $attempt/$max_attempts..."
+        sleep 5
+        attempt=$((attempt + 1))
+    fi
+done
+
+# Check MQTT broker with retries
+attempt=1
+while [ $attempt -le $max_attempts ]; do
+    if mosquitto_pub -h localhost -p 1883 -t test/health -m "check" > /dev/null 2>&1; then
+        echo "✅ MQTT broker health check passed"
+        break
+    else
+        if [ $attempt -eq $max_attempts ]; then
+            echo "❌ MQTT broker health check failed after $max_attempts attempts"
+            docker compose logs mosquitto --tail=20
+            docker compose down
+            exit 1
+        fi
+        echo "⏳ MQTT not ready, attempt $attempt/$max_attempts..."
+        sleep 3
+        attempt=$((attempt + 1))
+    fi
+done
+
+# Check Nginx proxy endpoints
+attempt=1
+while [ $attempt -le $max_attempts ]; do
+    nginx_influx_ok=false
+    nginx_root_ok=false
+    
+    if curl -f -s http://localhost:8081/influxdb/health > /dev/null 2>&1; then
+        nginx_influx_ok=true
+    fi
+    
+    if curl -f -s http://localhost:8081/ > /dev/null 2>&1; then
+        nginx_root_ok=true
+    fi
+    
+    if [ "$nginx_influx_ok" = true ] && [ "$nginx_root_ok" = true ]; then
+        echo "✅ Nginx proxy health check passed"
+        break
+    else
+        if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Nginx proxy health check failed after $max_attempts attempts"
+            echo "   InfluxDB proxy: $nginx_influx_ok, Root: $nginx_root_ok"
+            docker compose logs nginx --tail=20
+            docker compose down
+            exit 1
+        fi
+        echo "⏳ Nginx proxy not ready, attempt $attempt/$max_attempts..."
+        sleep 3
+        attempt=$((attempt + 1))
+    fi
+done
+
+echo "🎉 All services verified and ready for testing!"
+
 echo "🔍 Service status:"
 docker compose ps
 

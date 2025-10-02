@@ -1,0 +1,26 @@
+{
+  "ConnectionManager_connections": {
+    "mqtt.eclipse.org": {
+      "configVersion": 1,
+      "certValidation": false,
+      "clientId": "mqtt-explorer-2ffa58e0",
+      "id": "mqtt.eclipse.org",
+      "name": "TEST",
+      "encryption": false,
+      "subscriptions": [
+        {
+          "topic": "#",
+          "qos": 0
+        },
+        {
+          "topic": "$SYS/#",
+          "qos": 0
+        }
+      ],
+      "type": "mqtt",
+      "host": "m0rb1d-server.mynetworksettings.com",
+      "port": "1883",
+      "protocol": "mqtt"
+    }
+  }
+}
