@@ -69,13 +69,13 @@ void main() {
     DeviceControlsNotifier.enforceNodeOnlineForCommands = true;
   });
 
-  testWidgets('App starts and loads dashboard', (WidgetTester tester) async {
+  testWidgets('App starts and loads sensor page', (WidgetTester tester) async {
     await tester.pumpWidget(_buildTestApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // Verify that the app starts with the dashboard.
-    expect(find.text('Dashboard'), findsWidgets);
+    // Verify that the app starts with the sensor page.
+    expect(find.text('Sensor'), findsWidgets);
     expect(find.text('Water Level'), findsOneWidget);
     expect(find.text('Temperature'), findsOneWidget);
   });

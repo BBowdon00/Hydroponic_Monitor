@@ -4,31 +4,30 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../widgets/sensor_tile.dart';
 import '../../core/theme.dart';
 import '../../domain/entities/sensor_data.dart';
-import '../providers/device_control_providers.dart';
 import '../providers/data_providers.dart';
 import '../providers/connection_status_provider.dart';
 import '../providers/sensor_providers.dart';
 
-/// Dashboard page showing overview of sensor data and system status.
-class DashboardPage extends ConsumerStatefulWidget {
-  const DashboardPage({super.key});
+/// Sensor page showing overview of sensor data and system status.
+class SensorPage extends ConsumerStatefulWidget {
+  const SensorPage({super.key});
 
   @override
-  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+  ConsumerState<SensorPage> createState() => _SensorPageState();
 }
 
-class _DashboardPageState extends ConsumerState<DashboardPage> {
+class _SensorPageState extends ConsumerState<SensorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Sensor'),
       ),
-      body: _buildDashboardContent(),
+      body: _buildSensorContent(),
     );
   }
 
-  Widget _buildDashboardContent() {
+  Widget _buildSensorContent() {
     return RefreshIndicator(
       onRefresh: () async {
         // Refresh data services
@@ -59,18 +58,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   const SizedBox(height: AppTheme.spaceMd),
                   _buildSensorGrid(crossAxisCount),
-
-                  const SizedBox(height: AppTheme.spaceLg),
-
-                  // Device Control Section
-                  Text(
-                    'Device Control',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spaceMd),
-                  _buildDeviceControls(),
                 ],
               ),
             );
@@ -197,7 +184,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       icon: icon,
       color: color,
       trend: _calculateTrend(sensorType, sensorData.value),
+      // Coarsen timestamp so stale notifier only changes:
+      // - in whole minute increments while < 60 minutes old
+      // - in whole hour increments once >= 60 minutes old
+      lastUpdated: _coarsenTimestamp(sensorData.timestamp),
     );
+  }
+
+  DateTime _coarsenTimestamp(DateTime ts) {
+    final now = DateTime.now();
+    final age = now.difference(ts);
+    if (age.inMinutes < 60) {
+      return DateTime(ts.year, ts.month, ts.day, ts.hour, ts.minute);
+    }
+    return DateTime(ts.year, ts.month, ts.day, ts.hour);
   }
 
   SensorTrend _calculateTrend(SensorType sensorType, double value) {
@@ -217,140 +217,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     }
   }
 
-  Widget _buildDeviceControls() {
-    final pumpState = ref.watch(pumpControlProvider);
-    final fan1State = ref.watch(fan1ControlProvider);
-    final fan2State = ref.watch(fan2ControlProvider);
-    final lightState = ref.watch(lightControlProvider);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 800 ? 4 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: AppTheme.spaceMd,
-          mainAxisSpacing: AppTheme.spaceMd,
-          childAspectRatio: 2.5,
-          children: [
-            _buildSimpleDeviceCard(
-              context,
-              title: 'Water Pump',
-              icon: Icons.water_drop,
-              color: Colors.blue,
-              isEnabled: pumpState.isEnabled,
-              isPending: pumpState.isPending,
-              onToggle: (enabled) {
-                ref
-                    .read(deviceControlsProvider.notifier)
-                    .toggleDevice(pumpState.deviceId, enabled);
-              },
-            ),
-            _buildSimpleDeviceCard(
-              context,
-              title: 'Fan 1',
-              icon: Icons.air,
-              color: Colors.cyan,
-              isEnabled: fan1State.isEnabled,
-              isPending: fan1State.isPending,
-              onToggle: (enabled) {
-                ref
-                    .read(deviceControlsProvider.notifier)
-                    .toggleDevice(fan1State.deviceId, enabled);
-              },
-            ),
-            _buildSimpleDeviceCard(
-              context,
-              title: 'Fan 2',
-              icon: Icons.air,
-              color: Colors.teal,
-              isEnabled: fan2State.isEnabled,
-              isPending: fan2State.isPending,
-              onToggle: (enabled) {
-                ref
-                    .read(deviceControlsProvider.notifier)
-                    .toggleDevice(fan2State.deviceId, enabled);
-              },
-            ),
-            _buildSimpleDeviceCard(
-              context,
-              title: 'LED Lights',
-              icon: Icons.wb_sunny,
-              color: Colors.amber,
-              isEnabled: lightState.isEnabled,
-              isPending: lightState.isPending,
-              onToggle: (enabled) {
-                ref
-                    .read(deviceControlsProvider.notifier)
-                    .toggleDevice(lightState.deviceId, enabled);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildSimpleDeviceCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required Color color,
-    required bool isEnabled,
-    required bool isPending,
-    required void Function(bool) onToggle,
-  }) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spaceSm),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spaceXs),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXs),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: AppTheme.spaceSm),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (isPending)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  Switch(
-                    value: isEnabled,
-                    onChanged: isPending ? null : onToggle,
-                    activeThumbColor: color,
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showConnectionStatus(BuildContext context) {
-    final connectionStatus = ref.watch(connectionStatusProvider);
+    final connectionStatusAsync = ref.watch(connectionStatusProvider);
     final hasSensorData = ref.watch(hasSensorDataProvider);
 
     showDialog(
@@ -361,35 +229,39 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            connectionStatus.when(
-              data: (status) => Column(
+            connectionStatusAsync.when(
+              data: (connectionStatus) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildConnectionRow(
-                    'MQTT',
-                    status.mqttConnected ? 'connected' : 'disconnected',
+                    'InfluxDB',
+                    connectionStatus.influxConnected ? 'connected' : 'error',
                   ),
                   _buildConnectionRow(
-                    'InfluxDB',
-                    status.influxConnected ? 'connected' : 'disconnected',
+                    'MQTT',
+                    connectionStatus.mqttConnected ? 'connected' : 'error',
                   ),
                 ],
               ),
               loading: () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildConnectionRow('MQTT', 'loading'),
                   _buildConnectionRow('InfluxDB', 'loading'),
                 ],
               ),
-              error: (_, stackTrace) => Column(
+              error: (error, stack) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildConnectionRow('MQTT', 'error'),
                   _buildConnectionRow('InfluxDB', 'error'),
                 ],
               ),
             ),
+            const SizedBox(height: AppTheme.spaceMd),
             _buildConnectionRow(
               'Sensor Data',
-              hasSensorData ? 'receiving' : 'waiting',
+              hasSensorData ? 'available' : 'no data',
             ),
           ],
         ),
@@ -407,36 +279,37 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     Color statusColor;
     IconData statusIcon;
 
-    switch (status.toLowerCase()) {
+    switch (status) {
       case 'connected':
-      case 'receiving':
+      case 'available':
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         break;
-      case 'disconnected':
-      case 'waiting':
-        statusColor = Colors.orange;
-        statusIcon = Icons.warning;
-        break;
+      case 'connecting':
       case 'loading':
-        statusColor = Colors.blue;
-        statusIcon = Icons.sync;
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending;
         break;
-      default:
+      case 'error':
+      case 'no data':
         statusColor = Colors.red;
         statusIcon = Icons.error;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.help;
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.spaceXs),
       child: Row(
         children: [
-          Icon(statusIcon, color: statusColor, size: 16),
-          const SizedBox(width: 8),
+          Icon(statusIcon, color: statusColor, size: 20),
+          const SizedBox(width: AppTheme.spaceSm),
           Text('$service: '),
           Text(
-            status,
-            style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
+            status.toUpperCase(),
+            style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
           ),
         ],
       ),
