@@ -103,6 +103,9 @@ else
     exit 1
 fi
 
+# Create test logs directory
+mkdir -p test/logs
+
 # Run unit tests
 if [ "$RUN_UNIT" = true ]; then
     print_status $BLUE "🔬 Running unit tests..."

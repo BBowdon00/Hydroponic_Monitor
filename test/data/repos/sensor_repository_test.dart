@@ -211,25 +211,25 @@ void main() {
 
     group('disposal', () {
       test('properly disposes all resources', () async {
-        when(() => mockMqttService.disconnect()).thenAnswer((_) async {});
+        when(() => mockMqttService.dispose()).thenAnswer((_) async {});
         when(() => mockInfluxService.close()).thenAnswer((_) async {});
 
         await repository.dispose();
 
-        verify(() => mockMqttService.disconnect()).called(1);
+        verify(() => mockMqttService.dispose()).called(1);
         verify(() => mockInfluxService.close()).called(1);
       });
 
       test('handles disposal errors gracefully', () async {
         when(
-          () => mockMqttService.disconnect(),
-        ).thenThrow('MQTT disconnect error');
+          () => mockMqttService.dispose(),
+        ).thenThrow('MQTT dispose error');
         when(() => mockInfluxService.close()).thenAnswer((_) async {});
 
         // Should not throw despite MQTT error
         await repository.dispose();
 
-        verify(() => mockMqttService.disconnect()).called(1);
+        verify(() => mockMqttService.dispose()).called(1);
         // InfluxDB close may not be called if MQTT disconnect throws
         // This depends on the implementation - in this case, the exception stops execution
         verifyNever(() => mockInfluxService.close());

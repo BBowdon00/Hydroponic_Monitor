@@ -248,6 +248,24 @@ MQTT Broker → MqttService → SensorRepository → Riverpod Providers → UI W
 
 **Error Handling**:
 - MQTT auto-reconnect & guard against duplicate connect attempts.
+- Manual reconnection via `ConnectionRecoveryService` for immediate user-driven recovery.
+
+### Connection Recovery Pattern (TASK008)
+
+**Manual Reconnection System**: Users can force MQTT/InfluxDB reconnection via persistent connection banner.
+
+**Key Components**:
+- `ConnectionRecoveryService`: Core reconnection logic with 5s throttling
+- `ManualReconnectProvider`: Riverpod state management  
+- `ConnectionNotification`: Always-visible banner with Wi-Fi icon + refresh controls
+
+**Reconnection Flow**: Banner → Provider → Service → MQTT reset() + InfluxDB checkHealth() → Result feedback
+
+**Design Features**:
+- Stream preservation during MQTT client recreation
+- Granular MQTT/InfluxDB success/failure reporting
+- Persistent UI across all pages (not dashboard-only)
+- Comprehensive testing coverage (26 unit/provider/widget tests)
 - Defensive JSON parsing with silent drops for malformed payloads.
 - InfluxDB unavailability triggers dummy data generation to keep UI responsive.
 - Provider error states mapped to UI copy (“No Data”, “Waiting…”).

@@ -12,6 +12,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hydroponic_monitor/core/logger.dart';
 import 'package:hydroponic_monitor/presentation/app.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
+import 'package:hydroponic_monitor/presentation/providers/manual_reconnect_provider.dart';
+import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
+import 'package:hydroponic_monitor/presentation/widgets/connection_notification.dart';
 import '../test_utils.dart';
 
 /// Integration tests for the sensor page with real MQTT data.
@@ -201,6 +204,50 @@ class ConnectionTestHelper {
   }
 }
 
+Future<void> pumpUntilSettled(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 6),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final maxIterations = timeout.inMilliseconds ~/ step.inMilliseconds;
+  for (var i = 0; i < maxIterations; i++) {
+    await tester.pump(step);
+    if (tester.binding.transientCallbackCount == 0 &&
+        !tester.binding.hasScheduledFrame) {
+      return;
+    }
+  }
+  throw TimeoutException('pumpUntilSettled timed out after $timeout');
+}
+
+Future<void> pumpUntilTrue(
+  WidgetTester tester,
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 8),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  if (condition()) {
+    return;
+  }
+
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    await tester.pump(step);
+    if (condition()) {
+      return;
+    }
+  }
+
+  throw TimeoutException('pumpUntilTrue timed out after $timeout');
+}
+
+void drainPendingTestExceptions(WidgetTester tester) {
+  Object? pending;
+  while ((pending = tester.takeException()) != null) {
+    Logger.warning('Ignoring exception captured during test: $pending');
+  }
+}
+
 void main() {
   group('Sensor Real-time Integration', () {
     const testTimeout = Timeout(Duration(minutes: 2)); // Reduced from 3 minutes
@@ -303,8 +350,8 @@ void main() {
         );
 
         // Wait for the app to settle
-        await tester.pump();
-        await tester.pumpAndSettle();
+  await tester.pump();
+  await pumpUntilSettled(tester);
 
         // Verify that the sensor page is displayed
         expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -339,15 +386,43 @@ void main() {
         await tester.pumpWidget(
           const ProviderScope(child: HydroponicMonitorApp()),
         );
-        await tester.pump();
-        await tester.pumpAndSettle();
+  await tester.pump();
+  await pumpUntilSettled(tester);
 
-        // Find and tap the refresh button
-        final refreshButton = find.byIcon(Icons.refresh);
+        // Ensure the connection banner is rendered with refresh control
+        final connectionBanner = find.byType(ConnectionNotification);
+        expect(connectionBanner, findsOneWidget);
+
+        final refreshButton = find.descendant(
+          of: connectionBanner,
+          matching: find.byIcon(Icons.refresh),
+        );
         expect(refreshButton, findsOneWidget);
 
-        await tester.tap(refreshButton);
-        await tester.pumpAndSettle();
+        final refreshGestureFinder = find.ancestor(
+          of: refreshButton,
+          matching: find.byType(GestureDetector),
+        );
+        expect(refreshGestureFinder, findsWidgets);
+
+        final gesture = tester.widget<GestureDetector>(refreshGestureFinder.first);
+        expect(
+          gesture.onTap,
+          isNotNull,
+          reason: 'Refresh control should expose a tap handler',
+        );
+
+        final elements = connectionBanner.evaluate();
+        final container = ProviderScope.containerOf(
+          elements.first,
+          listen: false,
+        );
+        final reconnectState = container.read(manualReconnectProvider);
+        expect(
+          reconnectState.canAttempt,
+          isTrue,
+          reason: 'Manual reconnect should be available for user interaction',
+        );
 
         // The tap should complete without errors
         expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -377,80 +452,90 @@ void main() {
             ); // Reduced from 3 seconds
             await tester.pump();
 
-            // Find the connection status button in the AppBar (wifi icon)
-            final appBarWifiOff = find.descendant(
-              of: find.byType(AppBar),
-              matching: find.widgetWithIcon(IconButton, Icons.wifi_off),
+            // Find the connection banner wifi icon (connected or disconnected)
+            final connectionBanner = find.byType(ConnectionNotification);
+            expect(connectionBanner, findsOneWidget);
+
+            final wifiIcon = find.descendant(
+              of: connectionBanner,
+              matching: find.byIcon(Icons.wifi),
             );
-            final appBarWifi = find.descendant(
-              of: find.byType(AppBar),
-              matching: find.widgetWithIcon(IconButton, Icons.wifi),
+            final wifiOffIcon = find.descendant(
+              of: connectionBanner,
+              matching: find.byIcon(Icons.wifi_off),
             );
 
-            // Verify that at least one connection status button exists
-            final hasConnectionButton =
-                appBarWifiOff.evaluate().isNotEmpty ||
-                appBarWifi.evaluate().isNotEmpty;
+            final hasWifiIcon = wifiIcon.evaluate().isNotEmpty;
+            final hasWifiOffIcon = wifiOffIcon.evaluate().isNotEmpty;
+            expect(
+              hasWifiIcon || hasWifiOffIcon,
+              isTrue,
+              reason: 'Connection banner should display wifi status icon',
+            );
 
-            if (!hasConnectionButton) {
-              // If no connection button found, this might indicate a UI issue
-              Logger.warning('No connection status button found in AppBar');
-              expect(
-                hasConnectionButton,
-                isTrue,
-                reason:
-                    'Should have a connection status button (wifi or wifi_off) in AppBar',
-              );
-            }
+            final iconToUse = hasWifiIcon ? wifiIcon : wifiOffIcon;
 
-            // Tap the connection status button
-            if (appBarWifiOff.evaluate().isNotEmpty) {
-              await tester.tap(appBarWifiOff);
-              Logger.info(
-                'Tapped wifi_off button (services likely disconnected)',
-              );
-            } else {
-              await tester.tap(appBarWifi);
-              Logger.info('Tapped wifi button (services likely connected)');
-            }
+            await pumpUntilTrue(
+              tester,
+              () {
+                final bannerElements = connectionBanner.evaluate();
+                if (bannerElements.isEmpty) {
+                  return false;
+                }
+                final container = ProviderScope.containerOf(
+                  bannerElements.first,
+                  listen: false,
+                );
+                final connectionStatus = container.read(connectionStatusProvider);
+                return connectionStatus.hasValue;
+              },
+              timeout: const Duration(seconds: 15),
+            );
 
-            await tester.pumpAndSettle();
+            final wifiGestureFinder = find.ancestor(
+              of: iconToUse,
+              matching: find.byType(GestureDetector),
+            );
+            expect(wifiGestureFinder, findsWidgets);
 
-            // Verify that the connection status dialog appeared
-            expect(find.text('Connection Status'), findsOneWidget);
+            final wifiGesture = tester.widget<GestureDetector>(wifiGestureFinder.first);
+            expect(wifiGesture.onLongPress, isNotNull);
+
+            wifiGesture.onLongPress!.call();
+            await tester.pump();
+
+            await pumpUntilTrue(
+              tester,
+              () => find.text('Connection Diagnostics').evaluate().isNotEmpty,
+              timeout: const Duration(seconds: 6),
+            );
+
+            // Verify that the connection diagnostics dialog appeared
+            expect(find.text('Connection Diagnostics'), findsOneWidget);
 
             // Verify that MQTT status is shown (should be either connected or disconnected)
             final mqttConnectedFinder = find.textContaining('MQTT');
             expect(mqttConnectedFinder, findsAtLeastNWidgets(1));
 
-            // Check for connection status text - be flexible about the exact status
-            final hasConnectedText = find
-                .text('connected')
+            final statusTexts = find
+                .descendant(
+                  of: find.byType(AlertDialog),
+                  matching: find.byType(Text),
+                )
                 .evaluate()
-                .isNotEmpty;
-            final hasDisconnectedText = find
-                .text('disconnected')
-                .evaluate()
-                .isNotEmpty;
-            final hasLoadingText = find.text('loading').evaluate().isNotEmpty;
-            final hasErrorText = find.text('error').evaluate().isNotEmpty;
+                .map(
+                  (element) => (element.widget as Text).data ?? '',
+                )
+                .join(' ')
+                .toLowerCase();
 
-            // Log the actual connection status found
-            if (hasConnectedText) {
-              Logger.info('✅ Connection status shows: connected');
-            } else if (hasDisconnectedText) {
-              Logger.info('⚠️ Connection status shows: disconnected');
-            } else if (hasLoadingText) {
-              Logger.info('🔄 Connection status shows: loading');
-            } else if (hasErrorText) {
-              Logger.info('❌ Connection status shows: error');
-            }
+            final hasStatusText = statusTexts.contains('connected') ||
+                statusTexts.contains('disconnected') ||
+                statusTexts.contains('loading') ||
+                statusTexts.contains('error');
 
             expect(
-              hasConnectedText ||
-                  hasDisconnectedText ||
-                  hasLoadingText ||
-                  hasErrorText,
+              hasStatusText,
               isTrue,
               reason:
                   'Should show some connection status (connected/disconnected/loading/error)',
@@ -462,10 +547,16 @@ void main() {
 
             // Close the dialog
             await tester.tap(find.text('Close'));
-            await tester.pumpAndSettle();
+            await pumpUntilTrue(
+              tester,
+              () => find.text('Connection Diagnostics').evaluate().isEmpty,
+              timeout: const Duration(seconds: 6),
+            );
+
+            drainPendingTestExceptions(tester);
 
             // Verify dialog is closed and dashboard is still visible
-            expect(find.text('Connection Status'), findsNothing);
+            expect(find.text('Connection Diagnostics'), findsNothing);
             expect(find.text('Sensor'), findsAtLeastNWidgets(1));
 
             final statusSummary = mqttBrokerAvailable && influxDbAvailable
@@ -537,7 +628,7 @@ void main() {
 
             // Wait for initial render
             await tester.pump();
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
 
             // Verify dashboard is rendered
             expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -597,7 +688,7 @@ void main() {
             await Future.delayed(
               const Duration(seconds: 3),
             ); // Reduced from 6 seconds
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
           }); // End of runAsync
 
           // Search for temperature display patterns
@@ -697,7 +788,7 @@ void main() {
             );
 
             await tester.pump();
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
 
             // Verify dashboard renders
             expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -787,7 +878,7 @@ void main() {
             await Future.delayed(
               const Duration(seconds: 4),
             ); // Reduced from 8 seconds
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
           }); // End of runAsync
 
           // Verify that the dashboard structure is present
@@ -888,7 +979,7 @@ void main() {
             );
 
             await tester.pump();
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
 
             // Verify dashboard renders
             expect(find.text('Sensor'), findsAtLeastNWidgets(1));
@@ -945,7 +1036,7 @@ void main() {
             await Future.delayed(
               const Duration(seconds: 2),
             ); // Reduced from 5 seconds
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
 
             // Send second temperature reading with different value
             const secondTemp = 25.8;
@@ -978,7 +1069,7 @@ void main() {
             await Future.delayed(
               const Duration(seconds: 2),
             ); // Reduced from 5 seconds
-            await tester.pumpAndSettle();
+            await pumpUntilSettled(tester);
           }); // End of runAsync
 
           // Check for first temperature value

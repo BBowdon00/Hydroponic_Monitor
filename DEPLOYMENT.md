@@ -21,15 +21,19 @@ docker compose up -d
 
 # 5. Verify deployment
 docker compose ps
-curl http://localhost:8086/health  # InfluxDB health check
+curl http://m0rb1d-server.mynetworksettings.com:8086/health  # InfluxDB health check (direct)
+curl http://m0rb1d-server.mynetworksettings.com:8080/        # Nginx proxy root (if PROXY_HTTP_PORT=8080)
+curl http://m0rb1d-server.mynetworksettings.com:8080/influxdb/health  # InfluxDB via proxy
 ```
 
 ## Architecture
 
 ```
 IoT Devices → MQTT (Mosquitto) → Telegraf → InfluxDB
-                    ↓
-              Flutter App
+           ↓                    ↑
+        Flutter App        (via nginx /influxdb)
+           ↘
+           Nginx (/mqtt WebSocket, /influxdb API)
 ```
 
 ## Environment Configuration
@@ -109,6 +113,7 @@ mosquitto_passwd -b config/mosquitto/passwords controller your_password
 ufw allow 1883/tcp   # MQTT
 ufw allow 8086/tcp   # InfluxDB
 # Block 9001/tcp unless WebSocket access needed
+ufw allow 8080/tcp   # Nginx reverse proxy (PROXY_HTTP_PORT) if enabled
 ```
 
 ## Monitoring
@@ -120,10 +125,15 @@ ufw allow 8086/tcp   # InfluxDB
 docker compose ps
 
 # InfluxDB health
-curl http://localhost:8086/health
+curl http://m0rb1d-server.mynetworksettings.com:8086/health
+curl http://m0rb1d-server.mynetworksettings.com:8080/influxdb/health   # Through nginx proxy
 
 # MQTT connectivity
-mosquitto_pub -h localhost -u controller -P your_password -t health -m test
+mosquitto_pub -h m0rb1d-server.mynetworksettings.com -u controller -P your_password -t health -m test
+## WebSocket via nginx reverse proxy (example using websocat)
+# websocat -H 'Sec-WebSocket-Protocol: mqtt' ws://m0rb1d-server.mynetworksettings.com:8080/mqtt/
+
+> NOTE: For local development you may still use localhost-based URLs (e.g., http://localhost:8080/influxdb). Replace with your LAN / public domain in production as shown above.
 
 # Check logs
 docker compose logs influxdb

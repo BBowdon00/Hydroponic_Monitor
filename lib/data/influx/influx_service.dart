@@ -27,6 +27,7 @@ class InfluxDbService {
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
   String? _lastConnectionStatus;
+  Timer? _healthTimer;
 
   /// Stream of connection status changes.
   Stream<String> get connectionStream {
@@ -66,11 +67,17 @@ class InfluxDbService {
       // Initialize write and query APIs
       _writeApi = _client!.getWriteService();
       _queryApi = _client!.getQueryService();
-
-      Logger.info('Successfully connected to InfluxDB', tag: 'InfluxDB');
-      _lastConnectionStatus = 'connected';
-      _connectionController.add('connected');
-      return Success(null); // remove `const` unless Success has a const ctor
+      // Perform explicit health check so we don't report connected when server is down
+      final healthy = await checkHealth();
+      if (healthy) {
+        Logger.info('Successfully connected to InfluxDB (health pass)', tag: 'InfluxDB');
+        _startHealthMonitoring();
+        return Success(null);
+      } else {
+        final error = 'InfluxDB health check failed during initialization';
+        Logger.warning(error, tag: 'InfluxDB');
+        return Failure(InfluxError(error));
+      }
     } catch (e) {
       final error = 'Error initializing InfluxDB client: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
@@ -78,6 +85,91 @@ class InfluxDbService {
       _connectionController.add('disconnected');
       return Failure(InfluxError(error)); // remove `const` unless allowed
     }
+  }
+
+  /// Explicit lightweight health check.
+  /// Strategy:
+  /// 1. Use Ping API (fast, minimal auth requirement) to verify server reachability.
+  /// 2. Use Ready API to verify the instance is ready (not initializing / upgrading).
+  /// If both pass, we mark as connected. Any failure marks disconnected.
+  Future<bool> checkHealth() async {
+    try {
+      if (_client == null) {
+        Logger.debug('Creating InfluxDB client for health check', tag: 'InfluxDB');
+        _client = InfluxDBClient(
+          url: url,
+          token: token,
+          org: organization,
+          bucket: bucket,
+        );
+        _writeApi = _client!.getWriteService();
+        _queryApi = _client!.getQueryService();
+      }
+
+      var healthy = false;
+      // Step 1: ping
+      bool pingIndicatesReachable = false;
+      try {
+        await _client!.getPingApi().getPing();
+        pingIndicatesReachable = true; // reachable
+      } catch (e) {
+        // In some InfluxDB setups the ping endpoint can return a 400 while the instance is otherwise healthy.
+        // If we detect a 400 ApiException, we will proceed to the READY check before declaring failure.
+        if (e is ApiException && e.code == 400) {
+          Logger.debug('Ping returned 400 (tolerated) – proceeding to READY check', tag: 'InfluxDB');
+          pingIndicatesReachable = true; // treat as soft success, defer real decision to READY
+        } else {
+          Logger.debug('Ping failed: $e', tag: 'InfluxDB');
+        }
+      }
+
+      // Step 2: always attempt ready (even if ping failed) – it gives definitive cluster readiness.
+      try {
+        final ready = await _client!.getReadyApi().getReady();
+        healthy = (ready.status == ReadyStatusEnum.ready);
+      } catch (e) {
+        // If READY fails but ping looked fine, log separately for diagnostics.
+        Logger.debug('Ready check failed: $e (pingReachable=$pingIndicatesReachable)', tag: 'InfluxDB');
+        healthy = false;
+      }
+      if (healthy) {
+        if (_lastConnectionStatus != 'connected') {
+          _lastConnectionStatus = 'connected';
+          _connectionController.add('connected');
+          // (Re)start monitoring on transition to connected
+          _startHealthMonitoring();
+        }
+        return true;
+      } else {
+        if (_lastConnectionStatus != 'disconnected') {
+          _lastConnectionStatus = 'disconnected';
+          _connectionController.add('disconnected');
+        }
+        return false;
+      }
+    } catch (e) {
+      Logger.warning('InfluxDB health check error: $e', tag: 'InfluxDB');
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
+      return false;
+    }
+  }
+
+  void _startHealthMonitoring() {
+    // Ensure only one timer
+    _healthTimer?.cancel();
+    // Run periodic health checks every minute while app stays alive.
+    _healthTimer = Timer.periodic(const Duration(minutes: 1), (t) async {
+      // Only run if we still think we're connected to avoid spamming when down.
+      if (_lastConnectionStatus == 'connected') {
+        final ok = await checkHealth();
+        if (!ok) {
+          Logger.warning('InfluxDB became unhealthy during periodic check', tag: 'InfluxDB');
+        }
+      }
+    });
   }
 
   /// Write sensor data to InfluxDB.
@@ -239,10 +331,20 @@ from(bucket: "$bucket")
         'Retrieved ${sensorDataList.length} sensor data points from InfluxDB',
         tag: 'InfluxDB',
       );
+      // Mark healthy since query succeeded
+      if (_lastConnectionStatus != 'connected') {
+        _lastConnectionStatus = 'connected';
+        _connectionController.add('connected');
+      }
       return Success(sensorDataList);
     } catch (e) {
       final error = 'Error querying sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      // Mark disconnected on failure
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
 
       // Fallback to dummy data if query fails (for development/testing)
       Logger.warning(
@@ -304,10 +406,18 @@ from(bucket: "$bucket")
         'Retrieved ${sensorDataList.length} latest sensor readings from InfluxDB',
         tag: 'InfluxDB',
       );
+      if (_lastConnectionStatus != 'connected') {
+        _lastConnectionStatus = 'connected';
+        _connectionController.add('connected');
+      }
       return Success(sensorDataList);
     } catch (e) {
       final error = 'Error querying latest sensor data from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
 
       // Fallback to dummy data if query fails (for development/testing)
       Logger.warning(
@@ -584,6 +694,8 @@ from(bucket: "$bucket")
     try {
       Logger.info('Closing InfluxDB client', tag: 'InfluxDB');
       _connectionController.add('disconnected');
+      _healthTimer?.cancel();
+      _healthTimer = null;
       _client?.close();
       await _connectionController.close();
     } catch (e) {

@@ -134,7 +134,7 @@ class SensorRepository {
     try {
       Logger.info('Disposing sensor repository', tag: 'SensorRepository');
       await _mqttSubscription?.cancel();
-      await mqttService.disconnect();
+      await mqttService.dispose();
       await influxService.close();
     } catch (e) {
       Logger.error(
