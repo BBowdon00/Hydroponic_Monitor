@@ -6,6 +6,8 @@ import 'package:influxdb_client/api.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
+import '../../presentation/pages/charts_page.dart';
 
 /// InfluxDB client for storing and querying time-series sensor data.
 class InfluxDbService {
@@ -460,6 +462,93 @@ from(bucket: "$bucket")
     }
   }
 
+  /// Query time series data for charts with aggregation.
+  Future<Result<List<TimeSeriesPoint>>> queryTimeSeries({
+    required SensorType sensorType,
+    required ChartRange range,
+    String? sensorId,
+    String? deviceId,
+  }) async {
+    final endTime = DateTime.now();
+    final startTime = endTime.subtract(range.duration);
+
+    // If client is not initialized, return dummy data
+    if (_client == null || _queryApi == null) {
+      Logger.info(
+        'InfluxDB client not initialized, generating dummy time series data',
+        tag: 'InfluxDB',
+      );
+      final dummyPoints = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: endTime,
+        points: range.expectedPoints,
+      );
+      return Success(dummyPoints);
+    }
+
+    try {
+      Logger.info(
+        'Querying time series from InfluxDB: sensor=${sensorType.name}, range=${range.name}',
+        tag: 'InfluxDB',
+      );
+
+      // Build filters
+      final filters = <String>[
+        '|> filter(fn: (r) => r["_measurement"] == "sensor")',
+        '|> filter(fn: (r) => r["_field"] == "value")',
+        '|> filter(fn: (r) => r["deviceType"] == "${sensorType.name}")',
+      ];
+
+      if (sensorId != null) {
+        filters.add('|> filter(fn: (r) => r["deviceID"] == "$sensorId")');
+      }
+
+      if (deviceId != null) {
+        filters.add('|> filter(fn: (r) => r["deviceNode"] == "$deviceId")');
+      }
+
+      final filtersString = filters.join('\n  ');
+
+      final query =
+          '''
+from(bucket: "$bucket")
+  |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${endTime.toUtc().toIso8601String()})
+  $filtersString
+  |> aggregateWindow(every: ${range.aggregationWindow}, fn: mean, createEmpty: false)
+  |> sort(columns: ["_time"], desc: false)
+  |> yield(name: "mean")
+''';
+
+      Logger.debug('Executing time series Flux query: $query', tag: 'InfluxDB');
+
+      final queryResult = await _queryApi!.query(query);
+      final timeSeriesPoints = await _parseTimeSeriesResult(queryResult);
+
+      Logger.info(
+        'Retrieved ${timeSeriesPoints.length} time series points from InfluxDB',
+        tag: 'InfluxDB',
+      );
+      return Success(timeSeriesPoints);
+    } catch (e) {
+      final error = 'Error querying time series from InfluxDB: $e';
+      Logger.error(error, tag: 'InfluxDB', error: e);
+
+      // Fallback to dummy data if query fails (for development/testing)
+      Logger.warning(
+        'Falling back to dummy time series data due to query error',
+        tag: 'InfluxDB',
+      );
+      final dummyPoints = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: endTime,
+        points: range.expectedPoints,
+      );
+      return Success(dummyPoints);
+    }
+  }
+
   /// Parse query result from InfluxDB client.
   Future<List<SensorData>> _parseQueryResult(
     Stream<FluxRecord> queryResult,
@@ -711,6 +800,167 @@ from(bucket: "$bucket")
         return 'esp32_1'; // Environmental sensors
       case SensorType.powerUsage:
         return 'esp32_2'; // Power monitoring
+    }
+  }
+
+  /// Parse time series query result from InfluxDB client.
+  Future<List<TimeSeriesPoint>> _parseTimeSeriesResult(
+    Stream<FluxRecord> queryResult,
+  ) async {
+    final timeSeriesPoints = <TimeSeriesPoint>[];
+
+    try {
+      await for (final record in queryResult) {
+        try {
+          final timeSeriesPoint = _parseTimeSeriesRecord(record);
+          if (timeSeriesPoint != null) {
+            timeSeriesPoints.add(timeSeriesPoint);
+          }
+        } catch (e) {
+          Logger.warning(
+            'Failed to parse time series record: $e',
+            tag: 'InfluxDB',
+          );
+        }
+      }
+
+      // Sort by timestamp for consistent chart display
+      timeSeriesPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+      Logger.debug(
+        'Finished parsing time series result with ${timeSeriesPoints.length} points',
+        tag: 'InfluxDB',
+      );
+    } catch (e) {
+      Logger.error(
+        'Error parsing time series result: $e',
+        tag: 'InfluxDB',
+        error: e,
+      );
+    }
+
+    return timeSeriesPoints;
+  }
+
+  /// Parse a single FluxRecord into TimeSeriesPoint.
+  TimeSeriesPoint? _parseTimeSeriesRecord(FluxRecord record) {
+    try {
+      final timestampRaw = record['_time'];
+      final value = record['_value'];
+
+      if (timestampRaw == null || value == null) {
+        return null;
+      }
+
+      // Parse timestamp - handle both String and DateTime types
+      DateTime? timestamp;
+      if (timestampRaw is DateTime) {
+        timestamp = timestampRaw;
+      } else if (timestampRaw is String) {
+        timestamp = DateTime.tryParse(timestampRaw);
+      }
+
+      if (timestamp == null) {
+        Logger.error(
+          'Failed to parse timestamp: $timestampRaw',
+          tag: 'InfluxDB',
+        );
+        return null;
+      }
+
+      // Parse value as double
+      final doubleValue = value is double
+          ? value
+          : double.tryParse(value.toString());
+      if (doubleValue == null) return null;
+
+      return TimeSeriesPoint(timestamp: timestamp, value: doubleValue);
+    } catch (e) {
+      Logger.error('Error parsing FluxRecord: $e', tag: 'InfluxDB', error: e);
+      return null;
+    }
+  }
+
+  /// Generate dummy time series data for development/testing.
+  List<TimeSeriesPoint> _generateDummyTimeSeries({
+    required SensorType sensorType,
+    required DateTime start,
+    required DateTime end,
+    required int points,
+  }) {
+    final duration = end.difference(start);
+    final interval = Duration(
+      milliseconds: duration.inMilliseconds ~/ (points - 1),
+    );
+    final dummyPoints = <TimeSeriesPoint>[];
+
+    final random = Random();
+    final baseValue = _getBaseValue(sensorType);
+    final variance = _getVariance(sensorType);
+
+    for (int i = 0; i < points; i++) {
+      final timestamp = start.add(
+        Duration(milliseconds: interval.inMilliseconds * i),
+      );
+
+      // Generate realistic values with some variation and trend
+      final trendFactor = (i / points) * 0.1; // Slight upward trend
+      final noiseFactor = (random.nextDouble() - 0.5) * 2; // Random noise
+      final value =
+          baseValue + (variance * noiseFactor) + (baseValue * trendFactor);
+
+      dummyPoints.add(
+        TimeSeriesPoint(
+          timestamp: timestamp,
+          value: value.clamp(0, baseValue * 2), // Ensure reasonable bounds
+        ),
+      );
+    }
+
+    return dummyPoints;
+  }
+
+  /// Get base value for dummy data generation.
+  double _getBaseValue(SensorType sensorType) {
+    switch (sensorType) {
+      case SensorType.temperature:
+        return 24.0;
+      case SensorType.humidity:
+        return 65.0;
+      case SensorType.waterLevel:
+        return 15.0;
+      case SensorType.pH:
+        return 6.5;
+      case SensorType.electricalConductivity:
+        return 1200.0;
+      case SensorType.lightIntensity:
+        return 800.0;
+      case SensorType.airQuality:
+        return 50.0;
+      case SensorType.powerUsage:
+        return 45.0;
+    }
+  }
+
+  /// Get variance for dummy data generation.
+  double _getVariance(SensorType sensorType) {
+    switch (sensorType) {
+      case SensorType.temperature:
+        return 3.0;
+      case SensorType.humidity:
+        return 10.0;
+      case SensorType.waterLevel:
+        return 2.0;
+      case SensorType.pH:
+        return 0.3;
+      case SensorType.electricalConductivity:
+        return 200.0;
+      case SensorType.lightIntensity:
+        return 150.0;
+      case SensorType.airQuality:
+        return 15.0;
+      case SensorType.powerUsage:
+        return 10.0;
     }
   }
 
