@@ -141,17 +141,11 @@ void main() {
           );
         }
 
-        Logger.info(
-          'Deterministic generation verified',
-          tag: 'TimeSeriesTest',
-        );
+        Logger.info('Deterministic generation verified', tag: 'TimeSeriesTest');
       });
 
       test('generates realistic values for each sensor type', () async {
-        Logger.info(
-          'Testing realistic value ranges',
-          tag: 'TimeSeriesTest',
-        );
+        Logger.info('Testing realistic value ranges', tag: 'TimeSeriesTest');
 
         for (final sensorType in SensorType.values) {
           final result = await influxService.queryTimeSeries(

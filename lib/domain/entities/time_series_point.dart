@@ -1,9 +1,6 @@
 /// A single point in a time series for chart rendering.
 class TimeSeriesPoint {
-  const TimeSeriesPoint({
-    required this.timestamp,
-    required this.value,
-  });
+  const TimeSeriesPoint({required this.timestamp, required this.value});
 
   final DateTime timestamp;
   final double value;
@@ -19,6 +16,5 @@ class TimeSeriesPoint {
   int get hashCode => timestamp.hashCode;
 
   @override
-  String toString() =>
-      'TimeSeriesPoint(timestamp: $timestamp, value: $value)';
+  String toString() => 'TimeSeriesPoint(timestamp: $timestamp, value: $value)';
 }

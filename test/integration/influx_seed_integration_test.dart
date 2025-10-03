@@ -41,23 +41,40 @@ SensorData _synthPoint(SensorType type, DateTime ts, int i) {
   double amp;
   switch (type) {
     case SensorType.temperature:
-      base = 22; amp = 3; break;
+      base = 22;
+      amp = 3;
+      break;
     case SensorType.humidity:
-      base = 55; amp = 10; break;
+      base = 55;
+      amp = 10;
+      break;
     case SensorType.pH:
-      base = 6.2; amp = 0.12; break;
+      base = 6.2;
+      amp = 0.12;
+      break;
     case SensorType.waterLevel:
-      base = 70; amp = 6; break;
+      base = 70;
+      amp = 6;
+      break;
     case SensorType.powerUsage:
-      base = 120; amp = 30; break;
+      base = 120;
+      amp = 30;
+      break;
     case SensorType.electricalConductivity:
-      base = 1100; amp = 200; break;
+      base = 1100;
+      amp = 200;
+      break;
     case SensorType.lightIntensity:
-      base = 15000; amp = 5000; break;
+      base = 15000;
+      amp = 5000;
+      break;
     case SensorType.airQuality:
-      base = 400; amp = 80; break;
+      base = 400;
+      amp = 80;
+      break;
   }
-  final value = base + amp * (0.6 * math.sin(phase) + 0.4 * math.cos(phase / 2));
+  final value =
+      base + amp * (0.6 * math.sin(phase) + 0.4 * math.cos(phase / 2));
   return SensorData(
     id: '${type.name}_1',
     sensorType: type,
@@ -98,35 +115,55 @@ void main() {
         organization: TestConfig.testInfluxOrg,
         bucket: TestConfig.testInfluxBucket,
       );
-  final init = await influx.initialize();
-  expect(init, isA<Success<void>>(), reason: 'Influx initialization failed');
+      final init = await influx.initialize();
+      expect(
+        init,
+        isA<Success<void>>(),
+        reason: 'Influx initialization failed',
+      );
     });
 
     tearDownAll(() async {
       await influx.close();
     });
 
-    test('seed historical data for charts', tags: ['integration'], () async {
-      // For each sensor type build a synthetic multi-window series then write in batches
-      const batchSize = 500;
-      for (final type in seededTypes) {
-        final series = await _buildSeries(type);
-        // chunk
-        for (var offset = 0; offset < series.length; offset += batchSize) {
-          final slice = series.sublist(offset, math.min(offset + batchSize, series.length));
-          final result = await influx.writeSensorDataBatch(slice);
-          expect(result, isA<Success<void>>(), reason: 'Failed writing batch for ${type.name}');
+    test(
+      'seed historical data for charts',
+      tags: ['integration'],
+      () async {
+        // For each sensor type build a synthetic multi-window series then write in batches
+        const batchSize = 500;
+        for (final type in seededTypes) {
+          final series = await _buildSeries(type);
+          // chunk
+          for (var offset = 0; offset < series.length; offset += batchSize) {
+            final slice = series.sublist(
+              offset,
+              math.min(offset + batchSize, series.length),
+            );
+            final result = await influx.writeSensorDataBatch(slice);
+            expect(
+              result,
+              isA<Success<void>>(),
+              reason: 'Failed writing batch for ${type.name}',
+            );
+          }
         }
-      }
 
-      // Simple verification: latest query returns at least one reading per seeded type
-      final latestResult = await influx.queryLatestSensorData();
-      expect(latestResult, isA<Success<List<SensorData>>>());
-      final latest = (latestResult as Success<List<SensorData>>).data;
-      final typesReturned = latest.map((e) => e.sensorType).toSet();
-      for (final t in seededTypes) {
-        expect(typesReturned.contains(t), isTrue, reason: 'Missing latest reading for ${t.name}');
-      }
-    }, timeout: const Timeout(Duration(minutes: 2)));
+        // Simple verification: latest query returns at least one reading per seeded type
+        final latestResult = await influx.queryLatestSensorData();
+        expect(latestResult, isA<Success<List<SensorData>>>());
+        final latest = (latestResult as Success<List<SensorData>>).data;
+        final typesReturned = latest.map((e) => e.sensorType).toSet();
+        for (final t in seededTypes) {
+          expect(
+            typesReturned.contains(t),
+            isTrue,
+            reason: 'Missing latest reading for ${t.name}',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

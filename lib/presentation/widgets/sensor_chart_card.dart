@@ -66,11 +66,7 @@ class SensorChartCard extends ConsumerWidget {
 
     return Row(
       children: [
-        Icon(
-          _getSensorIcon(),
-          color: theme.colorScheme.primary,
-          size: 24,
-        ),
+        Icon(_getSensorIcon(), color: theme.colorScheme.primary, size: 24),
         const SizedBox(width: AppTheme.spaceSm),
         Expanded(
           child: Text(
@@ -123,21 +119,16 @@ class SensorChartCard extends ConsumerWidget {
     final spots = cleanedPoints
         .asMap()
         .entries
-        .map(
-          (entry) => FlSpot(
-            entry.key.toDouble(),
-            entry.value.value,
-          ),
-        )
+        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.value))
         .toList();
 
     // Calculate Y-axis bounds with 5% padding. Guard against zero range
     // (all points equal) which can trigger fl_chart assertions by expanding
     // the domain slightly. Also ensure we never produce a zero or negative
     // grid interval.
-  final rawValues = cleanedPoints.map((p) => p.value);
-  final rawMin = rawValues.reduce((a, b) => a < b ? a : b);
-  final rawMax = rawValues.reduce((a, b) => a > b ? a : b);
+    final rawValues = cleanedPoints.map((p) => p.value);
+    final rawMin = rawValues.reduce((a, b) => a < b ? a : b);
+    final rawMax = rawValues.reduce((a, b) => a > b ? a : b);
     double padding = (rawMax - rawMin) * 0.05;
     if (padding == 0) {
       // Single value or flat line; choose a nominal padding
@@ -161,7 +152,9 @@ class SensorChartCard extends ConsumerWidget {
     final horizontalInterval = (ySpan / 4).clamp(0.1, double.infinity);
 
     // Determine adaptive unit scale (k, M, B) for large ranges
-    final magnitude = (rawMax.abs() > rawMin.abs() ? rawMax.abs() : rawMin.abs());
+    final magnitude = (rawMax.abs() > rawMin.abs()
+        ? rawMax.abs()
+        : rawMin.abs());
     double scale = 1.0;
     String unitSuffix = '';
     if (magnitude >= 1e9) {
@@ -248,11 +241,11 @@ class SensorChartCard extends ConsumerWidget {
             color: theme.colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
-  minX: 0,
-  // If only one point, expand domain to avoid zero-width assertion.
+        minX: 0,
+        // If only one point, expand domain to avoid zero-width assertion.
         maxX: spots.length <= 1 ? 1.0 : (spots.length - 1).toDouble(),
-  minY: yMin,
-  maxY: yMax,
+        minY: yMin,
+        maxY: yMax,
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -298,9 +291,7 @@ class SensorChartCard extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: theme.colorScheme.primary,
-          ),
+          CircularProgressIndicator(color: theme.colorScheme.primary),
           const SizedBox(height: AppTheme.spaceSm),
           Text(
             'Loading chart data...',
@@ -344,11 +335,7 @@ class SensorChartCard extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: theme.colorScheme.error,
-          ),
+          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
           const SizedBox(height: AppTheme.spaceSm),
           Text(
             'Failed to load chart',
@@ -361,9 +348,7 @@ class SensorChartCard extends ConsumerWidget {
             onPressed: () {
               // Invalidate this specific provider
               ref.invalidate(
-                sensorChartDataProvider(
-                  (sensorType: sensorType, range: range),
-                ),
+                sensorChartDataProvider((sensorType: sensorType, range: range)),
               );
             },
             child: const Text('Retry'),

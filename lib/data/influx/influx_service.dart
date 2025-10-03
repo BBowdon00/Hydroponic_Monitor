@@ -111,8 +111,10 @@ class InfluxDbService {
   Future<Result<void>> initialize() async {
     try {
       Logger.info('Initializing InfluxDB client for $url', tag: 'InfluxDB');
-      Logger.info('Influx configuration => org=$organization bucket=$bucket',
-          tag: 'InfluxDB');
+      Logger.info(
+        'Influx configuration => org=$organization bucket=$bucket',
+        tag: 'InfluxDB',
+      );
 
       _client = InfluxDBClient(
         url: url,
@@ -796,7 +798,8 @@ from(bucket: "$bucket")
       );
 
       // Build Flux query with aggregation
-      final query = '''
+      final query =
+          '''
 from(bucket: "$bucket")
   |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${now.toUtc().toIso8601String()})
   |> filter(fn: (r) => r["_measurement"] == "sensor")
@@ -953,7 +956,8 @@ from(bucket: "$bucket")
           value = baseTemp + variation + (random.nextDouble() - 0.5) * 2;
           break;
         case SensorType.humidity:
-          value = 60.0 +
+          value =
+              60.0 +
               random.nextDouble() * 20 +
               sin(timestamp.hour * pi / 12) * 10;
           value = value.clamp(30.0, 90.0).toDouble();
@@ -963,7 +967,8 @@ from(bucket: "$bucket")
           value = value.clamp(5.5, 7.5).toDouble();
           break;
         case SensorType.waterLevel:
-          value = 15.0 +
+          value =
+              15.0 +
               random.nextDouble() * 10 +
               sin(timestamp.hour * pi / 6) * 3;
           value = value.clamp(5.0, 30.0).toDouble();

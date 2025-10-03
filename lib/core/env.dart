@@ -17,11 +17,11 @@ class Env {
   // Note: Platform.environment is not available on web, so use dotenv only
   static String get influxUrl => kIsWeb
       ? dotenv.env['INFLUX_URL'] ??
-          // Web default restored to legacy /influxdb prefix for stable CORS behavior.
-          'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
+            // Web default restored to legacy /influxdb prefix for stable CORS behavior.
+            'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
       : Platform.environment['INFLUX_URL'] ??
-          dotenv.env['INFLUX_URL'] ??
-          _defaultInfluxUrl;
+            dotenv.env['INFLUX_URL'] ??
+            _defaultInfluxUrl;
 
   // Provide a smarter default that respects TEST_ENV so integration tests
   // (which spin up a local InfluxDB on 8086) don't accidentally point at
@@ -55,8 +55,7 @@ class Env {
   static String get influxBucket {
     final provided = kIsWeb
         ? dotenv.env['INFLUX_BUCKET']
-        : Platform.environment['INFLUX_BUCKET'] ??
-            dotenv.env['INFLUX_BUCKET'];
+        : Platform.environment['INFLUX_BUCKET'] ?? dotenv.env['INFLUX_BUCKET'];
     if (isTest) {
       return provided ?? 'test-bucket';
     }

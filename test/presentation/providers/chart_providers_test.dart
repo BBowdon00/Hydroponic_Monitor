@@ -54,9 +54,7 @@ void main() {
     });
 
     test('handles single point', () {
-      final points = [
-        TimeSeriesPoint(timestamp: DateTime.now(), value: 15.5),
-      ];
+      final points = [TimeSeriesPoint(timestamp: DateTime.now(), value: 15.5)];
 
       final stats = ChartStats.fromPoints(points);
 
@@ -100,110 +98,115 @@ void main() {
       expect(trigger, equals(1));
     });
 
-    test('sensorChartDataProvider fetches data for sensor type and range',
-        () async {
-      final mockRepository = MockSensorRepository();
-      final mockInflux = MockInfluxDbService();
-      final mockMqtt = MockMqttService();
+    test(
+      'sensorChartDataProvider fetches data for sensor type and range',
+      () async {
+        final mockRepository = MockSensorRepository();
+        final mockInflux = MockInfluxDbService();
+        final mockMqtt = MockMqttService();
 
-      final now = DateTime.now();
-      final mockPoints = [
-        TimeSeriesPoint(timestamp: now, value: 20.0),
-        TimeSeriesPoint(
-          timestamp: now.add(const Duration(hours: 1)),
-          value: 22.0,
-        ),
-        TimeSeriesPoint(
-          timestamp: now.add(const Duration(hours: 2)),
-          value: 24.0,
-        ),
-      ];
+        final now = DateTime.now();
+        final mockPoints = [
+          TimeSeriesPoint(timestamp: now, value: 20.0),
+          TimeSeriesPoint(
+            timestamp: now.add(const Duration(hours: 1)),
+            value: 22.0,
+          ),
+          TimeSeriesPoint(
+            timestamp: now.add(const Duration(hours: 2)),
+            value: 24.0,
+          ),
+        ];
 
-      when(
-        () => mockRepository.getSensorTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        ),
-      ).thenAnswer((_) async => Success(mockPoints));
+        when(
+          () => mockRepository.getSensorTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          ),
+        ).thenAnswer((_) async => Success(mockPoints));
 
-      final container = ProviderContainer(
-        overrides: [
-          sensorRepositoryProvider.overrideWithValue(mockRepository),
-          influxServiceProvider.overrideWithValue(mockInflux),
-          mqttServiceProvider.overrideWithValue(mockMqtt),
-        ],
-      );
-      addTearDown(container.dispose);
+        final container = ProviderContainer(
+          overrides: [
+            sensorRepositoryProvider.overrideWithValue(mockRepository),
+            influxServiceProvider.overrideWithValue(mockInflux),
+            mqttServiceProvider.overrideWithValue(mockMqtt),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final chartData = await container.read(
-        sensorChartDataProvider(
-          (sensorType: SensorType.temperature, range: ChartRange.hour1),
-        ).future,
-      );
+        final chartData = await container.read(
+          sensorChartDataProvider((
+            sensorType: SensorType.temperature,
+            range: ChartRange.hour1,
+          )).future,
+        );
 
-      expect(chartData.points.length, equals(3));
-      expect(chartData.stats.min, equals(20.0));
-      expect(chartData.stats.max, equals(24.0));
-      expect(chartData.stats.average, equals(22.0));
+        expect(chartData.points.length, equals(3));
+        expect(chartData.stats.min, equals(20.0));
+        expect(chartData.stats.max, equals(24.0));
+        expect(chartData.stats.average, equals(22.0));
 
-      verify(
-        () => mockRepository.getSensorTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        ),
-      ).called(1);
-    });
+        verify(
+          () => mockRepository.getSensorTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          ),
+        ).called(1);
+      },
+    );
 
-    test('sensorChartDataProvider invalidates on refresh trigger change',
-        () async {
-      final mockRepository = MockSensorRepository();
-      final mockInflux = MockInfluxDbService();
-      final mockMqtt = MockMqttService();
+    test(
+      'sensorChartDataProvider invalidates on refresh trigger change',
+      () async {
+        final mockRepository = MockSensorRepository();
+        final mockInflux = MockInfluxDbService();
+        final mockMqtt = MockMqttService();
 
-      final now = DateTime.now();
-      final mockPoints = [
-        TimeSeriesPoint(timestamp: now, value: 20.0),
-      ];
+        final now = DateTime.now();
+        final mockPoints = [TimeSeriesPoint(timestamp: now, value: 20.0)];
 
-      when(
-        () => mockRepository.getSensorTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        ),
-      ).thenAnswer((_) async => Success(mockPoints));
+        when(
+          () => mockRepository.getSensorTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          ),
+        ).thenAnswer((_) async => Success(mockPoints));
 
-      final container = ProviderContainer(
-        overrides: [
-          sensorRepositoryProvider.overrideWithValue(mockRepository),
-          influxServiceProvider.overrideWithValue(mockInflux),
-          mqttServiceProvider.overrideWithValue(mockMqtt),
-        ],
-      );
-      addTearDown(container.dispose);
+        final container = ProviderContainer(
+          overrides: [
+            sensorRepositoryProvider.overrideWithValue(mockRepository),
+            influxServiceProvider.overrideWithValue(mockInflux),
+            mqttServiceProvider.overrideWithValue(mockMqtt),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      // First fetch
-      await container.read(
-        sensorChartDataProvider(
-          (sensorType: SensorType.temperature, range: ChartRange.hour1),
-        ).future,
-      );
+        // First fetch
+        await container.read(
+          sensorChartDataProvider((
+            sensorType: SensorType.temperature,
+            range: ChartRange.hour1,
+          )).future,
+        );
 
-      // Increment refresh trigger
-      container.read(chartDataRefreshTriggerProvider.notifier).state++;
+        // Increment refresh trigger
+        container.read(chartDataRefreshTriggerProvider.notifier).state++;
 
-      // Second fetch - should call repository again
-      await container.read(
-        sensorChartDataProvider(
-          (sensorType: SensorType.temperature, range: ChartRange.hour1),
-        ).future,
-      );
+        // Second fetch - should call repository again
+        await container.read(
+          sensorChartDataProvider((
+            sensorType: SensorType.temperature,
+            range: ChartRange.hour1,
+          )).future,
+        );
 
-      verify(
-        () => mockRepository.getSensorTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        ),
-      ).called(2);
-    });
+        verify(
+          () => mockRepository.getSensorTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          ),
+        ).called(2);
+      },
+    );
   });
 }

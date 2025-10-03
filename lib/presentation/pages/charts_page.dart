@@ -76,9 +76,7 @@ class ChartsPage extends ConsumerWidget {
             const SizedBox(height: AppTheme.spaceMd),
 
             // Charts area - Grid of sensor chart cards
-            Expanded(
-              child: _buildChartsGrid(context, selectedRange),
-            ),
+            Expanded(child: _buildChartsGrid(context, selectedRange)),
           ],
         ),
       ),
@@ -104,8 +102,8 @@ class ChartsPage extends ConsumerWidget {
         final crossAxisCount = constraints.maxWidth > 1200
             ? 3
             : constraints.maxWidth > 800
-                ? 2
-                : 1;
+            ? 2
+            : 1;
 
         return GridView.builder(
           padding: EdgeInsets.zero,
