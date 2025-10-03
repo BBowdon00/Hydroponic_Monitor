@@ -31,14 +31,18 @@ void main() {
     );
 
     // Set up default mock behavior
-    when(() => mockSecureStorage.read(key: any(named: 'key')))
-        .thenAnswer((_) async => null);
-    when(() => mockSecureStorage.write(
-          key: any(named: 'key'),
-          value: any(named: 'value'),
-        )).thenAnswer((_) async => {});
-    when(() => mockSecureStorage.delete(key: any(named: 'key')))
-        .thenAnswer((_) async => {});
+    when(
+      () => mockSecureStorage.read(key: any(named: 'key')),
+    ).thenAnswer((_) async => null);
+    when(
+      () => mockSecureStorage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((_) async => {});
+    when(
+      () => mockSecureStorage.delete(key: any(named: 'key')),
+    ).thenAnswer((_) async => {});
   });
 
   group('ConfigRepository', () {
@@ -51,57 +55,63 @@ void main() {
       expect(config.mjpeg, isA<MjpegConfig>());
     });
 
-    test('saveConfig persists non-secret values to SharedPreferences',
-        () async {
-      const config = AppConfig(
-        mqtt: MqttConfig(
-          host: 'test.mqtt.com',
-          port: 1883,
-          username: 'testuser',
-          password: 'testpass',
-        ),
-        influx: InfluxConfig(
-          url: 'http://test.influx.com:8086',
-          token: 'testtoken',
-          org: 'testorg',
-          bucket: 'testbucket',
-        ),
-        mjpeg: MjpegConfig(
-          url: 'http://test.stream.com:8080/stream',
-          autoReconnect: false,
-        ),
-      );
+    test(
+      'saveConfig persists non-secret values to SharedPreferences',
+      () async {
+        const config = AppConfig(
+          mqtt: MqttConfig(
+            host: 'test.mqtt.com',
+            port: 1883,
+            username: 'testuser',
+            password: 'testpass',
+          ),
+          influx: InfluxConfig(
+            url: 'http://test.influx.com:8086',
+            token: 'testtoken',
+            org: 'testorg',
+            bucket: 'testbucket',
+          ),
+          mjpeg: MjpegConfig(
+            url: 'http://test.stream.com:8080/stream',
+            autoReconnect: false,
+          ),
+        );
 
-      await repository.saveConfig(config);
+        await repository.saveConfig(config);
 
-      // Verify non-secret values are saved to SharedPreferences
-      expect(prefs.getString('mqtt_host'), 'test.mqtt.com');
-      expect(prefs.getInt('mqtt_port'), 1883);
-      expect(prefs.getString('mqtt_username'), 'testuser');
-      expect(prefs.getString('influx_url'), 'http://test.influx.com:8086');
-      expect(prefs.getString('influx_org'), 'testorg');
-      expect(prefs.getString('influx_bucket'), 'testbucket');
-      expect(prefs.getString('mjpeg_url'),
-          'http://test.stream.com:8080/stream');
-      expect(prefs.getBool('mjpeg_auto_reconnect'), false);
+        // Verify non-secret values are saved to SharedPreferences
+        expect(prefs.getString('mqtt_host'), 'test.mqtt.com');
+        expect(prefs.getInt('mqtt_port'), 1883);
+        expect(prefs.getString('mqtt_username'), 'testuser');
+        expect(prefs.getString('influx_url'), 'http://test.influx.com:8086');
+        expect(prefs.getString('influx_org'), 'testorg');
+        expect(prefs.getString('influx_bucket'), 'testbucket');
+        expect(
+          prefs.getString('mjpeg_url'),
+          'http://test.stream.com:8080/stream',
+        );
+        expect(prefs.getBool('mjpeg_auto_reconnect'), false);
 
-      // Verify secrets are saved to secure storage
-      verify(() => mockSecureStorage.write(
-            key: 'mqtt_password',
-            value: 'testpass',
-          )).called(1);
-      verify(() => mockSecureStorage.write(
-            key: 'influx_token',
-            value: 'testtoken',
-          )).called(1);
-    });
+        // Verify secrets are saved to secure storage
+        verify(
+          () =>
+              mockSecureStorage.write(key: 'mqtt_password', value: 'testpass'),
+        ).called(1);
+        verify(
+          () =>
+              mockSecureStorage.write(key: 'influx_token', value: 'testtoken'),
+        ).called(1);
+      },
+    );
 
     test('loadConfig retrieves saved configuration', () async {
       // Set up mock secure storage to return secrets
-      when(() => mockSecureStorage.read(key: 'mqtt_password'))
-          .thenAnswer((_) async => 'saved_password');
-      when(() => mockSecureStorage.read(key: 'influx_token'))
-          .thenAnswer((_) async => 'saved_token');
+      when(
+        () => mockSecureStorage.read(key: 'mqtt_password'),
+      ).thenAnswer((_) async => 'saved_password');
+      when(
+        () => mockSecureStorage.read(key: 'influx_token'),
+      ).thenAnswer((_) async => 'saved_token');
 
       // Save a configuration
       await prefs.setString('mqtt_host', 'saved.mqtt.com');
@@ -148,8 +158,9 @@ void main() {
 
     test('loadConfig returns defaults on error', () async {
       // Simulate an error in secure storage
-      when(() => mockSecureStorage.read(key: any(named: 'key')))
-          .thenThrow(Exception('Storage error'));
+      when(
+        () => mockSecureStorage.read(key: any(named: 'key')),
+      ).thenThrow(Exception('Storage error'));
 
       final config = await repository.loadConfig();
 
@@ -159,10 +170,12 @@ void main() {
 
     test('saveConfig throws on error', () async {
       // Simulate an error in secure storage
-      when(() => mockSecureStorage.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          )).thenThrow(Exception('Storage error'));
+      when(
+        () => mockSecureStorage.write(
+          key: any(named: 'key'),
+          value: any(named: 'value'),
+        ),
+      ).thenThrow(Exception('Storage error'));
 
       const config = AppConfig(
         mqtt: MqttConfig(
@@ -188,8 +201,9 @@ void main() {
 
     test('clearConfig throws on error', () async {
       // Simulate an error in secure storage
-      when(() => mockSecureStorage.delete(key: any(named: 'key')))
-          .thenThrow(Exception('Storage error'));
+      when(
+        () => mockSecureStorage.delete(key: any(named: 'key')),
+      ).thenThrow(Exception('Storage error'));
 
       expect(() => repository.clearConfig(), throwsA(isA<Exception>()));
     });

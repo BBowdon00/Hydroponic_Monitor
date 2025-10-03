@@ -221,7 +221,10 @@ class _InMemoryConfigRepository implements ConfigRepository {
       org: 'org',
       bucket: 'bucket',
     ),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
@@ -229,17 +232,26 @@ class _InMemoryConfigRepository implements ConfigRepository {
   Future<void> saveConfig(AppConfig config) async {
     _config = config;
   }
+
   @override
   Future<void> clearConfig() async {
     _config = const AppConfig(
-      mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
       influx: InfluxConfig(
         url: 'http://localhost:8086',
         token: '',
         org: 'org',
         bucket: 'bucket',
       ),
-      mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+      mjpeg: MjpegConfig(
+        url: 'http://localhost:8080/stream',
+        autoReconnect: true,
+      ),
     );
   }
 }
@@ -388,7 +400,9 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              configRepositoryProvider.overrideWithValue(
+                _InMemoryConfigRepository(),
+              ),
               // Force deterministic strict initialization for integration tests
               sensorRepositoryProvider.overrideWith((ref) {
                 final mqtt = ref.read(mqttServiceProvider);
@@ -441,7 +455,9 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              configRepositoryProvider.overrideWithValue(
+                _InMemoryConfigRepository(),
+              ),
               sensorRepositoryProvider.overrideWith((ref) {
                 final mqtt = ref.read(mqttServiceProvider);
                 final influx = ref.read(influxServiceProvider);
@@ -512,7 +528,9 @@ void main() {
             await tester.pumpWidget(
               ProviderScope(
                 overrides: [
-                  configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+                  configRepositoryProvider.overrideWithValue(
+                    _InMemoryConfigRepository(),
+                  ),
                 ],
                 child: const HydroponicMonitorApp(),
               ),
@@ -691,7 +709,9 @@ void main() {
             // Provide in-memory config repository so configProvider can resolve
             final container = ProviderContainer(
               overrides: [
-                configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+                configRepositoryProvider.overrideWithValue(
+                  _InMemoryConfigRepository(),
+                ),
                 sensorRepositoryProvider.overrideWith((ref) {
                   final mqtt = ref.read(mqttServiceProvider);
                   final influx = ref.read(influxServiceProvider);
@@ -1017,14 +1037,19 @@ void main() {
           });
 
           // Deterministic assertion: ensure all three sensor types rendered.
-          final missing = ['temperature','humidity','waterLevel']
-              .where((t) => !foundValues.containsKey(t))
-              .toList();
+          final missing = [
+            'temperature',
+            'humidity',
+            'waterLevel',
+          ].where((t) => !foundValues.containsKey(t)).toList();
 
           if (missing.isNotEmpty) {
             // Retry scan briefly (UI might still be building); poll up to 2 more seconds.
-            final retryDeadline = DateTime.now().add(const Duration(seconds: 2));
-            while (missing.isNotEmpty && DateTime.now().isBefore(retryDeadline)) {
+            final retryDeadline = DateTime.now().add(
+              const Duration(seconds: 2),
+            );
+            while (missing.isNotEmpty &&
+                DateTime.now().isBefore(retryDeadline)) {
               await tester.pump(const Duration(milliseconds: 200));
               final allRetryWidgets = find.byType(Text);
               for (int i = 0; i < allRetryWidgets.evaluate().length; i++) {
@@ -1050,15 +1075,20 @@ void main() {
           expect(
             missing.where((m) => m != 'waterLevel'),
             isEmpty,
-            reason: 'Dashboard did not display required sensor values (temperature, humidity). Missing: $missing Found: $foundValues',
+            reason:
+                'Dashboard did not display required sensor values (temperature, humidity). Missing: $missing Found: $foundValues',
           );
 
           // Water level is optional in degraded (no Influx) mode; log if absent
           if (missing.contains('waterLevel')) {
-            Logger.warning('Water level value not rendered yet (acceptable in degraded mode)');
+            Logger.warning(
+              'Water level value not rendered yet (acceptable in degraded mode)',
+            );
           }
 
-          Logger.info('Multi-sensor integration test completed (all sensor values present)');
+          Logger.info(
+            'Multi-sensor integration test completed (all sensor values present)',
+          );
         } catch (e, stackTrace) {
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(

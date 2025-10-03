@@ -33,7 +33,10 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
       Logger.info('Initializing configuration provider', tag: 'ConfigNotifier');
       final config = await _repository.loadConfig();
       if (!mounted) {
-        Logger.debug('ConfigNotifier disposed before init completed; skipping state set', tag: 'ConfigNotifier');
+        Logger.debug(
+          'ConfigNotifier disposed before init completed; skipping state set',
+          tag: 'ConfigNotifier',
+        );
         return;
       }
       state = AsyncValue.data(config);

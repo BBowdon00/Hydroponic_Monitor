@@ -11,6 +11,7 @@ import 'package:hydroponic_monitor/domain/entities/device.dart';
 import 'package:hydroponic_monitor/core/env.dart';
 import 'dart:async';
 import 'dart:typed_data';
+
 // Fake notifier subclassing real notifier to avoid real streaming & speed transitions.
 class _TestVideoNotifier extends VideoStateNotifier {
   _TestVideoNotifier(Ref ref) : super(ref, initialUrl: 'http://fake/stream');
@@ -18,7 +19,8 @@ class _TestVideoNotifier extends VideoStateNotifier {
   @override
   void connect() {
     if (state.phase == VideoConnectionPhase.connecting ||
-        state.phase == VideoConnectionPhase.playing) return;
+        state.phase == VideoConnectionPhase.playing)
+      return;
     state = state.copyWith(
       phase: VideoConnectionPhase.connecting,
       hasAttempted: true,
@@ -49,13 +51,24 @@ class _TestVideoNotifier extends VideoStateNotifier {
 class _TestConfigRepo implements ConfigRepository {
   AppConfig _config = const AppConfig(
     mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://192.168.1.100:8080/stream', autoReconnect: true),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://192.168.1.100:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
   @override
-  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
   @override
   Future<void> clearConfig() async {}
 }
@@ -71,18 +84,17 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   }
 
-
   ProviderScope _scope(Widget child) => ProviderScope(
-        overrides: [
-          configRepositoryProvider.overrideWithValue(_TestConfigRepo()),
-          videoStateProvider.overrideWith((ref) => _TestVideoNotifier(ref)),
-        ],
-        child: child,
-      );
+    overrides: [
+      configRepositoryProvider.overrideWithValue(_TestConfigRepo()),
+      videoStateProvider.overrideWith((ref) => _TestVideoNotifier(ref)),
+    ],
+    child: child,
+  );
 
   group('VideoPage: basic lifecycle', () {
     testWidgets('idle/disconnected initial state', (tester) async {
-    await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       expect(find.text('Video Feed'), findsOneWidget);
       expect(find.text('Video Stream URL'), findsOneWidget);
@@ -94,7 +106,7 @@ void main() {
     });
 
     testWidgets('connect -> playing -> disconnect', (tester) async {
-    await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       await _connect(tester);
       expect(find.text('Disconnect'), findsOneWidget);
@@ -109,7 +121,7 @@ void main() {
 
   group('VideoPage: interactions', () {
     testWidgets('URL retained through connection cycle', (tester) async {
-    await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       const url = 'http://example.local:8080/mjpeg';
       final urlField = find.byType(TextFormField);
@@ -130,24 +142,23 @@ void main() {
     testWidgets('rapid connect press disables button until state change', (
       tester,
     ) async {
-      await tester.pumpWidget(
-  _scope(const MaterialApp(home: VideoPage())),
-      );
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       await tester.tap(find.text('Connect'));
       await tester.pump();
-        // With the test notifier we fast-forward almost immediately; ensure we reach playing state soon.
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(find.text('Disconnect'), findsOneWidget,
-            reason: 'Expected fast transition to playing (Disconnect button).');
+      // With the test notifier we fast-forward almost immediately; ensure we reach playing state soon.
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        find.text('Disconnect'),
+        findsOneWidget,
+        reason: 'Expected fast transition to playing (Disconnect button).',
+      );
     });
   });
 
   group('VideoPage: metrics & layout', () {
     testWidgets('shows metrics in playing state', (tester) async {
-      await tester.pumpWidget(
-  _scope(const MaterialApp(home: VideoPage())),
-      );
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       await _connect(tester);
       // Allow any post-frame listeners to settle
@@ -161,18 +172,14 @@ void main() {
 
   group('VideoPage: accessibility basics', () {
     testWidgets('core interactive elements present', (tester) async {
-      await tester.pumpWidget(
-  _scope(const MaterialApp(home: VideoPage())),
-      );
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       expect(find.byType(TextFormField), findsOneWidget);
       expect(find.byKey(const Key('video_connect_button')), findsOneWidget);
     });
 
     testWidgets('URL field focusable', (tester) async {
-      await tester.pumpWidget(
-  _scope(const MaterialApp(home: VideoPage())),
-      );
+      await tester.pumpWidget(_scope(const MaterialApp(home: VideoPage())));
       await tester.pump();
       final urlField = find.byType(TextFormField);
       await tester.tap(urlField);

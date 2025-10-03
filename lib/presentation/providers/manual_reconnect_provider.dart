@@ -133,7 +133,9 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
 }
 
 /// Provider for the connection recovery service.
-final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((ref) {
+final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((
+  ref,
+) {
   // Watch to rebuild when underlying services change (due to config updates)
   final mqttService = ref.watch(mqttServiceProvider);
   final influxService = ref.watch(influxServiceProvider);

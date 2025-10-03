@@ -23,12 +23,26 @@ class _FakeConfigRepository implements ConfigRepository {
   Future<void> saveConfig(AppConfig config) async {
     _config = config;
   }
+
   @override
   Future<void> clearConfig() async {
     _config = const AppConfig(
-      mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-      influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-      mjpeg: MjpegConfig(url: 'http://192.168.1.100:8080/stream', autoReconnect: true),
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
+      influx: InfluxConfig(
+        url: 'http://localhost:8086',
+        token: '',
+        org: 'org',
+        bucket: 'bucket',
+      ),
+      mjpeg: MjpegConfig(
+        url: 'http://192.168.1.100:8080/stream',
+        autoReconnect: true,
+      ),
     );
   }
 }
@@ -39,20 +53,33 @@ void main() {
     await Env.init();
     // flutter_dotenv doesn't support mutation, but we can rely on absence or set via Platform env; for simplicity
     // we assert in tests that enableRealMjpeg is false.
-    expect(Env.enableRealMjpeg, isFalse, reason: 'REAL_MJPEG should be disabled for deterministic unit tests. Ensure test runner sets REAL_MJPEG=');
+    expect(
+      Env.enableRealMjpeg,
+      isFalse,
+      reason:
+          'REAL_MJPEG should be disabled for deterministic unit tests. Ensure test runner sets REAL_MJPEG=',
+    );
   });
 
   final _defaultConfig = const AppConfig(
     mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://192.168.1.100:8080/stream', autoReconnect: true),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://192.168.1.100:8080/stream',
+      autoReconnect: true,
+    ),
   );
 
   ProviderContainer _makeContainer() {
     final fakeRepo = _FakeConfigRepository(_defaultConfig);
-    return ProviderContainer(overrides: [
-      configRepositoryProvider.overrideWithValue(fakeRepo),
-    ]);
+    return ProviderContainer(
+      overrides: [configRepositoryProvider.overrideWithValue(fakeRepo)],
+    );
   }
 
   group('VideoState Model', () {
@@ -128,7 +155,7 @@ void main() {
     late ProviderContainer container;
     late VideoStateNotifier notifier;
     late ProviderSubscription<VideoState> _stateSub;
-    
+
     Future<void> _waitForConfigLoaded(ProviderContainer c) async {
       final start = DateTime.now();
       while (true) {
@@ -396,7 +423,11 @@ void main() {
     test('should handle special URL formats', () {
       final container = _makeContainer();
       addTearDown(container.dispose);
-      final sub = container.listen<VideoState>(videoStateProvider, (_, __) {}, fireImmediately: true);
+      final sub = container.listen<VideoState>(
+        videoStateProvider,
+        (_, __) {},
+        fireImmediately: true,
+      );
       addTearDown(sub.close);
       final notifier = container.read(videoStateProvider.notifier);
       const specialUrls = [
@@ -417,7 +448,11 @@ void main() {
     test('should maintain state consistency during operations', () {
       final container = _makeContainer();
       addTearDown(container.dispose);
-      final sub = container.listen<VideoState>(videoStateProvider, (_, __) {}, fireImmediately: true);
+      final sub = container.listen<VideoState>(
+        videoStateProvider,
+        (_, __) {},
+        fireImmediately: true,
+      );
       addTearDown(sub.close);
       final notifier = container.read(videoStateProvider.notifier);
       // Test that unrelated state is preserved during operations

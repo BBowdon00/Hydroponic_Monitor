@@ -207,6 +207,7 @@ class InfluxDbService {
       }
     });
   }
+
   /// Write sensor data to InfluxDB.
   Future<Result<void>> writeSensorData(SensorData data) async {
     try {
@@ -214,11 +215,11 @@ class InfluxDbService {
         _connectionController.add('disconnected');
         return Failure(InfluxError('InfluxDB client not initialized'));
       }
-          Logger.debug(
-            'InfluxDbService connection status -> disconnected (exception path)',
-            tag: 'InfluxDB',
-          );
-          _connectionController.add('disconnected');
+      Logger.debug(
+        'InfluxDbService connection status -> disconnected (exception path)',
+        tag: 'InfluxDB',
+      );
+      _connectionController.add('disconnected');
       // Use 'sensor' measurement with proper tag structure
       final point = Point('sensor')
           .addTag('deviceType', data.sensorType.name)

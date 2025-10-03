@@ -40,12 +40,14 @@ void main() {
         when(
           () => mockMqttService.connect(),
         ).thenAnswer((_) async => const Success(null));
-        when(() => mockMqttService.connectionStream).thenAnswer(
-          (_) => Stream<String>.value('connected'),
-        );
+        when(
+          () => mockMqttService.connectionStream,
+        ).thenAnswer((_) => Stream<String>.value('connected'));
         when(() => mockMqttService.isConnected).thenReturn(true);
-        when(() => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')))
-            .thenAnswer((_) async {});
+        when(
+          () =>
+              mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+        ).thenAnswer((_) async {});
         when(
           () => mockInfluxService.initialize(),
         ).thenAnswer((_) async => const Success(null));
@@ -64,9 +66,9 @@ void main() {
         when(() => mockMqttService.connect()).thenAnswer(
           (_) async => const Failure(MqttError('MQTT connection failed')),
         );
-        when(() => mockMqttService.connectionStream).thenAnswer(
-          (_) => const Stream<String>.empty(),
-        );
+        when(
+          () => mockMqttService.connectionStream,
+        ).thenAnswer((_) => const Stream<String>.empty());
         when(() => mockMqttService.isConnected).thenReturn(false);
 
         final result = await repository.initialize();
@@ -81,12 +83,14 @@ void main() {
         when(
           () => mockMqttService.connect(),
         ).thenAnswer((_) async => const Success(null));
-        when(() => mockMqttService.connectionStream).thenAnswer(
-          (_) => Stream<String>.value('connected'),
-        );
+        when(
+          () => mockMqttService.connectionStream,
+        ).thenAnswer((_) => Stream<String>.value('connected'));
         when(() => mockMqttService.isConnected).thenReturn(true);
-        when(() => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')))
-            .thenAnswer((_) async {});
+        when(
+          () =>
+              mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+        ).thenAnswer((_) async {});
         when(() => mockInfluxService.initialize()).thenAnswer(
           (_) async =>
               const Failure(InfluxError('InfluxDB initialization failed')),

@@ -12,18 +12,30 @@ import 'package:hydroponic_monitor/data/repos/config_repository.dart';
 import 'package:hydroponic_monitor/domain/entities/app_config.dart';
 
 // Mock class
-class MockConnectionRecoveryService extends Mock implements ConnectionRecoveryService {}
+class MockConnectionRecoveryService extends Mock
+    implements ConnectionRecoveryService {}
 
 class _InMemoryRepo implements ConfigRepository {
   AppConfig _config = const AppConfig(
     mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
   @override
-  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
   @override
   Future<void> clearConfig() async {}
 }

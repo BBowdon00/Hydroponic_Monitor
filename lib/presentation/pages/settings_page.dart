@@ -31,7 +31,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  bool get _hasUnsavedChanges => _dirty && _draft != null && _baseline != _draft;
+  bool get _hasUnsavedChanges =>
+      _dirty && _draft != null && _baseline != _draft;
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +88,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               color: Colors.amber.shade100,
               borderRadius: BorderRadius.circular(6),
               child: ListTile(
-                leading: const Icon(Icons.pending_actions, color: Colors.black87),
+                leading: const Icon(
+                  Icons.pending_actions,
+                  color: Colors.black87,
+                ),
                 title: const Text('You have unsaved configuration changes'),
-                subtitle: const Text('Press "Apply Changes" to persist and reconnect services.'),
+                subtitle: const Text(
+                  'Press "Apply Changes" to persist and reconnect services.',
+                ),
                 trailing: TextButton(
                   onPressed: () {
                     setState(() {
-                      _draft = _baseline; _dirty = false; // revert
+                      _draft = _baseline;
+                      _dirty = false; // revert
                     });
                   },
                   child: const Text('Discard'),
@@ -155,9 +162,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 config.mqtt.host,
                 (value) {
                   final base = _draft ?? config;
-                  return base.copyWith(
-                    mqtt: base.mqtt.copyWith(host: value),
-                  );
+                  return base.copyWith(mqtt: base.mqtt.copyWith(host: value));
                 },
               ),
             ),
@@ -193,19 +198,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.lock,
               title: 'Password',
               value: config.mqtt.password.isEmpty ? '(not set)' : '••••••••',
-              onTap: () => _showConfigDialog(
-                context,
-                ref,
-                'MQTT Password',
-                '',
-                (value) {
-                  final base = _draft ?? config;
-                  return base.copyWith(
-                    mqtt: base.mqtt.copyWith(password: value),
-                  );
-                },
-                isPassword: true,
-              ),
+              onTap: () =>
+                  _showConfigDialog(context, ref, 'MQTT Password', '', (value) {
+                    final base = _draft ?? config;
+                    return base.copyWith(
+                      mqtt: base.mqtt.copyWith(password: value),
+                    );
+                  }, isPassword: true),
             ),
           ],
         ),
@@ -314,9 +313,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 config.mjpeg.url,
                 (value) {
                   final base = _draft ?? config;
-                  return base.copyWith(
-                    mjpeg: base.mjpeg.copyWith(url: value),
-                  );
+                  return base.copyWith(mjpeg: base.mjpeg.copyWith(url: value));
                 },
               ),
             ),
@@ -699,16 +696,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.invalidate(influxServiceProvider);
     ref.invalidate(connectionRecoveryServiceProvider);
 
-  // IMPORTANT: Immediately refresh providers to force construction of new
-  // service instances before we invoke manual reconnect. Without this,
-  // attemptReconnect may run on a notifier still holding the OLD
-  // ConnectionRecoveryService (and thus old MqttService), causing continued
-  // connect attempts to the previous host (e.g. localhost) even after
-  // config changes.
-  final _ = ref.refresh(mqttServiceProvider); // new MQTT service
-  ref.refresh(influxServiceProvider); // new Influx service
-  ref.refresh(connectionRecoveryServiceProvider); // new recovery service
-  ref.refresh(manualReconnectProvider); // rebuild notifier with new recovery service
+    // IMPORTANT: Immediately refresh providers to force construction of new
+    // service instances before we invoke manual reconnect. Without this,
+    // attemptReconnect may run on a notifier still holding the OLD
+    // ConnectionRecoveryService (and thus old MqttService), causing continued
+    // connect attempts to the previous host (e.g. localhost) even after
+    // config changes.
+    final _ = ref.refresh(mqttServiceProvider); // new MQTT service
+    ref.refresh(influxServiceProvider); // new Influx service
+    ref.refresh(connectionRecoveryServiceProvider); // new recovery service
+    ref.refresh(
+      manualReconnectProvider,
+    ); // rebuild notifier with new recovery service
 
     // Trigger manual reconnect (will use newly built service instances)
     ScaffoldMessenger.of(context).showSnackBar(

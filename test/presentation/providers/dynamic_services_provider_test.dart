@@ -26,18 +26,20 @@ void main() {
       // Fallback to primary .env if test env file not present.
       await dotenv.load(fileName: '.env');
     }
-    registerFallbackValue(const AppConfig(
-      mqtt: MqttConfig(host: 'f', port: 1883, username: '', password: ''),
-      influx: InfluxConfig(url: 'http://f', token: '', org: 'o', bucket: 'b'),
-      mjpeg: MjpegConfig(url: 'http://f/stream', autoReconnect: true),
-    ));
+    registerFallbackValue(
+      const AppConfig(
+        mqtt: MqttConfig(host: 'f', port: 1883, username: '', password: ''),
+        influx: InfluxConfig(url: 'http://f', token: '', org: 'o', bucket: 'b'),
+        mjpeg: MjpegConfig(url: 'http://f/stream', autoReconnect: true),
+      ),
+    );
   });
 
   group('Dynamic service providers', () {
     late MockConfigRepository mockRepo;
     late AppConfig initialConfig;
     late AppConfig updatedConfig;
-    
+
     Future<void> _waitForConfig(ProviderContainer container) async {
       final start = DateTime.now();
       while (true) {
@@ -53,7 +55,12 @@ void main() {
     setUp(() {
       mockRepo = MockConfigRepository();
       initialConfig = const AppConfig(
-        mqtt: MqttConfig(host: 'host1', port: 1883, username: 'u1', password: 'p1'),
+        mqtt: MqttConfig(
+          host: 'host1',
+          port: 1883,
+          username: 'u1',
+          password: 'p1',
+        ),
         influx: InfluxConfig(
           url: 'http://influx1:8086',
           token: 't1',
@@ -63,7 +70,12 @@ void main() {
         mjpeg: MjpegConfig(url: 'http://cam1/stream', autoReconnect: true),
       );
       updatedConfig = const AppConfig(
-        mqtt: MqttConfig(host: 'host2', port: 1884, username: 'u2', password: 'p2'),
+        mqtt: MqttConfig(
+          host: 'host2',
+          port: 1884,
+          username: 'u2',
+          password: 'p2',
+        ),
         influx: InfluxConfig(
           url: 'http://influx2:8086',
           token: 't2',
@@ -79,11 +91,11 @@ void main() {
       when(() => mockRepo.loadConfig()).thenAnswer((_) async => initialConfig);
       when(() => mockRepo.saveConfig(any())).thenAnswer((_) async {});
 
-      final container = ProviderContainer(overrides: [
-        configRepositoryProvider.overrideWithValue(mockRepo),
-      ]);
+      final container = ProviderContainer(
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepo)],
+      );
 
-  await _waitForConfig(container);
+      await _waitForConfig(container);
 
       final mqtt1 = container.read(mqttServiceProvider);
       expect(mqtt1.host, initialConfig.mqtt.host);
@@ -108,10 +120,10 @@ void main() {
       when(() => mockRepo.loadConfig()).thenAnswer((_) async => initialConfig);
       when(() => mockRepo.saveConfig(any())).thenAnswer((_) async {});
 
-      final container = ProviderContainer(overrides: [
-        configRepositoryProvider.overrideWithValue(mockRepo),
-      ]);
-  await _waitForConfig(container);
+      final container = ProviderContainer(
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepo)],
+      );
+      await _waitForConfig(container);
 
       final influx1 = container.read(influxServiceProvider);
       expect(influx1.url, initialConfig.influx.url);

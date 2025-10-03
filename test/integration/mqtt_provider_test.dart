@@ -32,23 +32,37 @@ class _InMemoryConfigRepository implements ConfigRepository {
       org: 'org',
       bucket: 'bucket',
     ),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
   @override
-  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
   @override
   Future<void> clearConfig() async {
     _config = const AppConfig(
-      mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
       influx: InfluxConfig(
         url: 'http://localhost:8086',
         token: '',
         org: 'org',
         bucket: 'bucket',
       ),
-      mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+      mjpeg: MjpegConfig(
+        url: 'http://localhost:8080/stream',
+        autoReconnect: true,
+      ),
     );
   }
 }
@@ -103,19 +117,23 @@ void main() {
 
     setUp(() async {
       // Create a fresh container for each test
-      container = ProviderContainer(overrides: [
-        // Provide in-memory config to satisfy configProvider dependencies
-        configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
-        sensorRepositoryProvider.overrideWith((ref) {
-          final mqtt = ref.read(mqttServiceProvider);
-          final influx = ref.read(influxServiceProvider);
-          return SensorRepository(
-            mqttService: mqtt,
-            influxService: influx,
-            strictInit: true,
-          );
-        }),
-      ]);
+      container = ProviderContainer(
+        overrides: [
+          // Provide in-memory config to satisfy configProvider dependencies
+          configRepositoryProvider.overrideWithValue(
+            _InMemoryConfigRepository(),
+          ),
+          sensorRepositoryProvider.overrideWith((ref) {
+            final mqtt = ref.read(mqttServiceProvider);
+            final influx = ref.read(influxServiceProvider);
+            return SensorRepository(
+              mqttService: mqtt,
+              influxService: influx,
+              strictInit: true,
+            );
+          }),
+        ],
+      );
       await container.read(mqttServiceProvider).connect();
       // Get the MQTT service from the container after initialization
       mqttService = container.read(mqttServiceProvider);
@@ -283,12 +301,19 @@ void main() {
         Future<void> publishTypes(Iterable<SensorType> types) async {
           // Ensure publisher client is still connected (reconnect if broker dropped connection)
           if (testPublisherClient != null &&
-              testPublisherClient!.connectionStatus?.state != MqttConnectionState.connected) {
+              testPublisherClient!.connectionStatus?.state !=
+                  MqttConnectionState.connected) {
             try {
               await testPublisherClient!.connect();
-              Logger.info('Reconnected test publisher client before publishing types', tag: 'Test');
+              Logger.info(
+                'Reconnected test publisher client before publishing types',
+                tag: 'Test',
+              );
             } catch (e) {
-              Logger.warning('Failed to reconnect publisher client: $e', tag: 'Test');
+              Logger.warning(
+                'Failed to reconnect publisher client: $e',
+                tag: 'Test',
+              );
             }
           }
           for (final sensorType in types) {
@@ -322,11 +347,15 @@ void main() {
         // Wait up to 5 seconds for all unique types to arrive, republishing missing once
         final deadline = DateTime.now().add(const Duration(seconds: 5));
         var republished = false;
-        while (DateTime.now().isBefore(deadline) && receivedTypes.length < sensorTypes.length) {
+        while (DateTime.now().isBefore(deadline) &&
+            receivedTypes.length < sensorTypes.length) {
           await Future.delayed(const Duration(milliseconds: 250));
           final missing = sensorTypes.where((t) => !receivedTypes.contains(t));
           if (missing.isNotEmpty && !republished) {
-            Logger.warning('Did not receive all sensor types yet. Missing: ${missing.map((e) => e.name).join(', ')}. Republishing missing types once.', tag: 'Test');
+            Logger.warning(
+              'Did not receive all sensor types yet. Missing: ${missing.map((e) => e.name).join(', ')}. Republishing missing types once.',
+              tag: 'Test',
+            );
             await publishTypes(missing);
             republished = true;
           }
@@ -338,9 +367,15 @@ void main() {
         }
 
         // Verify all sensor types were received (unique types)
-        final missingAfterWait = sensorTypes.where((t) => !receivedTypes.contains(t));
-        expect(missingAfterWait, isEmpty,
-            reason: 'Did not receive all sensor types. Still missing: ${missingAfterWait.map((e) => e.name).join(', ')}');
+        final missingAfterWait = sensorTypes.where(
+          (t) => !receivedTypes.contains(t),
+        );
+        expect(
+          missingAfterWait,
+          isEmpty,
+          reason:
+              'Did not receive all sensor types. Still missing: ${missingAfterWait.map((e) => e.name).join(', ')}',
+        );
 
         for (final sensorType in sensorTypes) {
           final matchingData = receivedData.where(

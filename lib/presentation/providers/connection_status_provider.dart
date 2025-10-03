@@ -66,11 +66,11 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
 
   return repositoryAsync.when(
     data: (repository) {
-  // Watch services so if configuration changes recreate them, we subscribe
-  // to the new instances rather than continuing to receive events from an
-  // obsolete service still attempting old host/port connections.
-  final mqttService = ref.watch(mqttServiceProvider);
-  final influxService = ref.watch(influxServiceProvider);
+      // Watch services so if configuration changes recreate them, we subscribe
+      // to the new instances rather than continuing to receive events from an
+      // obsolete service still attempting old host/port connections.
+      final mqttService = ref.watch(mqttServiceProvider);
+      final influxService = ref.watch(influxServiceProvider);
 
       // Initial state - both disconnected with current time
       final now = DateTime.now();

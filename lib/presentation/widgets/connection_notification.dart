@@ -42,7 +42,8 @@ class _ConnectionNotificationState
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(_currentUpdateInterval, (_) {
-      if (_isDisposed || !mounted) return; // Prevent provider access after dispose
+      if (_isDisposed || !mounted)
+        return; // Prevent provider access after dispose
       _updateTimer();
     });
   }

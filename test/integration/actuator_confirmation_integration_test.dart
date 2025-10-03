@@ -20,19 +20,44 @@ class _InMemoryConfigRepository implements ConfigRepository {
   AppConfig _config = const AppConfig(
     mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
     influx: InfluxConfig(
-      url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
   @override
-  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
   @override
-  Future<void> clearConfig() async { _config = const AppConfig(
-    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
-  ); }
+  Future<void> clearConfig() async {
+    _config = const AppConfig(
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
+      influx: InfluxConfig(
+        url: 'http://localhost:8086',
+        token: '',
+        org: 'org',
+        bucket: 'bucket',
+      ),
+      mjpeg: MjpegConfig(
+        url: 'http://localhost:8080/stream',
+        autoReconnect: true,
+      ),
+    );
+  }
 }
 
 void main() {
@@ -54,7 +79,9 @@ void main() {
           ProviderScope(
             overrides: [
               deviceRepositoryProvider.overrideWithValue(mockRepo),
-              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              configRepositoryProvider.overrideWithValue(
+                _InMemoryConfigRepository(),
+              ),
               sensorRepositoryProvider.overrideWith((ref) {
                 final mqtt = ref.read(mqttServiceProvider);
                 final influx = ref.read(influxServiceProvider);

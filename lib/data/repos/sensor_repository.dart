@@ -19,6 +19,7 @@ class SensorRepository {
 
   final MqttService mqttService;
   final InfluxDbService influxService;
+
   /// When true, initialization will return Failure immediately on first service error
   /// (legacy behavior expected by some unit tests). When false (default), initialization
   /// soft-fails and proceeds in degraded mode with background retries.
@@ -63,7 +64,9 @@ class SensorRepository {
             tag: 'SensorRepository',
           );
         }
-        await mqttService.ensureInitialized(timeout: const Duration(seconds: 4));
+        await mqttService.ensureInitialized(
+          timeout: const Duration(seconds: 4),
+        );
       }
 
       // Initialize InfluxDB service
@@ -188,15 +191,22 @@ class SensorRepository {
       return mqttService.isConnected;
     }
   }
+
   void _startMqttRetryLoop() {
     if (_disposed) {
-      Logger.debug('Skip retry loop start: repository disposed', tag: 'SensorRepository');
+      Logger.debug(
+        'Skip retry loop start: repository disposed',
+        tag: 'SensorRepository',
+      );
       return;
     }
     // Accessing private field of MqttService via dynamic for guard; safe in this controlled context.
-  final retired = mqttService.isRetired;
+    final retired = mqttService.isRetired;
     if (retired) {
-      Logger.debug('Skip retry loop start: mqtt service retired', tag: 'SensorRepository');
+      Logger.debug(
+        'Skip retry loop start: mqtt service retired',
+        tag: 'SensorRepository',
+      );
       return;
     }
     _retryTimer?.cancel();
@@ -210,19 +220,30 @@ class SensorRepository {
     );
     _retryTimer = Timer(delay, () async {
       if (_disposed) {
-        Logger.debug('Abort scheduled retry: repository disposed', tag: 'SensorRepository');
+        Logger.debug(
+          'Abort scheduled retry: repository disposed',
+          tag: 'SensorRepository',
+        );
         return;
       }
-  final retired = mqttService.isRetired;
+      final retired = mqttService.isRetired;
       if (retired) {
-        Logger.debug('Abort scheduled retry: mqtt service retired', tag: 'SensorRepository');
+        Logger.debug(
+          'Abort scheduled retry: mqtt service retired',
+          tag: 'SensorRepository',
+        );
         return;
       }
       final result = await mqttService.connect();
       if (result is Success) {
-        Logger.info('Background MQTT reconnect succeeded', tag: 'SensorRepository');
+        Logger.info(
+          'Background MQTT reconnect succeeded',
+          tag: 'SensorRepository',
+        );
         _retryAttempt = 0; // reset
-        await mqttService.ensureInitialized(timeout: const Duration(seconds: 4));
+        await mqttService.ensureInitialized(
+          timeout: const Duration(seconds: 4),
+        );
         return;
       }
       if (delay < maxInterval) {

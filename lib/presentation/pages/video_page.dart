@@ -695,31 +695,38 @@ final mjpegStreamControllerProvider = Provider<MjpegStreamController>((ref) {
   return MjpegStreamController();
 });
 
-final videoStateProvider = StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
-  // Use ref.read instead of watch so the notifier instance is stable and not
-  // torn down when configProvider transitions from loading->data (which was
-  // causing disposed notifier access in tests and potential UI flicker).
-  final config = ref.read(configProvider).valueOrNull;
-  final initialUrl = config?.mjpeg.url.isNotEmpty == true
-    ? config!.mjpeg.url
-    : (Env.mjpegUrl.isNotEmpty ? Env.mjpegUrl : 'http://192.168.1.100:8080/stream');
-  return VideoStateNotifier(ref, initialUrl: initialUrl);
-});
+final videoStateProvider = StateNotifierProvider<VideoStateNotifier, VideoState>(
+  (ref) {
+    // Use ref.read instead of watch so the notifier instance is stable and not
+    // torn down when configProvider transitions from loading->data (which was
+    // causing disposed notifier access in tests and potential UI flicker).
+    final config = ref.read(configProvider).valueOrNull;
+    final initialUrl = config?.mjpeg.url.isNotEmpty == true
+        ? config!.mjpeg.url
+        : (Env.mjpegUrl.isNotEmpty
+              ? Env.mjpegUrl
+              : 'http://192.168.1.100:8080/stream');
+    return VideoStateNotifier(ref, initialUrl: initialUrl);
+  },
+);
 
 class VideoStateNotifier extends StateNotifier<VideoState> {
   VideoStateNotifier(this._ref, {required String initialUrl})
-      : super(
-          VideoState(
-            streamUrl: initialUrl,
-            phase: VideoConnectionPhase.idle,
-            hasAttempted: false,
-            resolution: const Size(640, 480),
-            fps: 30,
-            latency: 150,
-          ),
-        ) {
+    : super(
+        VideoState(
+          streamUrl: initialUrl,
+          phase: VideoConnectionPhase.idle,
+          hasAttempted: false,
+          resolution: const Size(640, 480),
+          fps: 30,
+          latency: 150,
+        ),
+      ) {
     // Listen for config changes; if MJPEG URL changes and we're idle (not connected), update field.
-    _configSub = _ref.listen<AsyncValue<AppConfig>>(configProvider, (prev, next) {
+    _configSub = _ref.listen<AsyncValue<AppConfig>>(configProvider, (
+      prev,
+      next,
+    ) {
       final newUrl = next.valueOrNull?.mjpeg.url;
       if (newUrl != null && newUrl.isNotEmpty) {
         // Only adopt config URL automatically if user hasn't manually set one yet

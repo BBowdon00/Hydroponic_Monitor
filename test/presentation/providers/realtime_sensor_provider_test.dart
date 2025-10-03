@@ -59,17 +59,18 @@ void main() {
 
       // Provide a connection stream that emits a connected event to satisfy
       // repository initialization wait logic.
-      when(() => mockMqttService.connectionStream).thenAnswer(
-        (_) => Stream<String>.value('connected'),
-      );
+      when(
+        () => mockMqttService.connectionStream,
+      ).thenAnswer((_) => Stream<String>.value('connected'));
       when(() => mockMqttService.isConnected).thenReturn(true);
 
       // Mock MQTT service connection
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success<void>(null));
-      when(() => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+      ).thenAnswer((_) async {});
 
       // Mock InfluxDB service initialization
       when(
@@ -292,8 +293,11 @@ void main() {
         when(
           () => failingMqttService.connect(),
         ).thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));
-        when(() => failingMqttService.ensureInitialized(timeout: any(named: 'timeout')))
-            .thenAnswer((_) async {});
+        when(
+          () => failingMqttService.ensureInitialized(
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer((_) async {});
 
         final failingContainer = ProviderContainer(
           overrides: [

@@ -20,19 +20,45 @@ import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 class _InMemoryConfigRepository implements ConfigRepository {
   AppConfig _config = const AppConfig(
     mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
   @override
-  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
   @override
-  Future<void> clearConfig() async { _config = const AppConfig(
-    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
-    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
-    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
-  ); }
+  Future<void> clearConfig() async {
+    _config = const AppConfig(
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
+      influx: InfluxConfig(
+        url: 'http://localhost:8086',
+        token: '',
+        org: 'org',
+        bucket: 'bucket',
+      ),
+      mjpeg: MjpegConfig(
+        url: 'http://localhost:8080/stream',
+        autoReconnect: true,
+      ),
+    );
+  }
 }
 
 /// Integration tests for MJPEG streaming functionality.
@@ -42,7 +68,9 @@ void main() {
   setUpAll(() async {
     // flutter_dotenv version in this project doesn't expose testLoad; manually seed values.
     // Call Env.init() guarded to create internal dotenv singleton, then inject vars.
-    try { await Env.init(); } catch (_) {}
+    try {
+      await Env.init();
+    } catch (_) {}
     const entries = {
       'MQTT_HOST': 'localhost',
       'MQTT_PORT': '1883',
@@ -54,7 +82,9 @@ void main() {
     };
     // Directly mutate dotenv.env (supported for tests) because current flutter_dotenv version
     // doesn't expose test helpers.
-    entries.forEach((k,v){ dotenv.dotenv.env[k] = v; });
+    entries.forEach((k, v) {
+      dotenv.dotenv.env[k] = v;
+    });
   });
 
   // Helper to ensure every ProviderContainer used in these tests has the
@@ -62,18 +92,20 @@ void main() {
   // raw ProviderContainers leading to UnimplementedError from
   // configRepositoryProvider.
   ProviderContainer createTestContainer() {
-    return ProviderContainer(overrides: [
-      configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
-      sensorRepositoryProvider.overrideWith((ref) {
-        final mqtt = ref.read(mqttServiceProvider);
-        final influx = ref.read(influxServiceProvider);
-        return SensorRepository(
-          mqttService: mqtt,
-          influxService: influx,
-          strictInit: true,
-        );
-      }),
-    ]);
+    return ProviderContainer(
+      overrides: [
+        configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+        sensorRepositoryProvider.overrideWith((ref) {
+          final mqtt = ref.read(mqttServiceProvider);
+          final influx = ref.read(influxServiceProvider);
+          return SensorRepository(
+            mqttService: mqtt,
+            influxService: influx,
+            strictInit: true,
+          );
+        }),
+      ],
+    );
   }
 
   group('MJPEG Streaming Integration Tests', () {

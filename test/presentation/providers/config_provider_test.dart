@@ -22,7 +22,9 @@ void main() {
     mockRepository = MockConfigRepository();
 
     // Set up default mock behavior
-    when(() => mockRepository.loadConfig()).thenAnswer((_) async => _defaultConfig);
+    when(
+      () => mockRepository.loadConfig(),
+    ).thenAnswer((_) async => _defaultConfig);
     when(() => mockRepository.saveConfig(any())).thenAnswer((_) async {});
     when(() => mockRepository.clearConfig()).thenAnswer((_) async {});
   });
@@ -30,9 +32,7 @@ void main() {
   group('ConfigNotifier', () {
     test('initializes and loads configuration', () async {
       final container = ProviderContainer(
-        overrides: [
-          configRepositoryProvider.overrideWithValue(mockRepository),
-        ],
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepository)],
       );
 
       // Initially loading
@@ -47,15 +47,13 @@ void main() {
       expect(state.valueOrNull, _defaultConfig);
 
       verify(() => mockRepository.loadConfig()).called(1);
-      
+
       container.dispose();
     });
 
     test('updateConfig saves and updates state', () async {
       final container = ProviderContainer(
-        overrides: [
-          configRepositoryProvider.overrideWithValue(mockRepository),
-        ],
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepository)],
       );
 
       // Wait for initialization
@@ -88,15 +86,13 @@ void main() {
 
       expect(state.valueOrNull, newConfig);
       verify(() => mockRepository.saveConfig(newConfig)).called(1);
-      
+
       container.dispose();
     });
 
     test('resetToDefaults clears and reloads config', () async {
       final container = ProviderContainer(
-        overrides: [
-          configRepositoryProvider.overrideWithValue(mockRepository),
-        ],
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepository)],
       );
 
       // Wait for initialization
@@ -107,16 +103,16 @@ void main() {
       await notifier.resetToDefaults();
 
       verify(() => mockRepository.clearConfig()).called(1);
-      verify(() => mockRepository.loadConfig()).called(2); // Once on init, once on reset
-      
+      verify(
+        () => mockRepository.loadConfig(),
+      ).called(2); // Once on init, once on reset
+
       container.dispose();
     });
 
     test('reload refreshes configuration', () async {
       final container = ProviderContainer(
-        overrides: [
-          configRepositoryProvider.overrideWithValue(mockRepository),
-        ],
+        overrides: [configRepositoryProvider.overrideWithValue(mockRepository)],
       );
 
       // Wait for initialization
@@ -126,8 +122,10 @@ void main() {
 
       await notifier.reload();
 
-      verify(() => mockRepository.loadConfig()).called(2); // Once on init, once on reload
-      
+      verify(
+        () => mockRepository.loadConfig(),
+      ).called(2); // Once on init, once on reload
+
       container.dispose();
     });
   });
