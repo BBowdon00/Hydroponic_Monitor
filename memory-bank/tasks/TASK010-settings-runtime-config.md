@@ -1,6 +1,6 @@
 # TASK010: Settings-Driven Runtime Configuration
 
-Status: REQUESTED
+Status: COMPLETED
 Priority: High
 Created: 2025-09-26
 Owner: (Unassigned)
@@ -33,9 +33,23 @@ Users cannot adjust broker, database, or stream endpoints on the fly. Without pe
 - Coordinate with TASK008 so manual reconnect utilities can be reused; if not merged yet, implement an internal helper that can be swapped later.
 - Schedule doc updates in `systemPatterns.md` and `techContext.md` after implementation.
 
-## Definition of Done
-- Settings page persists and reloads configuration across app restarts.
-- Applying changes updates MQTT/Influx services and MJPEG stream without restarting the app.
-- Secrets stored securely; no plaintext secrets in logs or local prefs.
-- Automated tests cover repository/controller/widget flows.
-- No analyzer warnings; all tests (unit + widget) pass per testing procedure.
+## Implementation Summary
+- Added `AppConfig` domain model (MQTT, Influx, MJPEG sub-configs).
+- Implemented `ConfigRepository` (SharedPreferences + Secure Storage) with load/save/reset.
+- Introduced `configProvider` (async load, update, reset) and UI staging model on `SettingsPage`.
+- Service providers (MQTT/Influx) retire & dispose previous instances on rebuild; repository waits for real connection event.
+- `videoStateProvider` now initializes from config and only auto-applies new URL when idle; user modifications protected.
+- Apply Changes flow: persist draft → invalidate service providers → manual reconnect triggers deterministic teardown/reconnect.
+- Secret masking in logs / model `toString()`; secure storage only for sensitive fields.
+- Added comprehensive tests: repository persistence, dynamic reconfiguration integration, video streaming idle adoption, retirement guards.
+
+## Definition of Done (Met)
+- [x] Settings page persists and reloads configuration across restarts.
+- [x] Applying changes updates MQTT/Influx/MJPEG without app restart.
+- [x] Secrets stored securely; redacted in logs.
+- [x] Automated tests cover repository, providers, widget & integration flows.
+- [x] Analyzer clean; all test suites pass.
+
+## Post-Completion Follow-Ups
+- Batch apply & config diff banner (future enhancement).
+- Metrics instrumentation for rebuild/reconnect latency.

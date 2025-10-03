@@ -210,47 +210,52 @@ flowchart LR
 - **→ Progress**: [progress.md](./progress.md) - Implementation roadmap
 
 ---
-*Last Updated: 2025-09-24*
-\n+## Runtime Configuration (TASK010 Dynamic Extension)
+*Last Updated: 2025-10-03*
 
-### Overview
-Runtime editing of connectivity and streaming parameters is now fully reactive:
+## Runtime Configuration (TASK010)
 
+Runtime editing of connectivity and streaming parameters (MQTT, InfluxDB, MJPEG) is fully reactive and coupled with an explicit Apply + Manual Reconnect workflow for deterministic ordering.
+
+### Layer Responsibilities
 | Layer | Artifact | Responsibility |
 |-------|----------|----------------|
 | Domain | `AppConfig` (MQTT/Influx/MJPEG) | Immutable snapshot of runtime settings |
-| Data | `ConfigRepository` | Dual persistence: SharedPreferences (non-secret) + Secure Storage (secrets) |
-| Presentation | `configProvider` | Async load + mutation + reset of config state |
-| Services | `mqttServiceProvider`, `influxServiceProvider` | Rebuild on config change; new instances adopt updated fields |
-| UI | `SettingsPage` | Edit dialogs, validation, invalidation + manual reconnect trigger |
-| Video | `videoStateProvider` | Initial URL from config; passive sync while idle |
+| Data | `ConfigRepository` | Persists non-secrets (SharedPreferences) & secrets (Secure Storage) |
+| Presentation | `configProvider` | Async load, mutation, reset; exposes `AsyncValue<AppConfig>` |
+| Services | `mqttServiceProvider`, `influxServiceProvider` | Recreated on config change; prior instances retired/disposed |
+| UI | `SettingsPage` | Draft editing, validation, Apply action + provider invalidation + manual reconnect trigger |
+| Video | `videoStateProvider` | Seeds from config; auto-adopts new URL only while idle |
 
-### Lifecycle of a Change
-1. User edits a field (dialog) -> `configProvider.updateConfig()` persists & emits new state.
-2. Service providers watching config rebuild with new ctor args.
-3. User taps Apply Changes -> explicit invalidation + manual reconnect ensures new instances connect with updated credentials.
-4. Connection banners / status badges refresh via emitted status streams after reconnection.
+### Change Lifecycle
+1. User edits draft fields locally.
+2. Apply: persist new config → invalidate service providers.
+3. Manual reconnect button rebuilds & connects new MQTT / Influx instances.
+4. Status banner & badges refresh from new streams.
 
-### Secrets Handling
-- MQTT password & Influx token written only to secure storage keys.
-- Masked in all model `toString()` outputs (***).
-- Not logged in repository operations.
+### Secrets & Logging
+- Password/token stored only in secure storage keys.
+- Masked as `***` in logs and model `toString()`.
+- Cleared on full reset.
 
-### Edge Cases
-| Case | Behavior |
-|------|----------|
-| Config updated while reconnect in progress | Underlying service may rebuild mid-cycle; reconnect uses latest instance |
-| Empty username/password | Passed as null to MQTT for anonymous auth |
-| Invalid port input | Rejected client-side (1-65535) before persistence |
-| MJPEG URL edited while playing | State unchanged; user must disconnect + reconnect |
+### Guards & Edge Cases
+| Scenario | Behavior |
+|----------|----------|
+| Rapid host/port edits | Previous MQTT client `retire()` prevents stale callbacks |
+| Reconnect mid-edit | Reconnect uses latest rebuilt instances |
+| Config load race | Repositories wait for actual connected event before success log |
+| MJPEG URL while playing | Deferred; user must disconnect to adopt new URL |
+| Empty username/password | Treated as anonymous auth (null) |
+| Invalid port | Rejected client-side (range 1–65535) |
 
-### Testing Strategy Additions
-- Added dynamic service provider unit tests verifying rebuild semantics.
-- Existing tests unchanged aside from timing tolerances (provider load). No brittle reliance on static Env inside service providers.
+### Testing
+- Persistence tests for `ConfigRepository`.
+- Dynamic reconfiguration integration test.
+- Provider unit tests (identity change & retirement semantics).
+- Video state tests (idle adoption vs user-modified flag).
 
-### Observability
-- Rebuild path relies on provider lifecycle; add future metrics hook (e.g., counting rebuilds) if performance tuning needed.
-
-### Open Considerations
-- Potential to debounce multiple edits before reconnection.
-- Could add active connection metadata (e.g., effective host/token) for transparency vs staged config.
+### Observability & Future Work
+- Potential metrics hook for rebuild counts.
+- Debounced multi-field apply batching.
+- Versioned config rollback.
+- Banner indicator when active connections still using stale settings.
+- Active connection metadata panel (host/port/token hash) for transparency.

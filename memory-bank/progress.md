@@ -76,10 +76,11 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 - [ ] Structured logging + provider state for last reconnect attempt
 
 #### Settings-Driven Runtime Configuration (TASK010)
-- [ ] Persist MQTT, InfluxDB, and MJPEG settings with secure credential handling (shared prefs + secure storage)
-- [ ] Rebuild MQTT/Influx services and video stream controller when overrides change, reusing manual reconnect hooks
-- [ ] Replace Settings UI placeholders with validated forms, success/error feedback, and restore defaults flow
-- [ ] Add repository/controller/provider/widget tests covering configuration lifecycle
+- [x] Persist MQTT, InfluxDB, and MJPEG settings with secure credential handling (shared prefs + secure storage)
+- [x] Dynamic rebuild/retire of MQTT & Influx services + staged Apply flow
+- [x] Settings UI now loads current config, validates input, supports Apply & Reset to Defaults
+- [x] Added tests: config repository persistence, dynamic service reconfiguration, video provider URL adoption, runtime reconfiguration integration
+- [ ] Future: batch multi-field edits & diff banner warning (non-blocking)
 
 #### Historical Data Analytics (TASK011)
 - [ ] **Time-Series Charts**: Build fl_chart line charts per sensor using new Riverpod providers
@@ -130,15 +131,13 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 # Progress
 
 ## Recently Completed
-- Fixed mobile keyboard focus loss on VideoPage (layout rebuild cause removed).
-- Implemented coarse stale time display (minutes / hours) across SensorTile & SensorPage.
-- Adjusted sensor tile tests to new time format.
-- Added timestamp coarsening to reduce reactive noise.
-- Maintained existing video tests compatibility.
-- Sensor Page Refresh (TASK009): rename complete, device controls separated, stale indicator + docs/tests updated.
+- TASK010: Runtime configuration with secure persistence & dynamic service rebuilds (MQTT/Influx/MJPEG) + retire pattern
+- Video provider stabilization (avoid notifier disposal churn; idle-only MJPEG URL adoption)
+- Connection lifecycle hardening: awaited connected event, retire guards, repository disposal safeguards
+- Sensor Page Refresh (TASK009) migration (stale indicator, controls separation)
 
 ## In Progress / Pending
-- No active refactors currently in progress.
+- Manual reconnect UX polish & production readiness (TASK008/TASK012 alignment)
 
 ## Upcoming / Backlog Ideas
 1. Replace SensorTile sparkline placeholder with lightweight mini-chart.
@@ -152,8 +151,9 @@ The Hydroponic Monitor is in **Active Development** with core real-time monitori
 - Simulation mode logic remains coupled to notifier; could isolate for cleaner testability later.
 
 ## Metrics To Watch
-- Rebuild frequency of SensorPage after coarsening (should decrease).
-- User-reported stability of video stream focus after fix.
+- Service rebuild frequency post-config changes (should correlate only with Apply actions)
+- MQTT reconnect latency after retire pattern adoption
+- Video idle URL adoption correctness vs user-modified scenarios
 
 ---
 
