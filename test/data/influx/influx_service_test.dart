@@ -58,10 +58,7 @@ void main() {
 
       // Should be InfluxUnavailableError specifically
       expect(error, isA<InfluxUnavailableError>());
-      expect(
-        error.message,
-        equals('InfluxDB client not initialized'),
-      );
+      expect(error.message, equals('InfluxDB client not initialized'));
 
       Logger.info(
         'Uninitialized client failure test completed successfully',
@@ -69,103 +66,109 @@ void main() {
       );
     });
 
-    test('returns failure for historical queries when not initialized', () async {
-      Logger.info(
-        'Testing that historical queries return failure when not initialized',
-        tag: 'InfluxTest',
-      );
+    test(
+      'returns failure for historical queries when not initialized',
+      () async {
+        Logger.info(
+          'Testing that historical queries return failure when not initialized',
+          tag: 'InfluxTest',
+        );
 
-      final start = DateTime.now().subtract(const Duration(hours: 2));
-      final end = DateTime.now();
+        final start = DateTime.now().subtract(const Duration(hours: 2));
+        final end = DateTime.now();
 
-      Logger.debug(
-        'Querying historical data from $start to $end',
-        tag: 'InfluxTest',
-      );
+        Logger.debug(
+          'Querying historical data from $start to $end',
+          tag: 'InfluxTest',
+        );
 
-      final result = await influxService.querySensorData(
-        sensorType: SensorType.temperature,
-        start: start,
-        end: end,
-        limit: 10,
-      );
+        final result = await influxService.querySensorData(
+          sensorType: SensorType.temperature,
+          start: start,
+          end: end,
+          limit: 10,
+        );
 
-      expect(result, isA<Failure<List<SensorData>>>());
+        expect(result, isA<Failure<List<SensorData>>>());
 
-      final error = (result as Failure<List<SensorData>>).error;
-      expect(error, isA<InfluxUnavailableError>());
-      expect(
-        error.message,
-        equals('InfluxDB client not initialized'),
-      );
+        final error = (result as Failure<List<SensorData>>).error;
+        expect(error, isA<InfluxUnavailableError>());
+        expect(error.message, equals('InfluxDB client not initialized'));
 
-      Logger.info(
-        'Historical query failure test completed successfully',
-        tag: 'InfluxTest',
-      );
-    });
+        Logger.info(
+          'Historical query failure test completed successfully',
+          tag: 'InfluxTest',
+        );
+      },
+    );
 
-    test('returns failure for light intensity query when not initialized', () async {
-      Logger.info(
-        'Testing that light intensity query returns failure when not initialized',
-        tag: 'InfluxTest',
-      );
+    test(
+      'returns failure for light intensity query when not initialized',
+      () async {
+        Logger.info(
+          'Testing that light intensity query returns failure when not initialized',
+          tag: 'InfluxTest',
+        );
 
-      final service = InfluxDbService(
-        url: 'http://localhost:8086',
-        token: 'test-token',
-        organization: 'test-org',
-        bucket: 'test-bucket',
-      );
+        final service = InfluxDbService(
+          url: 'http://localhost:8086',
+          token: 'test-token',
+          organization: 'test-org',
+          bucket: 'test-bucket',
+        );
 
-      // Query without initializing the service
-      final result = await service.querySensorData(
-        sensorType: SensorType.lightIntensity,
-        start: DateTime(2024, 1, 1, 0, 0),
-        end: DateTime(2024, 1, 1, 23, 59),
-        limit: 24,
-      );
+        // Query without initializing the service
+        final result = await service.querySensorData(
+          sensorType: SensorType.lightIntensity,
+          start: DateTime(2024, 1, 1, 0, 0),
+          end: DateTime(2024, 1, 1, 23, 59),
+          limit: 24,
+        );
 
-      expect(result, isA<Failure<List<SensorData>>>());
-      final error = (result as Failure<List<SensorData>>).error;
-      expect(error, isA<InfluxUnavailableError>());
+        expect(result, isA<Failure<List<SensorData>>>());
+        final error = (result as Failure<List<SensorData>>).error;
+        expect(error, isA<InfluxUnavailableError>());
 
-      Logger.info(
-        'Light intensity query failure test completed successfully',
-        tag: 'InfluxTest',
-      );
-    });
+        Logger.info(
+          'Light intensity query failure test completed successfully',
+          tag: 'InfluxTest',
+        );
+      },
+    );
 
-    test('returns failure for device node validation when not initialized', () async {
-      Logger.info(
-        'Testing that queries return failure when validating device nodes without initialization',
-        tag: 'InfluxTest',
-      );
+    test(
+      'returns failure for device node validation when not initialized',
+      () async {
+        Logger.info(
+          'Testing that queries return failure when validating device nodes without initialization',
+          tag: 'InfluxTest',
+        );
 
-      final service = InfluxDbService(
-        url: 'http://localhost:8086',
-        token: 'test-token',
-        organization: 'test-org',
-        bucket: 'test-bucket',
-      );
+        final service = InfluxDbService(
+          url: 'http://localhost:8086',
+          token: 'test-token',
+          organization: 'test-org',
+          bucket: 'test-bucket',
+        );
 
-      // Test one sensor type without initializing
-      final result = await service.querySensorData(
-        sensorType: SensorType.temperature,
-        start: DateTime.now().subtract(const Duration(hours: 1)),
-        end: DateTime.now(),
-        limit: 1,
-      );
+        // Test one sensor type without initializing
+        final result = await service.querySensorData(
+          sensorType: SensorType.temperature,
+          start: DateTime.now().subtract(const Duration(hours: 1)),
+          end: DateTime.now(),
+          limit: 1,
+        );
 
-      expect(result, isA<Failure<List<SensorData>>>());
-      final error = (result as Failure<List<SensorData>>).error;
-      expect(error, isA<InfluxUnavailableError>());
+        expect(result, isA<Failure<List<SensorData>>>());
+        final error = (result as Failure<List<SensorData>>).error;
+        expect(error, isA<InfluxUnavailableError>());
 
-      Logger.info(
-        'Device node validation failure test completed successfully',
-        tag: 'InfluxTest',
-      );
-    });
+        Logger.info(
+          'Device node validation failure test completed successfully',
+          tag: 'InfluxTest',
+        );
+      },
+    );
 
     tearDown(() async {
       Logger.info('Tearing down InfluxDB service test', tag: 'InfluxTest');

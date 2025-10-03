@@ -23,7 +23,7 @@ class Env {
   /// WebSocket MQTT port (used for browser / web builds). Falls back to 9001 if
   /// not specified. If not running on web, prefer the standard TCP port.
   static int get mqttWsPort =>
-    int.tryParse(dotenv.env['MQTT_WS_PORT'] ?? '9001') ?? 9001;
+      int.tryParse(dotenv.env['MQTT_WS_PORT'] ?? '9001') ?? 9001;
 
   /// Effective port to use for MQTT connections based on platform.
   /// - Web (kIsWeb): use MQTT_WS_PORT (default 9001)
@@ -122,9 +122,7 @@ class Env {
         final fallback = isProd ? '.env.test' : '.env';
         try {
           await dotenv.load(fileName: fallback);
-          print(
-            '⚠️  Warning: $envFile not found, loaded $fallback instead',
-          );
+          print('⚠️  Warning: $envFile not found, loaded $fallback instead');
         } catch (e) {
           print('⚠️ Warning: No .env file found, using default values');
           print('   Make sure .env is included in pubspec.yaml assets section');
