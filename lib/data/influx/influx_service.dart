@@ -326,21 +326,19 @@ class InfluxDbService {
     final endTime = end ?? DateTime.now();
     final limitValue = limit ?? 100;
 
-    // If client is not initialized, return dummy data
+    // If client is not initialized, return failure
     if (_client == null || _queryApi == null) {
-      Logger.info(
-        'InfluxDB client not initialized, returning dummy data',
+      Logger.warning(
+        'InfluxDB client not initialized - cannot query sensor data',
         tag: 'InfluxDB',
       );
-      final dummyData = _generateDummySensorData(
-        sensorType: sensorType,
-        sensorId: sensorId,
-        deviceId: deviceId,
-        start: startTime,
-        end: endTime,
-        limit: limitValue,
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
+      return const Failure(
+        InfluxUnavailableError('InfluxDB client not initialized'),
       );
-      return Success(dummyData);
     }
 
     try {
@@ -403,39 +401,25 @@ from(bucket: "$bucket")
         _connectionController.add('disconnected');
       }
 
-      // Fallback to dummy data if query fails (for development/testing)
-      Logger.warning(
-        'Falling back to dummy data due to query error',
-        tag: 'InfluxDB',
-      );
-      final dummyData = _generateDummySensorData(
-        sensorType: sensorType,
-        sensorId: sensorId,
-        deviceId: deviceId,
-        start: startTime,
-        end: endTime,
-        limit: limitValue,
-      );
-      return Success(dummyData);
+      return Failure(InfluxError(error));
     }
   }
 
   /// Query latest sensor data for all sensors.
   Future<Result<List<SensorData>>> queryLatestSensorData() async {
-    // If client is not initialized, return dummy data
+    // If client is not initialized, return failure
     if (_client == null || _queryApi == null) {
-      Logger.info(
-        'InfluxDB client not initialized, returning dummy latest data',
+      Logger.warning(
+        'InfluxDB client not initialized - cannot query latest sensor data',
         tag: 'InfluxDB',
       );
-      final dummyData = SensorType.values.map((type) {
-        return _generateSingleSensorData(
-          type: type,
-          sensorId: '1', // Use deviceID format
-          timestamp: DateTime.now(),
-        );
-      }).toList();
-      return Success(dummyData);
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
+      return const Failure(
+        InfluxUnavailableError('InfluxDB client not initialized'),
+      );
     }
 
     try {
@@ -476,19 +460,7 @@ from(bucket: "$bucket")
         _connectionController.add('disconnected');
       }
 
-      // Fallback to dummy data if query fails (for development/testing)
-      Logger.warning(
-        'Falling back to dummy latest data due to query error',
-        tag: 'InfluxDB',
-      );
-      final dummyData = SensorType.values.map((type) {
-        return _generateSingleSensorData(
-          type: type,
-          sensorId: '1', // Use deviceID format
-          timestamp: DateTime.now(),
-        );
-      }).toList();
-      return Success(dummyData);
+      return Failure(InfluxError(error));
     }
   }
 
@@ -776,19 +748,19 @@ from(bucket: "$bucket")
         break;
     }
 
-    // If client is not initialized, return dummy data
+    // If client is not initialized, return failure
     if (_client == null || _queryApi == null) {
-      Logger.info(
-        'InfluxDB client not initialized, returning dummy time series data',
+      Logger.warning(
+        'InfluxDB client not initialized - cannot query time series data',
         tag: 'InfluxDB',
       );
-      final dummyData = _generateDummyTimeSeries(
-        sensorType: sensorType,
-        start: startTime,
-        end: now,
-        range: range,
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
+      return const Failure(
+        InfluxUnavailableError('InfluxDB client not initialized'),
       );
-      return Success(dummyData);
     }
 
     try {
@@ -831,19 +803,13 @@ from(bucket: "$bucket")
       final error = 'Error querying time series from InfluxDB: $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
 
-      // Don't mark as disconnected on query failure (connection might be fine, just no data)
-      Logger.warning(
-        'Falling back to dummy time series data due to query error',
-        tag: 'InfluxDB',
-      );
+      // Mark disconnected on query failure
+      if (_lastConnectionStatus != 'disconnected') {
+        _lastConnectionStatus = 'disconnected';
+        _connectionController.add('disconnected');
+      }
 
-      final dummyData = _generateDummyTimeSeries(
-        sensorType: sensorType,
-        start: startTime,
-        end: now,
-        range: range,
-      );
-      return Success(dummyData);
+      return Failure(InfluxError(error));
     }
   }
 

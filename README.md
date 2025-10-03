@@ -78,11 +78,23 @@ lib/
    ```
 
 3. **Configure environment:**
+   
+   **For Production/Staging:**
    ```bash
-   cp dart_defines.example.json dart_defines.json
-   # Edit dart_defines.json with your MQTT, InfluxDB, and video stream settings
+   cp .env.example .env
+   # Edit .env with your production MQTT, InfluxDB, and video stream settings
    ```
-   For dev/test builds, you may use `.env` and `flutter_dotenv` as described in the architecture guide.
+   
+   **For Testing/Development:**
+   ```bash
+   cp .env.test.example .env.test
+   # Edit .env.test with localhost settings for integration testing
+   ```
+   
+   The app automatically loads `.env.test` when present, falling back to `.env` if not found. This ensures tests never accidentally target production services. To explicitly run with production configuration, use:
+   ```bash
+   flutter run --dart-define=APP_ENV=prod
+   ```
 
 4. **Run the application:**
    ```bash
@@ -122,6 +134,36 @@ flutter build linux                         # Linux desktop binary
 These documents contain essential setup, workflow, and code style guidance.
 
 ## Environment Setup
+
+The application uses environment files for configuration:
+
+- **`.env`** - Production/staging configuration (not tracked in git)
+- **`.env.test`** - Test/development configuration for local services (not tracked in git)
+- **`.env.example`** - Template for production configuration
+- **`.env.test.example`** - Template for test configuration
+
+### Environment Separation
+
+The app defaults to test mode when `.env.test` is present, preventing accidental connections to production services during development and CI. Key differences:
+
+**Production (`.env`):**
+- MQTT: `m0rb1d-server.mynetworksettings.com:1883`
+- InfluxDB: `http://m0rb1d-server.mynetworksettings.com:8080`
+- Video: `http://raspberrypi:8000/stream.mjpg`
+- Bucket: `grow_data` (long-retention)
+
+**Test (`.env.test`):**
+- MQTT: `localhost:1883`
+- InfluxDB: `http://localhost:8086`
+- Video: `http://localhost:8080/stream`
+- Bucket: `test-bucket`
+- Flag: `TEST_ENV=true`
+
+To force production mode:
+```bash
+flutter run --dart-define=APP_ENV=prod
+flutter build --dart-define=APP_ENV=prod
+```
 
 Follow the steps in `.github/workflows/copilot-setup-steps.yml` for environment preparation.  
 Ensure you have the correct Flutter/Dart versions and platform dependencies.

@@ -22,6 +22,11 @@ class InfluxError extends AppError {
   const InfluxError(super.message);
 }
 
+/// InfluxDB unavailable error (client not initialized).
+class InfluxUnavailableError extends InfluxError {
+  const InfluxUnavailableError(super.message);
+}
+
 /// Data parsing/validation errors.
 class DataError extends AppError {
   const DataError(super.message);

@@ -81,7 +81,7 @@ final latestSensorDataProvider = Provider.family<SensorData?, SensorType>((
 /// Provider for getting historical latest readings for all sensor types.
 /// This provides a comprehensive view of the latest data for each sensor type.
 final latestSensorReadingsProvider =
-    FutureProvider<Map<SensorType, SensorData>>((ref) async {
+    FutureProvider<Map<SensorType, SensorData>?>((ref) async {
       final sensorRepository = ref.read(sensorRepositoryProvider);
       final result = await sensorRepository.getLatestReadings();
 
@@ -99,21 +99,24 @@ final latestSensorReadingsProvider =
           return latestBySensorType;
         },
         failure: (error) {
-          Logger.error(
-            'Failed to get latest sensor readings: $error',
+          Logger.warning(
+            'InfluxDB unavailable, historical readings not available: $error',
             tag: 'SensorProviders',
           );
-          throw Exception('Failed to load sensor data');
+          // Return null to indicate no historical data available (degraded mode)
+          return null;
         },
       );
     });
 
 /// Provider for getting a specific sensor type's latest data from historical data.
 /// This is useful for getting the most recent stored value for a sensor type.
+/// Returns null when InfluxDB is unavailable (degraded mode).
 final historicalLatestSensorDataProvider =
     FutureProvider.family<SensorData?, SensorType>((ref, sensorType) async {
       final latestReadings = await ref.watch(
         latestSensorReadingsProvider.future,
       );
-      return latestReadings[sensorType];
+      // Return null if InfluxDB unavailable or sensor type not found
+      return latestReadings?[sensorType];
     });

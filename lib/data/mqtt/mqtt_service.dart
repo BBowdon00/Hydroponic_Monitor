@@ -181,12 +181,7 @@ class MqttService {
           );
         } catch (e) {
           Logger.warning(
-            'Failed to create web MQTT client (falling back to server client semantics for tests): $e (instance=${identityHashCode(this)})',
-            tag: 'MQTT',
-          );
-          _client = MqttServerClient.withPort(host, clientId, port);
-          Logger.info(
-            'Using server MQTT client as fallback (instance=${identityHashCode(this)})',
+            'Failed to create web MQTT client: $e (instance=${identityHashCode(this)})',
             tag: 'MQTT',
           );
         }

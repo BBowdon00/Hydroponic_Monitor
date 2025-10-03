@@ -41,7 +41,7 @@ class ConfigRepository {
 
       // Load MQTT config
       final mqttHost = _prefs.getString(_keyMqttHost) ?? Env.mqttHost;
-      final mqttPort = _prefs.getInt(_keyMqttPort) ?? Env.mqttPort;
+      final mqttPort = _prefs.getInt(_keyMqttPort) ?? Env.effectiveMqttPort;
       final mqttUsername =
           _prefs.getString(_keyMqttUsername) ?? Env.mqttUsername;
       final mqttPassword =
@@ -167,7 +167,7 @@ class ConfigRepository {
     return AppConfig(
       mqtt: MqttConfig(
         host: Env.mqttHost,
-        port: Env.mqttPort,
+        port: Env.effectiveMqttPort,
         username: Env.mqttUsername,
         password: Env.mqttPassword,
       ),
