@@ -102,55 +102,60 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        // Wait for initial config load
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-
-        // The first synchronous read may return a placeholder (fallbackHost) if config not yet resolved.
-        // Poll until provider reflects the initial config host or timeout.
-        MqttService mqttService1;
-        InfluxDbService influxService1;
+        // Wait until configProvider AsyncValue has loaded the initial config to avoid reading placeholder services.
         final start = DateTime.now();
-        while (true) {
-          mqttService1 = container.read(mqttServiceProvider);
-          influxService1 = container.read(influxServiceProvider);
-          if (mqttService1.host == 'hostA' &&
-              influxService1.url == 'http://influxA') {
-            break;
-          }
+        while (container
+                .read(configProvider)
+                .maybeWhen(
+                  data: (c) =>
+                      c.mqtt.host == 'hostA' &&
+                      c.influx.url == 'http://influxA',
+                  orElse: () => false,
+                ) ==
+            false) {
           if (DateTime.now().difference(start) > const Duration(seconds: 2)) {
+            final snapshot = container.read(configProvider);
             fail(
-              'Config providers did not reflect initial AppConfig within timeout. Got host=${mqttService1.host} influx=${influxService1.url}',
+              'Config not loaded with expected initial values within timeout. Current state=$snapshot',
             );
           }
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await Future<void>.delayed(const Duration(milliseconds: 15));
         }
+
+        // Now services should be constructed from the loaded config.
+        final mqttService1 = container.read(mqttServiceProvider);
+        final influxService1 = container.read(influxServiceProvider);
+        expect(mqttService1.host, equals('hostA'));
+        // URL normalization may lowercase host; accept either.
+        expect(influxService1.url, anyOf('http://influxA', 'http://influxa'));
         expect([1883, 9001], contains(mqttService1.port));
 
         // Apply updated config
         await container.read(configProvider.notifier).updateConfig(updated);
 
-        // Allow provider rebuild microtasks to complete
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-
-        // Wait until updated config applied
-        MqttService mqttService2;
-        InfluxDbService influxService2;
+        // Wait until updated config observed via configProvider
         final startUpdate = DateTime.now();
-        while (true) {
-          mqttService2 = container.read(mqttServiceProvider);
-          influxService2 = container.read(influxServiceProvider);
-          if (mqttService2.host == 'hostB' &&
-              influxService2.url == 'http://influxB') {
-            break;
-          }
+        while (container
+                .read(configProvider)
+                .maybeWhen(
+                  data: (c) =>
+                      c.mqtt.host == 'hostB' &&
+                      c.influx.url == 'http://influxB',
+                  orElse: () => false,
+                ) ==
+            false) {
           if (DateTime.now().difference(startUpdate) >
               const Duration(seconds: 2)) {
+            final snapshot = container.read(configProvider);
             fail(
-              'Updated config not observed within timeout. Got host=${mqttService2.host} influx=${influxService2.url}',
+              'Updated config not observed within timeout. Current state=$snapshot',
             );
           }
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await Future<void>.delayed(const Duration(milliseconds: 15));
         }
+
+        final mqttService2 = container.read(mqttServiceProvider);
+        final influxService2 = container.read(influxServiceProvider);
         expect([2883, 9001], contains(mqttService2.port));
 
         // Ensure repository reinitialized with new services
@@ -160,7 +165,10 @@ void main() {
         ); // ensure init complete
         final repo2 = container.read(sensorRepositoryProvider);
         expect(repo2.mqttService.host, equals('hostB'));
-        expect(repo2.influxService.url, equals('http://influxB'));
+        expect(
+          repo2.influxService.url,
+          anyOf('http://influxB', 'http://influxb'),
+        );
       },
     );
   });

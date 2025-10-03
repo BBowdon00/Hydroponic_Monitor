@@ -6,6 +6,8 @@ import 'package:influxdb_client/api.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
+import '../../presentation/pages/charts_page.dart';
 
 /// InfluxDB client for storing and querying time-series sensor data.
 class InfluxDbService {
@@ -15,6 +17,41 @@ class InfluxDbService {
     required this.organization,
     required this.bucket,
   });
+
+  /// Normalize a user-provided InfluxDB base URL to ensure the underlying
+  /// client library can parse it reliably. Common issues addressed:
+  ///  - Missing URL scheme ("http://") when user enters host:port/path
+  ///  - Accidental surrounding whitespace
+  /// The function intentionally does NOT attempt to validate reachability –
+  /// only syntactic normalization required to avoid FormatException inside
+  /// the influxdb_client (which tries to parse host/port early).
+  static String normalizeUrl(String raw) {
+    var trimmed = raw.trim();
+    if (trimmed.isEmpty) return trimmed; // Let caller decide how to handle.
+    // If no scheme present, default to http:// (reverse proxy or local dev).
+    if (!trimmed.contains('://')) {
+      trimmed = 'http://$trimmed';
+    }
+    // Allow Uri parsing to validate basic structure; if it fails we still
+    // return the best-effort value so higher layer can surface an error.
+    try {
+      final uri = Uri.parse(trimmed);
+      // If user accidentally put path-like content into what becomes the host
+      // (happens when scheme missing), Uri.parse will treat entire string as
+      // a relative path. In that case we keep the raw prefixed variant.
+      if (uri.host.isEmpty) return trimmed; // Nothing more to do.
+      // Reconstruct normalized string (preserve path if provided).
+      final normalized = Uri(
+        scheme: uri.scheme.isEmpty ? 'http' : uri.scheme,
+        host: uri.host,
+        port: uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
+        path: uri.path, // path already without query/fragment
+      ).toString();
+      return normalized;
+    } catch (_) {
+      return trimmed; // Fallback – upstream code will log on failure.
+    }
+  }
 
   final String url;
   final String token;
@@ -74,6 +111,10 @@ class InfluxDbService {
   Future<Result<void>> initialize() async {
     try {
       Logger.info('Initializing InfluxDB client for $url', tag: 'InfluxDB');
+      Logger.info(
+        'Influx configuration => org=$organization bucket=$bucket',
+        tag: 'InfluxDB',
+      );
 
       _client = InfluxDBClient(
         url: url,
@@ -89,7 +130,7 @@ class InfluxDbService {
       final healthy = await checkHealth();
       if (healthy) {
         Logger.info(
-          'Successfully connected to InfluxDB (health pass)',
+          'Successfully connected to InfluxDB (health pass, bucket=$bucket)',
           tag: 'InfluxDB',
         );
         _startHealthMonitoring();
@@ -110,11 +151,11 @@ class InfluxDbService {
     }
   }
 
-  /// Explicit lightweight health check.
-  /// Strategy:
-  /// 1. Use Ping API (fast, minimal auth requirement) to verify server reachability.
-  /// 2. Use Ready API to verify the instance is ready (not initializing / upgrading).
-  /// If both pass, we mark as connected. Any failure marks disconnected.
+  /// Explicit lightweight health check using only the InfluxDB `/health` endpoint.
+  /// Previous logic used Ping + Ready (and adaptive web handling) which introduced
+  /// CORS preflight friction (204 responses) and redundancy. We now rely solely on
+  /// the health endpoint which returns a 200 JSON body when the instance is up.
+  /// Any failure marks the service disconnected.
   Future<bool> checkHealth() async {
     try {
       if (_client == null) {
@@ -133,36 +174,12 @@ class InfluxDbService {
       }
 
       var healthy = false;
-      // Step 1: ping
-      bool pingIndicatesReachable = false;
       try {
-        await _client!.getPingApi().getPing();
-        pingIndicatesReachable = true; // reachable
+        // Use HealthApi (supports /health) – replaces previous PingApi.getHealth usage
+        await _client!.getHealthApi().getHealth();
+        healthy = true; // If no exception thrown, service is up.
       } catch (e) {
-        // In some InfluxDB setups the ping endpoint can return a 400 while the instance is otherwise healthy.
-        // If we detect a 400 ApiException, we will proceed to the READY check before declaring failure.
-        if (e is ApiException && e.code == 400) {
-          Logger.debug(
-            'Ping returned 400 (tolerated) – proceeding to READY check',
-            tag: 'InfluxDB',
-          );
-          pingIndicatesReachable =
-              true; // treat as soft success, defer real decision to READY
-        } else {
-          Logger.debug('Ping failed: $e', tag: 'InfluxDB');
-        }
-      }
-
-      // Step 2: always attempt ready (even if ping failed) – it gives definitive cluster readiness.
-      try {
-        final ready = await _client!.getReadyApi().getReady();
-        healthy = (ready.status == ReadyStatusEnum.ready);
-      } catch (e) {
-        // If READY fails but ping looked fine, log separately for diagnostics.
-        Logger.debug(
-          'Ready check failed: $e (pingReachable=$pingIndicatesReachable)',
-          tag: 'InfluxDB',
-        );
+        Logger.debug('Health endpoint check failed: $e', tag: 'InfluxDB');
         healthy = false;
       }
       if (healthy) {
@@ -727,6 +744,269 @@ from(bucket: "$bucket")
       case SensorType.powerUsage:
         return 'esp32_2'; // Power monitoring
     }
+  }
+
+  /// Query time series data for a sensor type with aggregation for charts.
+  /// Returns a list of time series points aggregated over the specified range.
+  Future<Result<List<TimeSeriesPoint>>> queryTimeSeries(
+    SensorType sensorType,
+    ChartRange range,
+  ) async {
+    // Determine time range and aggregation window
+    final now = DateTime.now();
+    DateTime startTime;
+    String aggregationWindow;
+
+    switch (range) {
+      case ChartRange.hour1:
+        startTime = now.subtract(const Duration(hours: 1));
+        aggregationWindow = '5m';
+        break;
+      case ChartRange.hours24:
+        startTime = now.subtract(const Duration(hours: 24));
+        aggregationWindow = '1h';
+        break;
+      case ChartRange.days7:
+        startTime = now.subtract(const Duration(days: 7));
+        aggregationWindow = '3h';
+        break;
+      case ChartRange.days30:
+        startTime = now.subtract(const Duration(days: 30));
+        aggregationWindow = '12h';
+        break;
+    }
+
+    // If client is not initialized, return dummy data
+    if (_client == null || _queryApi == null) {
+      Logger.info(
+        'InfluxDB client not initialized, returning dummy time series data',
+        tag: 'InfluxDB',
+      );
+      final dummyData = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: now,
+        range: range,
+      );
+      return Success(dummyData);
+    }
+
+    try {
+      Logger.info(
+        'Querying time series for ${sensorType.name} from $startTime to $now with window $aggregationWindow',
+        tag: 'InfluxDB',
+      );
+
+      // Build Flux query with aggregation
+      final query =
+          '''
+from(bucket: "$bucket")
+  |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${now.toUtc().toIso8601String()})
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
+  |> filter(fn: (r) => r["_field"] == "value")
+  |> filter(fn: (r) => r["deviceType"] == "${sensorType.name}")
+  |> aggregateWindow(every: $aggregationWindow, fn: mean, createEmpty: false)
+  |> sort(columns: ["_time"])
+  |> limit(n: 180)
+''';
+
+      Logger.debug('Executing time series Flux query: $query', tag: 'InfluxDB');
+
+      final queryResult = await _queryApi!.query(query);
+      final points = await _parseTimeSeriesResult(queryResult);
+
+      Logger.info(
+        'Retrieved ${points.length} time series points from InfluxDB',
+        tag: 'InfluxDB',
+      );
+
+      // Mark healthy since query succeeded
+      if (_lastConnectionStatus != 'connected') {
+        _lastConnectionStatus = 'connected';
+        _connectionController.add('connected');
+      }
+
+      return Success(points);
+    } catch (e) {
+      final error = 'Error querying time series from InfluxDB: $e';
+      Logger.error(error, tag: 'InfluxDB', error: e);
+
+      // Don't mark as disconnected on query failure (connection might be fine, just no data)
+      Logger.warning(
+        'Falling back to dummy time series data due to query error',
+        tag: 'InfluxDB',
+      );
+
+      final dummyData = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: now,
+        range: range,
+      );
+      return Success(dummyData);
+    }
+  }
+
+  /// Parse time series query result.
+  Future<List<TimeSeriesPoint>> _parseTimeSeriesResult(
+    Stream<FluxRecord> queryResult,
+  ) async {
+    final points = <TimeSeriesPoint>[];
+
+    try {
+      await for (final record in queryResult) {
+        try {
+          final timestampRaw = record['_time'];
+          final value = record['_value'];
+
+          if (timestampRaw == null || value == null) continue;
+
+          // Parse timestamp
+          DateTime? timestamp;
+          if (timestampRaw is DateTime) {
+            timestamp = timestampRaw;
+          } else if (timestampRaw is String) {
+            timestamp = DateTime.tryParse(timestampRaw);
+          }
+
+          if (timestamp == null) continue;
+
+          // Parse value as double
+          final doubleValue = value is double
+              ? value
+              : double.tryParse(value.toString());
+          if (doubleValue == null) continue;
+
+          points.add(
+            TimeSeriesPoint(
+              timestamp: timestamp,
+              value: double.parse(doubleValue.toStringAsFixed(2)),
+            ),
+          );
+        } catch (e) {
+          Logger.warning(
+            'Failed to parse time series record: $e',
+            tag: 'InfluxDB',
+          );
+        }
+      }
+
+      Logger.debug(
+        'Finished parsing time series result with ${points.length} points',
+        tag: 'InfluxDB',
+      );
+    } catch (e) {
+      Logger.error(
+        'Error parsing time series result: $e',
+        tag: 'InfluxDB',
+        error: e,
+      );
+    }
+
+    return points;
+  }
+
+  /// Generate dummy time series data for testing.
+  /// Uses deterministic seeding based on sensor type and range for reproducibility.
+  List<TimeSeriesPoint> _generateDummyTimeSeries({
+    required SensorType sensorType,
+    required DateTime start,
+    required DateTime end,
+    required ChartRange range,
+  }) {
+    // Use deterministic seed for reproducibility
+    final seed = sensorType.index * 1000 + range.index;
+    final random = Random(seed);
+
+    // Determine number of points based on range
+    int pointCount;
+    Duration interval;
+
+    switch (range) {
+      case ChartRange.hour1:
+        pointCount = 12; // 5 min intervals
+        interval = const Duration(minutes: 5);
+        break;
+      case ChartRange.hours24:
+        pointCount = 24; // 1 hour intervals
+        interval = const Duration(hours: 1);
+        break;
+      case ChartRange.days7:
+        pointCount = 56; // 3 hour intervals
+        interval = const Duration(hours: 3);
+        break;
+      case ChartRange.days30:
+        pointCount = 60; // 12 hour intervals
+        interval = const Duration(hours: 12);
+        break;
+    }
+
+    final points = <TimeSeriesPoint>[];
+
+    for (int i = 0; i < pointCount; i++) {
+      final timestamp = start.add(interval * i);
+
+      // Generate realistic values based on sensor type
+      double value;
+      switch (sensorType) {
+        case SensorType.temperature:
+          final hourOfDay = timestamp.hour;
+          final baseTemp = 22.0;
+          final variation = 5.0 * sin((hourOfDay * pi) / 12);
+          value = baseTemp + variation + (random.nextDouble() - 0.5) * 2;
+          break;
+        case SensorType.humidity:
+          value =
+              60.0 +
+              random.nextDouble() * 20 +
+              sin(timestamp.hour * pi / 12) * 10;
+          value = value.clamp(30.0, 90.0).toDouble();
+          break;
+        case SensorType.pH:
+          value = 6.2 + (random.nextDouble() - 0.5) * 0.6;
+          value = value.clamp(5.5, 7.5).toDouble();
+          break;
+        case SensorType.waterLevel:
+          value =
+              15.0 +
+              random.nextDouble() * 10 +
+              sin(timestamp.hour * pi / 6) * 3;
+          value = value.clamp(5.0, 30.0).toDouble();
+          break;
+        case SensorType.electricalConductivity:
+          value = 1200.0 + random.nextDouble() * 400;
+          break;
+        case SensorType.lightIntensity:
+          final hourOfDay = timestamp.hour;
+          if (hourOfDay >= 6 && hourOfDay <= 18) {
+            value = 15000.0 + random.nextDouble() * 10000;
+          } else {
+            value = random.nextDouble() * 100;
+          }
+          break;
+        case SensorType.airQuality:
+          value = 400.0 + random.nextDouble() * 200;
+          break;
+        case SensorType.powerUsage:
+          final hourOfDay = timestamp.hour;
+          final baseUsage = 50.0;
+          if (hourOfDay >= 6 && hourOfDay <= 18) {
+            value = baseUsage + 120.0 + random.nextDouble() * 80;
+          } else {
+            value = baseUsage + random.nextDouble() * 50;
+          }
+          break;
+      }
+
+      points.add(
+        TimeSeriesPoint(
+          timestamp: timestamp,
+          value: double.parse(value.toStringAsFixed(2)),
+        ),
+      );
+    }
+
+    return points;
   }
 
   /// Close the InfluxDB client.

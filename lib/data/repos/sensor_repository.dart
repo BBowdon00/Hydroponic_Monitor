@@ -3,6 +3,8 @@ import 'dart:async';
 import '../../core/errors.dart';
 import '../../core/logger.dart';
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
+import '../../presentation/pages/charts_page.dart';
 import '../mqtt/mqtt_service.dart';
 import '../influx/influx_service.dart';
 
@@ -155,6 +157,15 @@ class SensorRepository {
       end: end ?? DateTime.now(),
       limit: limit ?? 100,
     );
+  }
+
+  /// Get time series data for a specific sensor type for charting.
+  /// Returns aggregated data points ordered by timestamp (ascending).
+  Future<Result<List<TimeSeriesPoint>>> getSensorTimeSeries(
+    SensorType sensorType,
+    ChartRange range,
+  ) async {
+    return influxService.queryTimeSeries(sensorType, range);
   }
 
   /// Dispose of resources.

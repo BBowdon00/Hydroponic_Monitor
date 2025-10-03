@@ -17,6 +17,7 @@ class Env {
   // Note: Platform.environment is not available on web, so use dotenv only
   static String get influxUrl => kIsWeb
       ? dotenv.env['INFLUX_URL'] ??
+            // Web default restored to legacy /influxdb prefix for stable CORS behavior.
             'http://m0rb1d-server.mynetworksettings.com:8080/influxdb'
       : Platform.environment['INFLUX_URL'] ??
             dotenv.env['INFLUX_URL'] ??
@@ -30,7 +31,7 @@ class Env {
     if (testFlag == 'true') {
       return 'http://localhost:8086';
     }
-    return 'http://m0rb1d-server.mynetworksettings.com:8080/influxdb';
+    return 'http://m0rb1d-server.mynetworksettings.com:8080';
   }
 
   static String get influxToken => kIsWeb
@@ -45,11 +46,21 @@ class Env {
             dotenv.env['INFLUX_ORG'] ??
             'hydroponic-monitor';
 
-  static String get influxBucket => kIsWeb
-      ? dotenv.env['INFLUX_BUCKET'] ?? 'sensors'
-      : Platform.environment['INFLUX_BUCKET'] ??
-            dotenv.env['INFLUX_BUCKET'] ??
-            'sensors';
+  /// Bucket selection logic:
+  /// - In test contexts (Env.isTest true) we default to 'test-bucket' to match
+  ///   integration docker-compose initialization if no explicit env provided.
+  /// - Otherwise default to 'grow_data' (primary long-retention production bucket)
+  ///   instead of the prior generic 'sensors' fallback to reduce misconfiguration.
+  /// An explicit INFLUX_BUCKET (platform env or .env) always overrides.
+  static String get influxBucket {
+    final provided = kIsWeb
+        ? dotenv.env['INFLUX_BUCKET']
+        : Platform.environment['INFLUX_BUCKET'] ?? dotenv.env['INFLUX_BUCKET'];
+    if (isTest) {
+      return provided ?? 'test-bucket';
+    }
+    return provided ?? 'grow_data';
+  }
 
   static String get mjpegUrl =>
       dotenv.env['MJPEG_URL'] ??
