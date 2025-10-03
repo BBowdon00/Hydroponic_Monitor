@@ -210,4 +210,52 @@ flowchart LR
 - **→ Progress**: [progress.md](./progress.md) - Implementation roadmap
 
 ---
-*Last Updated: 2025-09-24*
+*Last Updated: 2025-10-03*
+
+## Runtime Configuration (TASK010)
+
+Runtime editing of connectivity and streaming parameters (MQTT, InfluxDB, MJPEG) is fully reactive and coupled with an explicit Apply + Manual Reconnect workflow for deterministic ordering.
+
+### Layer Responsibilities
+| Layer | Artifact | Responsibility |
+|-------|----------|----------------|
+| Domain | `AppConfig` (MQTT/Influx/MJPEG) | Immutable snapshot of runtime settings |
+| Data | `ConfigRepository` | Persists non-secrets (SharedPreferences) & secrets (Secure Storage) |
+| Presentation | `configProvider` | Async load, mutation, reset; exposes `AsyncValue<AppConfig>` |
+| Services | `mqttServiceProvider`, `influxServiceProvider` | Recreated on config change; prior instances retired/disposed |
+| UI | `SettingsPage` | Draft editing, validation, Apply action + provider invalidation + manual reconnect trigger |
+| Video | `videoStateProvider` | Seeds from config; auto-adopts new URL only while idle |
+
+### Change Lifecycle
+1. User edits draft fields locally.
+2. Apply: persist new config → invalidate service providers.
+3. Manual reconnect button rebuilds & connects new MQTT / Influx instances.
+4. Status banner & badges refresh from new streams.
+
+### Secrets & Logging
+- Password/token stored only in secure storage keys.
+- Masked as `***` in logs and model `toString()`.
+- Cleared on full reset.
+
+### Guards & Edge Cases
+| Scenario | Behavior |
+|----------|----------|
+| Rapid host/port edits | Previous MQTT client `retire()` prevents stale callbacks |
+| Reconnect mid-edit | Reconnect uses latest rebuilt instances |
+| Config load race | Repositories wait for actual connected event before success log |
+| MJPEG URL while playing | Deferred; user must disconnect to adopt new URL |
+| Empty username/password | Treated as anonymous auth (null) |
+| Invalid port | Rejected client-side (range 1–65535) |
+
+### Testing
+- Persistence tests for `ConfigRepository`.
+- Dynamic reconfiguration integration test.
+- Provider unit tests (identity change & retirement semantics).
+- Video state tests (idle adoption vs user-modified flag).
+
+### Observability & Future Work
+- Potential metrics hook for rebuild counts.
+- Debounced multi-field apply batching.
+- Versioned config rollback.
+- Banner indicator when active connections still using stale settings.
+- Active connection metadata panel (host/port/token hash) for transparency.

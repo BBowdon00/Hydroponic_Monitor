@@ -84,8 +84,14 @@ class Env {
   /// Call this in main() before runApp().
   static Future<void> init() async {
     try {
-      await dotenv.load(fileName: '.env');
-      print('✅ Environment configuration loaded from .env file');
+      // Prefer .env.test in test contexts if present; fall back to .env
+      try {
+        await dotenv.load(fileName: '.env.test');
+        print('✅ Environment configuration loaded from .env.test file');
+      } catch (_) {
+        await dotenv.load(fileName: '.env');
+        print('✅ Environment configuration loaded from .env file');
+      }
     } catch (e) {
       // .env file not found or couldn't be loaded - using defaults
       print('⚠️ Warning: .env file not found, using default values');

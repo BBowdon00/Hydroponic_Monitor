@@ -57,7 +57,16 @@ class InfluxDbService {
   /// another periodic health check.
   void emitCurrentStatus() {
     if (_lastConnectionStatus != null && !_connectionController.isClosed) {
+      Logger.debug(
+        'InfluxDbService.emitCurrentStatus => ${_lastConnectionStatus!}',
+        tag: 'InfluxDB',
+      );
       _connectionController.add(_lastConnectionStatus!);
+    } else {
+      Logger.debug(
+        'InfluxDbService.emitCurrentStatus skipped (status=${_lastConnectionStatus}, closed=${_connectionController.isClosed})',
+        tag: 'InfluxDB',
+      );
     }
   }
 
@@ -84,6 +93,8 @@ class InfluxDbService {
           tag: 'InfluxDB',
         );
         _startHealthMonitoring();
+        // Ensure status replay for late subscribers.
+        emitCurrentStatus();
         return Success(null);
       } else {
         final error = 'InfluxDB health check failed during initialization';
@@ -204,7 +215,11 @@ class InfluxDbService {
         _connectionController.add('disconnected');
         return Failure(InfluxError('InfluxDB client not initialized'));
       }
-
+      Logger.debug(
+        'InfluxDbService connection status -> disconnected (exception path)',
+        tag: 'InfluxDB',
+      );
+      _connectionController.add('disconnected');
       // Use 'sensor' measurement with proper tag structure
       final point = Point('sensor')
           .addTag('deviceType', data.sensorType.name)

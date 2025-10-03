@@ -33,6 +33,9 @@ class MqttService {
 
   MqttClient? _client;
   bool _isConnecting = false;
+  bool _retired =
+      false; // Set when provider replaces this instance; suppress further connects
+  bool get isRetired => _retired;
   Completer<void> _initializedCompleter = Completer<void>();
   final StreamController<SensorData> _sensorDataController =
       StreamController<SensorData>.broadcast();
@@ -44,6 +47,18 @@ class MqttService {
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
   String? _lastConnectionStatus;
+  bool get _canEmitConnectionEvents =>
+      !_retired && !_connectionController.isClosed;
+
+  void _emitConnectionStatus(String status) {
+    if (!_canEmitConnectionEvents) return;
+    _lastConnectionStatus = status;
+    try {
+      _connectionController.add(status);
+    } catch (_) {
+      // Silently ignore if closed mid-flight.
+    }
+  }
 
   /// Stream of sensor data received via MQTT.
   Stream<SensorData> get sensorDataStream => _sensorDataController.stream;
@@ -92,8 +107,8 @@ class MqttService {
   /// Re-emit the last known connection status to listeners (useful after manual
   /// reconnect flows to force UI refresh if no transition event was observed).
   void emitCurrentStatus() {
-    if (_lastConnectionStatus != null && !_connectionController.isClosed) {
-      _connectionController.add(_lastConnectionStatus!);
+    if (_lastConnectionStatus != null) {
+      _emitConnectionStatus(_lastConnectionStatus!);
     }
   }
 
@@ -115,13 +130,24 @@ class MqttService {
 
   /// Initialize and connect to MQTT broker.
   Future<Result<void>> connect() async {
+    if (_retired) {
+      Logger.debug(
+        'Connect ignored on retired service (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
+      return const Success(null);
+    }
     try {
-      Logger.info('Connecting to MQTT broker at $host:$port', tag: 'MQTT');
+      final attemptId = ++_globalAttemptCounter;
+      Logger.info(
+        'Connecting to MQTT broker at $host:$port (attempt #$attemptId, instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
 
       // Prevent duplicate concurrent connect attempts or reconnect storms.
       if (_isConnecting) {
         Logger.debug(
-          'Connect called while already connecting - skipping',
+          'Connect called while already connecting - skipping (instance=${identityHashCode(this)})',
           tag: 'MQTT',
         );
         return const Success(null);
@@ -130,7 +156,7 @@ class MqttService {
       final currentState = _client?.connectionStatus?.state;
       if (currentState == MqttConnectionState.connected) {
         Logger.debug(
-          'MQTT client already connected - skipping connect',
+          'MQTT client already connected - skipping connect (instance=${identityHashCode(this)})',
           tag: 'MQTT',
         );
         return const Success(null);
@@ -139,28 +165,35 @@ class MqttService {
       // Create appropriate client for web or server platforms
       if (kIsWeb) {
         try {
-          _client = MqttBrowserClient('ws://$host', clientId);
+          // Support user specifying full ws:// or wss:// URL in host field. If absent, prepend ws://.
+          final hasScheme =
+              host.startsWith('ws://') || host.startsWith('wss://');
+          final baseUrl = hasScheme ? host : 'ws://$host';
+          _client = MqttBrowserClient(baseUrl, clientId);
           if (_client != null) {
             (_client as MqttBrowserClient).websocketProtocols = ['mqtt'];
-            _client!.port = 9001; // WebSocket port for MQTT
+            _client!.port =
+                port; // Use configured port (e.g., 9001) rather than hard-coded
           }
           Logger.info(
-            'Web platform detected - attempting WebSocket MQTT connection at ws://$host:9001',
+            'Web platform detected - attempting WebSocket MQTT connection at $baseUrl:$port (instance=${identityHashCode(this)})',
             tag: 'MQTT',
           );
         } catch (e) {
           Logger.warning(
-            'Failed to create web MQTT client (expected in non-web environments): $e',
+            'Failed to create web MQTT client (falling back to server client semantics for tests): $e (instance=${identityHashCode(this)})',
             tag: 'MQTT',
           );
-          // Fallback to server client for test environments
           _client = MqttServerClient.withPort(host, clientId, port);
-          Logger.info('Using server MQTT client as fallback', tag: 'MQTT');
+          Logger.info(
+            'Using server MQTT client as fallback (instance=${identityHashCode(this)})',
+            tag: 'MQTT',
+          );
         }
       } else {
         _client = MqttServerClient.withPort(host, clientId, port);
         Logger.info(
-          'Non-web platform detected - using server MQTT client',
+          'Non-web platform detected - using server MQTT client (instance=${identityHashCode(this)})',
           tag: 'MQTT',
         );
       }
@@ -205,7 +238,10 @@ class MqttService {
 
       if (status?.state == MqttConnectionState.connected) {
         _isConnecting = false;
-        Logger.info('Successfully connected to MQTT broker', tag: 'MQTT');
+        Logger.info(
+          'Successfully connected to MQTT broker (attempt #$attemptId, instance=${identityHashCode(this)})',
+          tag: 'MQTT',
+        );
         // Set up message handling
         final updates = _client!.updates;
         if (updates != null) {
@@ -226,13 +262,15 @@ class MqttService {
         return const Success(null);
       } else {
         _isConnecting = false;
-        final error = 'Failed to connect to MQTT broker: ${status?.state}';
+        final error =
+            'Failed to connect to MQTT broker: ${status?.state} (attempt #$attemptId, instance=${identityHashCode(this)})';
         Logger.error(error, tag: 'MQTT');
         return Failure(MqttError(error));
       }
     } catch (e, stackTrace) {
       _isConnecting = false;
-      final error = 'Error connecting to MQTT broker: $e';
+      final error =
+          'Error connecting to MQTT broker (attempt #${_globalAttemptCounter}, instance=${identityHashCode(this)}): $e';
       Logger.error(error, tag: 'MQTT', error: e);
       Logger.debug('Stack trace: $stackTrace', tag: 'MQTT');
       return Failure(MqttError(error));
@@ -255,7 +293,10 @@ class MqttService {
   /// Disconnect from MQTT broker.
   Future<void> disconnect() async {
     try {
-      Logger.info('Disconnecting from MQTT broker', tag: 'MQTT');
+      Logger.info(
+        'Disconnecting from MQTT broker (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
 
       // Disconnect the client
       _client?.disconnect();
@@ -264,10 +305,7 @@ class MqttService {
       _isConnecting = false;
 
       // Emit disconnected status
-      if (!_connectionController.isClosed) {
-        _lastConnectionStatus = 'disconnected';
-        _connectionController.add('disconnected');
-      }
+      _emitConnectionStatus('disconnected');
 
       // Note: Don't close streams here as they may be needed for reconnection
       // Streams will be closed in dispose() method
@@ -559,15 +597,27 @@ class MqttService {
   }
 
   void _onConnected() {
+    if (_retired) {
+      Logger.debug(
+        'Ignoring onConnected callback on retired service (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
+      return;
+    }
     Logger.info('MQTT client connected', tag: 'MQTT');
-    _lastConnectionStatus = 'connected';
-    _connectionController.add('connected');
+    _emitConnectionStatus('connected');
   }
 
   void _onDisconnected() {
+    if (_retired) {
+      Logger.debug(
+        'Ignoring onDisconnected callback on retired service (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
+      return;
+    }
     Logger.warning('MQTT client disconnected', tag: 'MQTT');
-    _lastConnectionStatus = 'disconnected';
-    _connectionController.add('disconnected');
+    _emitConnectionStatus('disconnected');
   }
 
   void _onAutoReconnect() {
@@ -575,9 +625,15 @@ class MqttService {
   }
 
   void _onAutoReconnected() {
+    if (_retired) {
+      Logger.debug(
+        'Ignoring onAutoReconnected callback on retired service (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
+      return;
+    }
     Logger.info('MQTT client auto-reconnected successfully', tag: 'MQTT');
-    _lastConnectionStatus = 'reconnected';
-    _connectionController.add('reconnected');
+    _emitConnectionStatus('reconnected');
     // Re-subscribe to topics after reconnection
     _subscribeToTopics();
   }
@@ -594,7 +650,17 @@ class MqttService {
   /// Reset the MQTT connection for reconnection (without closing streams).
   Future<void> reset() async {
     try {
-      Logger.info('Resetting MQTT service for reconnection', tag: 'MQTT');
+      if (_retired) {
+        Logger.debug(
+          'Reset ignored on retired service (instance=${identityHashCode(this)})',
+          tag: 'MQTT',
+        );
+        return;
+      }
+      Logger.info(
+        'Resetting MQTT service for reconnection (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
 
       // Disconnect and dispose current client
       if (_client != null) {
@@ -616,7 +682,10 @@ class MqttService {
         _initializedCompleter = Completer<void>();
       }
 
-      Logger.debug('MQTT service reset completed', tag: 'MQTT');
+      Logger.debug(
+        'MQTT service reset completed (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
     } catch (e) {
       Logger.warning('Error during MQTT reset: $e', tag: 'MQTT');
     }
@@ -624,7 +693,16 @@ class MqttService {
 
   Future<void> dispose() async {
     try {
-      Logger.info('Disposing MQTT service', tag: 'MQTT');
+      Logger.info(
+        'Disposing MQTT service (instance=${identityHashCode(this)})',
+        tag: 'MQTT',
+      );
+
+      // Proactively disable autoReconnect to guarantee the underlying client
+      // does not schedule further websocket attempts while we tear down.
+      try {
+        _client?.autoReconnect = false;
+      } catch (_) {}
 
       // Disconnect the client
       _client?.disconnect();
@@ -655,7 +733,23 @@ class MqttService {
       Logger.warning('Error during MQTT dispose: $e', tag: 'MQTT');
     }
   }
+
+  /// Mark this service as retired so future connect/reset calls are ignored.
+  void retire() {
+    if (_retired) return;
+    _retired = true;
+    Logger.debug(
+      'Retiring MQTT service (instance=${identityHashCode(this)})',
+      tag: 'MQTT',
+    );
+    try {
+      _client?.autoReconnect = false;
+    } catch (_) {}
+  }
 }
+
+// Global diagnostics counter (process lifetime)
+int _globalAttemptCounter = 0;
 
 /// Custom MQTT message container for raw topic and payload data.
 class HydroMqttMessage {

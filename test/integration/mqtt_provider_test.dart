@@ -14,6 +14,58 @@ import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
 import '../test_utils.dart';
 import 'package:hydroponic_monitor/core/logger.dart';
+import 'package:hydroponic_monitor/data/repos/sensor_repository.dart';
+import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
+import 'package:hydroponic_monitor/data/influx/influx_service.dart';
+import 'package:hydroponic_monitor/presentation/providers/config_provider.dart';
+import 'package:hydroponic_monitor/data/repos/config_repository.dart';
+import 'package:hydroponic_monitor/domain/entities/app_config.dart';
+
+// Simple in-memory config repository for deterministic integration tests
+class _InMemoryConfigRepository implements ConfigRepository {
+  _InMemoryConfigRepository();
+  AppConfig _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(
+      url: 'http://localhost:8080/stream',
+      autoReconnect: true,
+    ),
+  );
+  @override
+  Future<AppConfig> loadConfig() async => _config;
+  @override
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+
+  @override
+  Future<void> clearConfig() async {
+    _config = const AppConfig(
+      mqtt: MqttConfig(
+        host: 'localhost',
+        port: 1883,
+        username: '',
+        password: '',
+      ),
+      influx: InfluxConfig(
+        url: 'http://localhost:8086',
+        token: '',
+        org: 'org',
+        bucket: 'bucket',
+      ),
+      mjpeg: MjpegConfig(
+        url: 'http://localhost:8080/stream',
+        autoReconnect: true,
+      ),
+    );
+  }
+}
 
 /// Integration tests for MQTT publish/subscribe functionality using the provider framework.
 ///
@@ -65,7 +117,23 @@ void main() {
 
     setUp(() async {
       // Create a fresh container for each test
-      container = ProviderContainer();
+      container = ProviderContainer(
+        overrides: [
+          // Provide in-memory config to satisfy configProvider dependencies
+          configRepositoryProvider.overrideWithValue(
+            _InMemoryConfigRepository(),
+          ),
+          sensorRepositoryProvider.overrideWith((ref) {
+            final mqtt = ref.read(mqttServiceProvider);
+            final influx = ref.read(influxServiceProvider);
+            return SensorRepository(
+              mqttService: mqtt,
+              influxService: influx,
+              strictInit: true,
+            );
+          }),
+        ],
+      );
       await container.read(mqttServiceProvider).connect();
       // Get the MQTT service from the container after initialization
       mqttService = container.read(mqttServiceProvider);
@@ -74,7 +142,6 @@ void main() {
     tearDown(() async {
       // Clean up the container
       container.dispose();
-      await mqttService.disconnect();
     });
 
     test(
@@ -217,6 +284,7 @@ void main() {
           SensorType.pH,
         ];
         final receivedData = <SensorData>[];
+        final receivedTypes = <SensorType>{};
 
         // Set up provider listener BEFORE publishing data
         // ignore: deprecated_member_use
@@ -224,50 +292,89 @@ void main() {
 
         final subscription = sensorStream.listen((data) {
           receivedData.add(data);
+          receivedTypes.add(data.sensorType);
         });
 
         // Small delay to ensure subscription is active
         await Future.delayed(const Duration(milliseconds: 200));
 
-        // Publish multiple sensor types
-        for (final sensorType in sensorTypes) {
-          final testData = TestDataGenerator.generateSensorData(
-            sensorType: sensorType,
-            sensorId: 'multi_test_${sensorType.name}',
-            deviceId: 'multi_device',
-            location: 'multi_test_zone',
-          );
+        Future<void> publishTypes(Iterable<SensorType> types) async {
+          // Ensure publisher client is still connected (reconnect if broker dropped connection)
+          if (testPublisherClient != null &&
+              testPublisherClient!.connectionStatus?.state !=
+                  MqttConnectionState.connected) {
+            try {
+              await testPublisherClient!.connect();
+              Logger.info(
+                'Reconnected test publisher client before publishing types',
+                tag: 'Test',
+              );
+            } catch (e) {
+              Logger.warning(
+                'Failed to reconnect publisher client: $e',
+                tag: 'Test',
+              );
+            }
+          }
+          for (final sensorType in types) {
+            final testData = TestDataGenerator.generateSensorData(
+              sensorType: sensorType,
+              sensorId: 'multi_test_${sensorType.name}',
+              deviceId: 'multi_device',
+              location: 'multi_test_zone',
+            );
 
-          final topic = TestMqttTopics.sensorTopicFor('rpi');
-          final messageJson = _sensorDataToJson(testData);
+            final topic = TestMqttTopics.sensorTopicFor('rpi');
+            final messageJson = _sensorDataToJson(testData);
 
-          final builder = MqttClientPayloadBuilder();
-          builder.addString(messageJson);
+            final builder = MqttClientPayloadBuilder();
+            builder.addString(messageJson);
 
-          testPublisherClient!.publishMessage(
-            topic,
-            MqttQos.atLeastOnce,
-            builder.payload!,
-          );
+            testPublisherClient!.publishMessage(
+              topic,
+              MqttQos.atLeastOnce,
+              builder.payload!,
+            );
 
-          // Small delay between publishes
-          await Future.delayed(const Duration(milliseconds: 200));
+            // Small delay between publishes to avoid flooding
+            await Future.delayed(const Duration(milliseconds: 150));
+          }
         }
 
-        // Wait for all messages to be processed
-        await Future.delayed(const Duration(seconds: 3));
+        // Initial publish of all sensor types
+        await publishTypes(sensorTypes);
+
+        // Wait up to 5 seconds for all unique types to arrive, republishing missing once
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        var republished = false;
+        while (DateTime.now().isBefore(deadline) &&
+            receivedTypes.length < sensorTypes.length) {
+          await Future.delayed(const Duration(milliseconds: 250));
+          final missing = sensorTypes.where((t) => !receivedTypes.contains(t));
+          if (missing.isNotEmpty && !republished) {
+            Logger.warning(
+              'Did not receive all sensor types yet. Missing: ${missing.map((e) => e.name).join(', ')}. Republishing missing types once.',
+              tag: 'Test',
+            );
+            await publishTypes(missing);
+            republished = true;
+          }
+        }
 
         Logger.info('Received ${receivedData.length} sensor data points');
         for (final data in receivedData) {
           Logger.debug('Received: ${data.sensorType} = ${data.value}');
         }
 
-        // Verify all sensor types were received
+        // Verify all sensor types were received (unique types)
+        final missingAfterWait = sensorTypes.where(
+          (t) => !receivedTypes.contains(t),
+        );
         expect(
-          receivedData.length,
-          greaterThanOrEqualTo(sensorTypes.length),
+          missingAfterWait,
+          isEmpty,
           reason:
-              'Should have received at least all sensor types through provider',
+              'Did not receive all sensor types. Still missing: ${missingAfterWait.map((e) => e.name).join(', ')}',
         );
 
         for (final sensorType in sensorTypes) {
@@ -322,22 +429,28 @@ void main() {
         Logger.info('Published actuator state to topic: $topic');
         Logger.debug('Payload: $payloadJson');
 
-        // Wait for the message to be processed
-        await Future.delayed(const Duration(seconds: 1));
+        // Wait up to 3 seconds for the specific actuator device to appear
+        const targetId = 'rpi_pump_1';
+        final deadline = DateTime.now().add(const Duration(seconds: 3));
+        while (DateTime.now().isBefore(deadline)) {
+          final match = receivedDevices.where((d) => d.id == targetId);
+          if (match.isNotEmpty) {
+            final received = match.first;
+            expect(received.name, equals('Circulation pump'));
+            expect(received.type, equals(DeviceType.pump));
+            expect(received.status, equals(DeviceStatus.online));
+            expect(received.isEnabled, isTrue);
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
 
-        // Verify the actuator state was received through the provider
+        // Final assertion ensuring actuator device was captured
         expect(
-          receivedDevices,
-          isNotEmpty,
-          reason: 'Should have received actuator state through provider',
+          receivedDevices.any((d) => d.id == targetId),
+          isTrue,
+          reason: 'Expected actuator device with id $targetId to be received',
         );
-
-        final received = receivedDevices.first;
-        expect(received.id, equals('rpi_pump_1'));
-        expect(received.name, equals('Circulation pump'));
-        expect(received.type, equals(DeviceType.pump));
-        expect(received.status, equals(DeviceStatus.online));
-        expect(received.isEnabled, isTrue);
 
         await subscription.cancel();
       },

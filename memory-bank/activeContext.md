@@ -1,17 +1,18 @@
 # Active Context
 
 ## High-Level Summary
-- Video page input focus issue fixed by stabilizing layout.
-- Sensor page refactor (TASK009) complete: renamed, device controls separated, stale badge shipped.
+- Runtime configuration (TASK010) implemented: settings persistence, dynamic MQTT/Influx rebuild with retire pattern, idle-safe MJPEG URL updates.
+- Sensor page refactor (TASK009) complete (naming, stale badge, separated controls).
 
 ## Recently Completed
-- TASK009: Sensor page rename + stale indicator (minutes/hours) + tests updated.
+- TASK010: Dynamic settings (AppConfig + ConfigRepository + staged Apply), provider invalidation + manual reconnect integration, added tests.
+- VideoState stabilization (no rebuild churn on config load; user-modified URL protection).
 
 ## Open Follow-Ups
+- Manual reconnect UX polish & metrics (TASK008 refinement).
 - Historical charts (TASK011).
-- Manual reconnect workflow (TASK008).
-- Production readiness hardening (TASK012).
-- Persist custom video stream URL (future enhancement).
+- Production readiness hardening (TASK012) – remove dummy Influx fallbacks.
+- Config diff banner & batch apply (future TASK010 enhancement).
 
 ## Testing
-- All suites pass; stale indicator widget test aligned to new format.
+- All suites passing: added config persistence tests, dynamic reconfiguration integration, updated video streaming tests to remove disposed notifier errors.

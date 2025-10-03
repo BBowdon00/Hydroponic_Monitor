@@ -15,6 +15,7 @@ class MockInfluxDbService extends Mock implements InfluxDbService {}
 void main() {
   setUpAll(() {
     registerFallbackValue(TestDataGenerator.createFallbackSensorData());
+    registerFallbackValue(const Duration(seconds: 1));
   });
 
   group('Network Error Handling', () {
@@ -28,7 +29,12 @@ void main() {
       repository = SensorRepository(
         mqttService: mockMqttService,
         influxService: mockInfluxService,
+        strictInit: true,
       );
+      when(
+        () => mockMqttService.connectionStream,
+      ).thenAnswer((_) => const Stream<String>.empty());
+      when(() => mockMqttService.isConnected).thenReturn(false);
     });
 
     test('handles MQTT connection timeout gracefully', () async {
@@ -36,6 +42,9 @@ void main() {
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Failure(MqttError('Connection timeout')));
+      when(
+        () => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+      ).thenAnswer((_) async {});
 
       final result = await repository.initialize();
 
@@ -47,6 +56,13 @@ void main() {
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockMqttService.connectionStream,
+      ).thenAnswer((_) => Stream<String>.value('connected'));
+      when(() => mockMqttService.isConnected).thenReturn(true);
       when(() => mockInfluxService.initialize()).thenAnswer(
         (_) async => const Failure(InfluxError('Service unavailable')),
       );
@@ -69,8 +85,15 @@ void main() {
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success(null));
       when(
+        () => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+      ).thenAnswer((_) async {});
+      when(
         () => mockInfluxService.initialize(),
       ).thenAnswer((_) async => const Success(null));
+      when(
+        () => mockMqttService.connectionStream,
+      ).thenAnswer((_) => Stream<String>.value('connected'));
+      when(() => mockMqttService.isConnected).thenReturn(true);
 
       // Simulate MQTT stream with errors
       when(

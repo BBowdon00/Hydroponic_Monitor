@@ -1,253 +1,405 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../app.dart';
 import '../../core/theme.dart';
+import '../providers/config_provider.dart';
+import '../providers/manual_reconnect_provider.dart';
 import '../providers/data_providers.dart';
-import '../../core/logger.dart';
+import '../../domain/entities/app_config.dart';
 
 /// Settings page for configuring MQTT, InfluxDB, units, and app preferences.
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  AppConfig? _draft; // Staged (unsaved) configuration edits
+  AppConfig? _baseline; // Last persisted config from provider
+  bool _dirty = false; // Whether draft differs from baseline
+
+  void _ensureDraftInitialized(AppConfig providerConfig) {
+    // Initialize draft when first data arrives or when no local edits pending and provider config changed.
+    if (_draft == null || (!_dirty && _baseline != providerConfig)) {
+      _baseline = providerConfig;
+      _draft = providerConfig;
+      _dirty = false;
+    }
+  }
+
+  bool get _hasUnsavedChanges =>
+      _dirty && _draft != null && _baseline != _draft;
+
+  @override
+  Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final configAsync = ref.watch(configProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.spaceMd),
-        children: [
-          // App Preferences Section
-          _buildSectionCard(
-            context,
-            title: 'App Preferences',
+      body: configAsync.when(
+        data: (config) {
+          _ensureDraftInitialized(config);
+          return _buildSettingsContent(context, isDarkMode, _draft!);
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SwitchListTile(
-                title: const Text('Dark Mode'),
-                subtitle: const Text('Use dark theme throughout the app'),
-                value: isDarkMode,
-                onChanged: (value) {
-                  ref.read(themeProvider.notifier).setDarkMode(value);
-                },
-                secondary: Icon(
-                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('Language'),
-                subtitle: const Text('English (US)'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  _showLanguageDialog(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.straighten),
-                title: const Text('Units'),
-                subtitle: const Text('Metric (°C, cm, L)'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  _showUnitsDialog(context);
-                },
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Failed to load configuration: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.read(configProvider.notifier).reload(),
+                child: const Text('Retry'),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
 
-          const SizedBox(height: AppTheme.spaceMd),
+  void _stageConfig(AppConfig newConfig) {
+    setState(() {
+      _draft = newConfig;
+      _dirty = true;
+    });
+  }
 
-          // MQTT Configuration Section
-          _buildSectionCard(
-            context,
-            title: 'MQTT Configuration',
-            children: [
-              _buildConfigTile(
-                context,
-                icon: Icons.dns,
-                title: 'Broker Host',
-                value: 'mqtt.example.com',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'MQTT Broker Host',
-                  'mqtt.example.com',
+  Widget _buildSettingsContent(
+    BuildContext context,
+    bool isDarkMode,
+    AppConfig config,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.all(AppTheme.spaceMd),
+      children: [
+        if (_hasUnsavedChanges)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.spaceMd),
+            child: Material(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(6),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.pending_actions,
+                  color: Colors.black87,
                 ),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.numbers,
-                title: 'Port',
-                value: '1883',
-                onTap: () => _showConfigDialog(context, 'MQTT Port', '1883'),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.account_circle,
-                title: 'Username',
-                value: 'hydro_user',
-                onTap: () =>
-                    _showConfigDialog(context, 'MQTT Username', 'hydro_user'),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.lock,
-                title: 'Password',
-                value: '••••••••',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'MQTT Password',
-                  '',
-                  isPassword: true,
+                title: const Text('You have unsaved configuration changes'),
+                subtitle: const Text(
+                  'Press "Apply Changes" to persist and reconnect services.',
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spaceMd),
-
-          // InfluxDB Configuration Section
-          _buildSectionCard(
-            context,
-            title: 'InfluxDB Configuration',
-            children: [
-              _buildConfigTile(
-                context,
-                icon: Icons.storage,
-                title: 'Database URL',
-                value: 'http://influxdb.local:8086',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'InfluxDB URL',
-                  'http://influxdb.local:8086',
-                ),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.key,
-                title: 'Token',
-                value: '••••••••••••••••',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'InfluxDB Token',
-                  '',
-                  isPassword: true,
-                ),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.business,
-                title: 'Organization',
-                value: 'hydroponic-monitor',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'Organization',
-                  'hydroponic-monitor',
-                ),
-              ),
-              _buildConfigTile(
-                context,
-                icon: Icons.inventory,
-                title: 'Bucket',
-                value: 'sensors',
-                onTap: () => _showConfigDialog(context, 'Bucket', 'sensors'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spaceMd),
-
-          // Video Configuration Section
-          _buildSectionCard(
-            context,
-            title: 'Video Configuration',
-            children: [
-              _buildConfigTile(
-                context,
-                icon: Icons.videocam,
-                title: 'MJPEG Stream URL',
-                value: 'http://raspberry.local:8080/stream',
-                onTap: () => _showConfigDialog(
-                  context,
-                  'MJPEG Stream URL',
-                  'http://raspberry.local:8080/stream',
-                ),
-              ),
-              SwitchListTile(
-                secondary: const Icon(Icons.record_voice_over),
-                title: const Text('Auto-reconnect'),
-                subtitle: const Text('Automatically reconnect to video stream'),
-                value: true,
-                onChanged: (value) {
-                  // Handle auto-reconnect toggle
-                },
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spaceMd),
-
-          // System Information Section
-          _buildSectionCard(
-            context,
-            title: 'System Information',
-            children: [
-              const ListTile(
-                leading: Icon(Icons.info),
-                title: Text('App Version'),
-                subtitle: Text('1.0.0+1'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.update),
-                title: const Text('Last Updated'),
-                subtitle: const Text('Never'),
                 trailing: TextButton(
                   onPressed: () {
-                    _showUpdateDialog(context);
+                    setState(() {
+                      _draft = _baseline;
+                      _dirty = false; // revert
+                    });
                   },
-                  child: const Text('Check'),
+                  child: const Text('Discard'),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.bug_report),
-                title: const Text('Report Issue'),
-                subtitle: const Text('Send feedback or report bugs'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  _showFeedbackDialog(context);
+            ),
+          ),
+        // App Preferences Section
+        _buildSectionCard(
+          context,
+          title: 'App Preferences',
+          children: [
+            SwitchListTile(
+              title: const Text('Dark Mode'),
+              subtitle: const Text('Use dark theme throughout the app'),
+              value: isDarkMode,
+              onChanged: (value) {
+                ref.read(themeProvider.notifier).setDarkMode(value);
+              },
+              secondary: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('Language'),
+              subtitle: const Text('English (US)'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                _showLanguageDialog(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.straighten),
+              title: const Text('Units'),
+              subtitle: const Text('Metric (°C, cm, L)'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                _showUnitsDialog(context);
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppTheme.spaceMd),
+
+        // MQTT Configuration Section
+        _buildSectionCard(
+          context,
+          title: 'MQTT Configuration',
+          children: [
+            _buildConfigTile(
+              context,
+              icon: Icons.dns,
+              title: 'Broker Host',
+              value: config.mqtt.host,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'MQTT Broker Host',
+                config.mqtt.host,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(mqtt: base.mqtt.copyWith(host: value));
                 },
               ),
-            ],
-          ),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.numbers,
+              title: 'Port',
+              value: config.mqtt.port.toString(),
+              onTap: () => _showPortDialog(context, ref, config),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.account_circle,
+              title: 'Username',
+              value: config.mqtt.username.isEmpty
+                  ? '(not set)'
+                  : config.mqtt.username,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'MQTT Username',
+                config.mqtt.username,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    mqtt: base.mqtt.copyWith(username: value),
+                  );
+                },
+              ),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.lock,
+              title: 'Password',
+              value: config.mqtt.password.isEmpty ? '(not set)' : '••••••••',
+              onTap: () =>
+                  _showConfigDialog(context, ref, 'MQTT Password', '', (value) {
+                    final base = _draft ?? config;
+                    return base.copyWith(
+                      mqtt: base.mqtt.copyWith(password: value),
+                    );
+                  }, isPassword: true),
+            ),
+          ],
+        ),
 
-          const SizedBox(height: AppTheme.spaceLg),
+        const SizedBox(height: AppTheme.spaceMd),
 
-          // Test Connection Buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    _testMqttConnection(context);
-                  },
-                  icon: const Icon(Icons.wifi),
-                  label: const Text('Test MQTT'),
+        // InfluxDB Configuration Section
+        _buildSectionCard(
+          context,
+          title: 'InfluxDB Configuration',
+          children: [
+            _buildConfigTile(
+              context,
+              icon: Icons.storage,
+              title: 'Database URL',
+              value: config.influx.url,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'InfluxDB URL',
+                config.influx.url,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(url: value),
+                  );
+                },
+              ),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.key,
+              title: 'Token',
+              value: config.influx.token.isEmpty
+                  ? '(not set)'
+                  : '••••••••••••••••',
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'InfluxDB Token',
+                '',
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(token: value),
+                  );
+                },
+                isPassword: true,
+              ),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.business,
+              title: 'Organization',
+              value: config.influx.org,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'Organization',
+                config.influx.org,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(org: value),
+                  );
+                },
+              ),
+            ),
+            _buildConfigTile(
+              context,
+              icon: Icons.inventory,
+              title: 'Bucket',
+              value: config.influx.bucket,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'Bucket',
+                config.influx.bucket,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(bucket: value),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppTheme.spaceMd),
+
+        // Video Configuration Section
+        _buildSectionCard(
+          context,
+          title: 'Video Configuration',
+          children: [
+            _buildConfigTile(
+              context,
+              icon: Icons.videocam,
+              title: 'MJPEG Stream URL',
+              value: config.mjpeg.url,
+              onTap: () => _showConfigDialog(
+                context,
+                ref,
+                'MJPEG Stream URL',
+                config.mjpeg.url,
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(mjpeg: base.mjpeg.copyWith(url: value));
+                },
+              ),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.record_voice_over),
+              title: const Text('Auto-reconnect'),
+              subtitle: const Text('Automatically reconnect to video stream'),
+              value: config.mjpeg.autoReconnect,
+              onChanged: (value) {
+                final updated = config.copyWith(
+                  mjpeg: config.mjpeg.copyWith(autoReconnect: value),
+                );
+                _stageConfig(updated);
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppTheme.spaceMd),
+
+        // System Information Section
+        _buildSectionCard(
+          context,
+          title: 'System Information',
+          children: [
+            const ListTile(
+              leading: Icon(Icons.info),
+              title: Text('App Version'),
+              subtitle: Text('1.0.0+1'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.update),
+              title: const Text('Last Updated'),
+              subtitle: const Text('Never'),
+              trailing: TextButton(
+                onPressed: () {
+                  _showUpdateDialog(context);
+                },
+                child: const Text('Check'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bug_report),
+              title: const Text('Report Issue'),
+              subtitle: const Text('Send feedback or report bugs'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                _showFeedbackDialog(context);
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppTheme.spaceLg),
+
+        // Apply Changes and Reset Buttons
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _applyChanges(context, ref);
+                },
+                icon: const Icon(Icons.check),
+                label: const Text('Apply Changes'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(AppTheme.spaceMd),
                 ),
               ),
-              const SizedBox(width: AppTheme.spaceMd),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    _testInfluxConnection(context);
-                  },
-                  icon: const Icon(Icons.storage),
-                  label: const Text('Test InfluxDB'),
+            ),
+            const SizedBox(width: AppTheme.spaceMd),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  _resetToDefaults(context, ref);
+                },
+                icon: const Icon(Icons.restore),
+                label: const Text('Reset to Defaults'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.all(AppTheme.spaceMd),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -293,11 +445,15 @@ class SettingsPage extends ConsumerWidget {
 
   void _showConfigDialog(
     BuildContext context,
+    WidgetRef ref,
     String title,
-    String initialValue, {
+    String initialValue,
+    AppConfig Function(String) updateFn, {
     bool isPassword = false,
   }) {
-    final controller = TextEditingController(text: initialValue);
+    final controller = TextEditingController(
+      text: isPassword ? '' : initialValue,
+    );
 
     showDialog(
       context: context,
@@ -317,12 +473,33 @@ class SettingsPage extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // Save configuration
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('$title updated')));
+            onPressed: () async {
+              final value = controller.text.trim();
+
+              // Validation
+              if (!isPassword && value.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('$title cannot be empty')),
+                );
+                return;
+              }
+
+              // Update config
+              if (_draft != null) {
+                final updated = updateFn(value);
+                _stageConfig(updated);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$title staged (apply changes to persist)'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else {
+                Navigator.of(context).pop();
+              }
             },
             child: const Text('Save'),
           ),
@@ -428,79 +605,179 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _testMqttConnection(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Testing MQTT connection...')));
+  void _showPortDialog(BuildContext context, WidgetRef ref, AppConfig config) {
+    final controller = TextEditingController(text: config.mqtt.port.toString());
 
-    // Test actual MQTT connection using the service
-    final container = ProviderScope.containerOf(context);
-    final mqttService = container.read(mqttServiceProvider);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('MQTT Port'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Enter MQTT Port (e.g., 1883)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final port = int.tryParse(controller.text.trim());
+              if (port == null || port < 1 || port > 65535) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Invalid port number (1-65535)'),
+                  ),
+                );
+                return;
+              }
 
-    mqttService.connect().then((result) {
-      if (context.mounted) {
-        result.when(
-          success: (_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('MQTT connection successful!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Logger.info('MQTT connection test successful', tag: 'Settings');
-          },
-          failure: (error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('MQTT connection failed: ${error.message}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            Logger.error(
-              'MQTT connection test failed: ${error.message}',
-              tag: 'Settings',
-            );
-          },
-        );
-      }
-    });
+              final updatedConfig = config.copyWith(
+                mqtt: config.mqtt.copyWith(port: port),
+              );
+              _stageConfig(updatedConfig);
+
+              if (context.mounted) {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('MQTT Port updated')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _testInfluxConnection(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Testing InfluxDB connection...')),
+  void _applyChanges(BuildContext context, WidgetRef ref) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Apply Configuration Changes'),
+        content: const Text(
+          'This will reconnect MQTT and InfluxDB services with the new settings. '
+          'The app may briefly lose connection. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
     );
 
-    // Test actual InfluxDB connection using the service
-    final container = ProviderScope.containerOf(context);
-    final influxService = container.read(influxServiceProvider);
+    if (confirmed != true || !context.mounted) return;
 
-    influxService.initialize().then((result) {
-      if (context.mounted) {
-        result.when(
-          success: (_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('InfluxDB connection successful!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Logger.info('InfluxDB connection test successful', tag: 'Settings');
-          },
-          failure: (error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('InfluxDB connection failed: ${error.message}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            Logger.error(
-              'InfluxDB connection test failed: ${error.message}',
-              tag: 'Settings',
-            );
-          },
+    // Persist draft if dirty before invalidating services
+    if (_dirty && _draft != null) {
+      await ref.read(configProvider.notifier).updateConfig(_draft!);
+      setState(() {
+        _baseline = _draft;
+        _dirty = false;
+      });
+    }
+
+    // Invalidate service providers so they rebuild with new configuration
+    ref.invalidate(mqttServiceProvider);
+    ref.invalidate(influxServiceProvider);
+    ref.invalidate(connectionRecoveryServiceProvider);
+
+    // IMPORTANT: Immediately refresh providers to force construction of new
+    // service instances before we invoke manual reconnect. Without this,
+    // attemptReconnect may run on a notifier still holding the OLD
+    // ConnectionRecoveryService (and thus old MqttService), causing continued
+    // connect attempts to the previous host (e.g. localhost) even after
+    // config changes.
+    final _ = ref.refresh(mqttServiceProvider); // new MQTT service
+    ref.refresh(influxServiceProvider); // new Influx service
+    ref.refresh(connectionRecoveryServiceProvider); // new recovery service
+    ref.refresh(
+      manualReconnectProvider,
+    ); // rebuild notifier with new recovery service
+
+    // Trigger manual reconnect (will use newly built service instances)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Applying changes and reconnecting...')),
+    );
+
+    final result = await ref
+        .read(manualReconnectProvider.notifier)
+        .attemptReconnect(force: true);
+
+    if (context.mounted) {
+      if (result.mqttOk && result.influxOk) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Configuration applied successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (result.mqttOk || result.influxOk) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Partial success: ${result.errorMessage ?? "Some services failed"}',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to apply: ${result.errorMessage ?? "Unknown error"}',
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
-    });
+    }
+  }
+
+  void _resetToDefaults(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset to Defaults'),
+        content: const Text(
+          'This will reset all configuration to default values from environment variables. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    await ref.read(configProvider.notifier).resetToDefaults();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuration reset to defaults')),
+      );
+    }
   }
 }
