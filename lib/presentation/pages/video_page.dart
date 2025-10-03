@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'dart:async';
 
 import '../../core/env.dart';
+import '../providers/config_provider.dart';
+import '../../domain/entities/app_config.dart';
 import '../../core/video/mjpeg_stream_controller.dart';
 
 import '../widgets/status_badge.dart';
@@ -693,29 +695,51 @@ final mjpegStreamControllerProvider = Provider<MjpegStreamController>((ref) {
   return MjpegStreamController();
 });
 
-final videoStateProvider =
-    StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
-      return VideoStateNotifier(ref);
-    });
+final videoStateProvider = StateNotifierProvider<VideoStateNotifier, VideoState>((ref) {
+  // Use ref.read instead of watch so the notifier instance is stable and not
+  // torn down when configProvider transitions from loading->data (which was
+  // causing disposed notifier access in tests and potential UI flicker).
+  final config = ref.read(configProvider).valueOrNull;
+  final initialUrl = config?.mjpeg.url.isNotEmpty == true
+    ? config!.mjpeg.url
+    : (Env.mjpegUrl.isNotEmpty ? Env.mjpegUrl : 'http://192.168.1.100:8080/stream');
+  return VideoStateNotifier(ref, initialUrl: initialUrl);
+});
 
 class VideoStateNotifier extends StateNotifier<VideoState> {
-  VideoStateNotifier(this._ref)
-    : super(
-        const VideoState(
-          streamUrl: 'http://192.168.1.100:8080/stream',
-          phase: VideoConnectionPhase.idle,
-          hasAttempted: false,
-          resolution: Size(640, 480),
-          fps: 30,
-          latency: 150,
-        ),
-      );
+  VideoStateNotifier(this._ref, {required String initialUrl})
+      : super(
+          VideoState(
+            streamUrl: initialUrl,
+            phase: VideoConnectionPhase.idle,
+            hasAttempted: false,
+            resolution: const Size(640, 480),
+            fps: 30,
+            latency: 150,
+          ),
+        ) {
+    // Listen for config changes; if MJPEG URL changes and we're idle (not connected), update field.
+    _configSub = _ref.listen<AsyncValue<AppConfig>>(configProvider, (prev, next) {
+      final newUrl = next.valueOrNull?.mjpeg.url;
+      if (newUrl != null && newUrl.isNotEmpty) {
+        // Only adopt config URL automatically if user hasn't manually set one yet
+        // and we're idle. This prevents clobbering a URL the user typed before
+        // config finished loading (observed in integration tests).
+        if (!_userModified && state.isIdle && state.streamUrl != newUrl) {
+          state = state.copyWith(streamUrl: newUrl);
+        }
+      }
+    });
+  }
 
   final Ref _ref;
   StreamSubscription<FrameEvent>? _eventSub;
+  ProviderSubscription<AsyncValue<AppConfig>>? _configSub;
   Timer? _connectTimeoutTimer; // Enforces max wait before first frame
+  bool _userModified = false; // Tracks whether user explicitly set URL
 
   void setStreamUrl(String url) {
+    _userModified = true;
     state = state.copyWith(streamUrl: url);
   }
 
@@ -783,6 +807,7 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
       _ref.read(mjpegStreamControllerProvider).stop();
     }
     _cancelConnectTimeout();
+    _configSub?.close();
   }
 
   void refresh() {

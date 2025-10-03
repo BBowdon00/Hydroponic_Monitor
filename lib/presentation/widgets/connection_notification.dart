@@ -24,6 +24,7 @@ class _ConnectionNotificationState
     seconds: 1,
   ); // Start with 1 second
   DateTime? _lastDisconnectionTime;
+  bool _isDisposed = false; // Guard against timer firing after dispose
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _ConnectionNotificationState
 
   @override
   void dispose() {
+    _isDisposed = true;
     _timer?.cancel();
     super.dispose();
   }
@@ -40,6 +42,7 @@ class _ConnectionNotificationState
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(_currentUpdateInterval, (_) {
+      if (_isDisposed || !mounted) return; // Prevent provider access after dispose
       _updateTimer();
     });
   }
@@ -53,6 +56,7 @@ class _ConnectionNotificationState
   }
 
   void _updateTimerInterval() {
+    if (_isDisposed) return; // Extra guard
     final connectionStatusAsync = ref.read(connectionStatusProvider);
     connectionStatusAsync.when(
       data: (status) {

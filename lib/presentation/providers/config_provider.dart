@@ -32,6 +32,10 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
     try {
       Logger.info('Initializing configuration provider', tag: 'ConfigNotifier');
       final config = await _repository.loadConfig();
+      if (!mounted) {
+        Logger.debug('ConfigNotifier disposed before init completed; skipping state set', tag: 'ConfigNotifier');
+        return;
+      }
       state = AsyncValue.data(config);
       Logger.info(
         'Configuration initialized successfully',
@@ -43,7 +47,9 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
         tag: 'ConfigNotifier',
         error: e,
       );
-      state = AsyncValue.error(e, stack);
+      if (mounted) {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
@@ -52,7 +58,9 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
     try {
       Logger.info('Updating configuration', tag: 'ConfigNotifier');
       await _repository.saveConfig(config);
-      state = AsyncValue.data(config);
+      if (mounted) {
+        state = AsyncValue.data(config);
+      }
       Logger.info('Configuration updated successfully', tag: 'ConfigNotifier');
     } catch (e, stack) {
       Logger.error(
@@ -60,7 +68,9 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
         tag: 'ConfigNotifier',
         error: e,
       );
-      state = AsyncValue.error(e, stack);
+      if (mounted) {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
@@ -70,7 +80,9 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
       Logger.info('Resetting configuration to defaults', tag: 'ConfigNotifier');
       await _repository.clearConfig();
       final config = await _repository.loadConfig();
-      state = AsyncValue.data(config);
+      if (mounted) {
+        state = AsyncValue.data(config);
+      }
       Logger.info('Configuration reset successfully', tag: 'ConfigNotifier');
     } catch (e, stack) {
       Logger.error(
@@ -78,13 +90,17 @@ class ConfigNotifier extends StateNotifier<AsyncValue<AppConfig>> {
         tag: 'ConfigNotifier',
         error: e,
       );
-      state = AsyncValue.error(e, stack);
+      if (mounted) {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
   /// Reload configuration from storage.
   Future<void> reload() async {
-    state = const AsyncValue.loading();
+    if (mounted) {
+      state = const AsyncValue.loading();
+    }
     await _init();
   }
 }

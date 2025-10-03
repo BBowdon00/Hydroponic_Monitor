@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'data_providers.dart';
+import '../../core/logger.dart';
 
 /// Combined connection status for MQTT and InfluxDB services.
 class ConnectionStatus {
@@ -65,8 +66,11 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
 
   return repositoryAsync.when(
     data: (repository) {
-      final mqttService = ref.read(mqttServiceProvider);
-      final influxService = ref.read(influxServiceProvider);
+  // Watch services so if configuration changes recreate them, we subscribe
+  // to the new instances rather than continuing to receive events from an
+  // obsolete service still attempting old host/port connections.
+  final mqttService = ref.watch(mqttServiceProvider);
+  final influxService = ref.watch(influxServiceProvider);
 
       // Initial state - both disconnected with current time
       final now = DateTime.now();
@@ -95,6 +99,10 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
               : (currentStatus.mqttDisconnectedSince ??
                     now), // Only set if not already set
         );
+        Logger.debug(
+          'connectionStatusProvider: MQTT status event=$status => mqttConnected=$isConnected earliestDisconnection=${currentStatus.earliestDisconnection}',
+          tag: 'ConnectionStatus',
+        );
         controller.add(currentStatus);
       }
 
@@ -109,6 +117,10 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
               ? null
               : (currentStatus.influxDisconnectedSince ??
                     now), // Only set if not already set
+        );
+        Logger.debug(
+          'connectionStatusProvider: Influx status event=$status => influxConnected=$isConnected earliestDisconnection=${currentStatus.earliestDisconnection}',
+          tag: 'ConnectionStatus',
         );
         controller.add(currentStatus);
       }
@@ -128,8 +140,42 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
         },
       );
 
+      Logger.debug(
+        'connectionStatusProvider: subscriptions established (will request status replay)',
+        tag: 'ConnectionStatus',
+      );
+
       // Emit initial state
       controller.add(currentStatus);
+
+      // Force replay of last known statuses so we don't stay stuck in the
+      // initial disconnected state if services were already connected before
+      // this provider was (re)created (e.g. after dynamic config update).
+      // These calls are no-ops if the services haven't set a status yet.
+      try {
+        mqttService.emitCurrentStatus();
+        influxService.emitCurrentStatus();
+      } catch (_) {
+        // Non-fatal; initial state will update on next status event.
+      }
+
+      // If Influx never emits within grace period but repository init succeeded,
+      // proactively trigger a health check (covers cases where initial event was lost).
+      Timer(const Duration(seconds: 3), () async {
+        if (controller.isClosed) return;
+        if (!currentStatus.influxConnected && repository != null) {
+          Logger.debug(
+            'connectionStatusProvider: no Influx event within 3s – forcing health check',
+            tag: 'ConnectionStatus',
+          );
+          try {
+            final ok = await influxService.checkHealth();
+            updateInfluxStatus(ok ? 'connected' : 'disconnected');
+          } catch (e) {
+            updateInfluxStatus('disconnected');
+          }
+        }
+      });
 
       // Cleanup function
       ref.onDispose(() {

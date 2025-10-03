@@ -6,22 +6,45 @@ import '../app.dart';
 import '../../core/theme.dart';
 import '../providers/config_provider.dart';
 import '../providers/manual_reconnect_provider.dart';
+import '../providers/data_providers.dart';
 import '../../domain/entities/app_config.dart';
 
 /// Settings page for configuring MQTT, InfluxDB, units, and app preferences.
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  AppConfig? _draft; // Staged (unsaved) configuration edits
+  AppConfig? _baseline; // Last persisted config from provider
+  bool _dirty = false; // Whether draft differs from baseline
+
+  void _ensureDraftInitialized(AppConfig providerConfig) {
+    // Initialize draft when first data arrives or when no local edits pending and provider config changed.
+    if (_draft == null || (!_dirty && _baseline != providerConfig)) {
+      _baseline = providerConfig;
+      _draft = providerConfig;
+      _dirty = false;
+    }
+  }
+
+  bool get _hasUnsavedChanges => _dirty && _draft != null && _baseline != _draft;
+
+  @override
+  Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     final configAsync = ref.watch(configProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: configAsync.when(
-        data: (config) =>
-            _buildSettingsContent(context, ref, isDarkMode, config),
+        data: (config) {
+          _ensureDraftInitialized(config);
+          return _buildSettingsContent(context, isDarkMode, _draft!);
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
           child: Column(
@@ -42,15 +65,42 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  void _stageConfig(AppConfig newConfig) {
+    setState(() {
+      _draft = newConfig;
+      _dirty = true;
+    });
+  }
+
   Widget _buildSettingsContent(
     BuildContext context,
-    WidgetRef ref,
     bool isDarkMode,
     AppConfig config,
   ) {
     return ListView(
       padding: const EdgeInsets.all(AppTheme.spaceMd),
       children: [
+        if (_hasUnsavedChanges)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.spaceMd),
+            child: Material(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(6),
+              child: ListTile(
+                leading: const Icon(Icons.pending_actions, color: Colors.black87),
+                title: const Text('You have unsaved configuration changes'),
+                subtitle: const Text('Press "Apply Changes" to persist and reconnect services.'),
+                trailing: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _draft = _baseline; _dirty = false; // revert
+                    });
+                  },
+                  child: const Text('Discard'),
+                ),
+              ),
+            ),
+          ),
         // App Preferences Section
         _buildSectionCard(
           context,
@@ -103,8 +153,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'MQTT Broker Host',
                 config.mqtt.host,
-                (value) =>
-                    config.copyWith(mqtt: config.mqtt.copyWith(host: value)),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    mqtt: base.mqtt.copyWith(host: value),
+                  );
+                },
               ),
             ),
             _buildConfigTile(
@@ -126,9 +180,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'MQTT Username',
                 config.mqtt.username,
-                (value) => config.copyWith(
-                  mqtt: config.mqtt.copyWith(username: value),
-                ),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    mqtt: base.mqtt.copyWith(username: value),
+                  );
+                },
               ),
             ),
             _buildConfigTile(
@@ -141,9 +198,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'MQTT Password',
                 '',
-                (value) => config.copyWith(
-                  mqtt: config.mqtt.copyWith(password: value),
-                ),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    mqtt: base.mqtt.copyWith(password: value),
+                  );
+                },
                 isPassword: true,
               ),
             ),
@@ -167,8 +227,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'InfluxDB URL',
                 config.influx.url,
-                (value) =>
-                    config.copyWith(influx: config.influx.copyWith(url: value)),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(url: value),
+                  );
+                },
               ),
             ),
             _buildConfigTile(
@@ -183,9 +247,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'InfluxDB Token',
                 '',
-                (value) => config.copyWith(
-                  influx: config.influx.copyWith(token: value),
-                ),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(token: value),
+                  );
+                },
                 isPassword: true,
               ),
             ),
@@ -199,8 +266,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'Organization',
                 config.influx.org,
-                (value) =>
-                    config.copyWith(influx: config.influx.copyWith(org: value)),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(org: value),
+                  );
+                },
               ),
             ),
             _buildConfigTile(
@@ -213,9 +284,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'Bucket',
                 config.influx.bucket,
-                (value) => config.copyWith(
-                  influx: config.influx.copyWith(bucket: value),
-                ),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    influx: base.influx.copyWith(bucket: value),
+                  );
+                },
               ),
             ),
           ],
@@ -238,8 +312,12 @@ class SettingsPage extends ConsumerWidget {
                 ref,
                 'MJPEG Stream URL',
                 config.mjpeg.url,
-                (value) =>
-                    config.copyWith(mjpeg: config.mjpeg.copyWith(url: value)),
+                (value) {
+                  final base = _draft ?? config;
+                  return base.copyWith(
+                    mjpeg: base.mjpeg.copyWith(url: value),
+                  );
+                },
               ),
             ),
             SwitchListTile(
@@ -248,10 +326,10 @@ class SettingsPage extends ConsumerWidget {
               subtitle: const Text('Automatically reconnect to video stream'),
               value: config.mjpeg.autoReconnect,
               onChanged: (value) {
-                final updatedConfig = config.copyWith(
+                final updated = config.copyWith(
                   mjpeg: config.mjpeg.copyWith(autoReconnect: value),
                 );
-                ref.read(configProvider.notifier).updateConfig(updatedConfig);
+                _stageConfig(updated);
               },
             ),
           ],
@@ -410,19 +488,20 @@ class SettingsPage extends ConsumerWidget {
               }
 
               // Update config
-              final currentConfig = ref.read(configProvider).valueOrNull;
-              if (currentConfig != null) {
-                final updatedConfig = updateFn(value);
-                await ref
-                    .read(configProvider.notifier)
-                    .updateConfig(updatedConfig);
-
+              if (_draft != null) {
+                final updated = updateFn(value);
+                _stageConfig(updated);
                 if (context.mounted) {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('$title updated')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$title staged (apply changes to persist)'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 }
+              } else {
+                Navigator.of(context).pop();
               }
             },
             child: const Text('Save'),
@@ -565,9 +644,7 @@ class SettingsPage extends ConsumerWidget {
               final updatedConfig = config.copyWith(
                 mqtt: config.mqtt.copyWith(port: port),
               );
-              await ref
-                  .read(configProvider.notifier)
-                  .updateConfig(updatedConfig);
+              _stageConfig(updatedConfig);
 
               if (context.mounted) {
                 Navigator.of(context).pop();
@@ -608,7 +685,32 @@ class SettingsPage extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // Trigger manual reconnect
+    // Persist draft if dirty before invalidating services
+    if (_dirty && _draft != null) {
+      await ref.read(configProvider.notifier).updateConfig(_draft!);
+      setState(() {
+        _baseline = _draft;
+        _dirty = false;
+      });
+    }
+
+    // Invalidate service providers so they rebuild with new configuration
+    ref.invalidate(mqttServiceProvider);
+    ref.invalidate(influxServiceProvider);
+    ref.invalidate(connectionRecoveryServiceProvider);
+
+  // IMPORTANT: Immediately refresh providers to force construction of new
+  // service instances before we invoke manual reconnect. Without this,
+  // attemptReconnect may run on a notifier still holding the OLD
+  // ConnectionRecoveryService (and thus old MqttService), causing continued
+  // connect attempts to the previous host (e.g. localhost) even after
+  // config changes.
+  final _ = ref.refresh(mqttServiceProvider); // new MQTT service
+  ref.refresh(influxServiceProvider); // new Influx service
+  ref.refresh(connectionRecoveryServiceProvider); // new recovery service
+  ref.refresh(manualReconnectProvider); // rebuild notifier with new recovery service
+
+    // Trigger manual reconnect (will use newly built service instances)
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Applying changes and reconnecting...')),
     );

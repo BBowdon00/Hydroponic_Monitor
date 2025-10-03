@@ -4,19 +4,83 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart' as dotenv;
 import 'package:mocktail/mocktail.dart';
 
 import 'package:hydroponic_monitor/core/env.dart';
 import 'package:hydroponic_monitor/presentation/pages/video_page.dart';
+import 'package:hydroponic_monitor/presentation/providers/config_provider.dart';
+import 'package:hydroponic_monitor/data/repos/config_repository.dart';
+import 'package:hydroponic_monitor/domain/entities/app_config.dart';
+import 'package:hydroponic_monitor/data/repos/sensor_repository.dart';
+import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
+import 'package:hydroponic_monitor/data/influx/influx_service.dart';
+import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
+
+class _InMemoryConfigRepository implements ConfigRepository {
+  AppConfig _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  );
+  @override
+  Future<AppConfig> loadConfig() async => _config;
+  @override
+  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  @override
+  Future<void> clearConfig() async { _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  ); }
+}
 
 /// Integration tests for MJPEG streaming functionality.
 /// Tests the video streaming components with mock servers and real network conditions.
 void main() {
+  // Load a minimal in-memory dotenv for tests so Env getters don't throw
+  setUpAll(() async {
+    // flutter_dotenv version in this project doesn't expose testLoad; manually seed values.
+    // Call Env.init() guarded to create internal dotenv singleton, then inject vars.
+    try { await Env.init(); } catch (_) {}
+    const entries = {
+      'MQTT_HOST': 'localhost',
+      'MQTT_PORT': '1883',
+      'INFLUX_URL': 'http://localhost:8086',
+      'INFLUX_ORG': 'org',
+      'INFLUX_BUCKET': 'bucket',
+      'MJPEG_URL': 'http://localhost:8080/stream',
+      'TEST_ENV': 'true',
+    };
+    // Directly mutate dotenv.env (supported for tests) because current flutter_dotenv version
+    // doesn't expose test helpers.
+    entries.forEach((k,v){ dotenv.dotenv.env[k] = v; });
+  });
+
+  // Helper to ensure every ProviderContainer used in these tests has the
+  // required repository overrides. Some tests previously instantiated
+  // raw ProviderContainers leading to UnimplementedError from
+  // configRepositoryProvider.
+  ProviderContainer createTestContainer() {
+    return ProviderContainer(overrides: [
+      configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+      sensorRepositoryProvider.overrideWith((ref) {
+        final mqtt = ref.read(mqttServiceProvider);
+        final influx = ref.read(influxServiceProvider);
+        return SensorRepository(
+          mqttService: mqtt,
+          influxService: influx,
+          strictInit: true,
+        );
+      }),
+    ]);
+  }
+
   group('MJPEG Streaming Integration Tests', () {
     late ProviderContainer container;
 
     setUp(() {
-      container = ProviderContainer();
+      container = createTestContainer();
     });
 
     tearDown(() {
@@ -24,17 +88,10 @@ void main() {
     });
 
     test('should handle environment MJPEG URL configuration', () {
-      // Test that Env.mjpegUrl returns expected default value when not configured
-      // Note: In test environment, dotenv may not be initialized, so we get default
-      try {
-        final mjpegUrl = Env.mjpegUrl;
-        expect(mjpegUrl, isNotNull);
-        expect(mjpegUrl, isA<String>());
-        expect(mjpegUrl, contains('http'));
-      } catch (e) {
-        // If dotenv not initialized, verify default fallback
-        expect(e.toString(), contains('NotInitializedError'));
-      }
+      // With dotenv preloaded above, Env.mjpegUrl should resolve without throwing
+      final mjpegUrl = Env.mjpegUrl;
+      expect(mjpegUrl, equals('http://localhost:8080/stream'));
+      expect(mjpegUrl, contains('http'));
     });
 
     test('should validate common MJPEG URL formats', () {
@@ -268,8 +325,8 @@ void main() {
 
     group('Performance and Resource Management', () {
       test('should handle multiple provider containers independently', () {
-        final container1 = ProviderContainer();
-        final container2 = ProviderContainer();
+        final container1 = createTestContainer();
+        final container2 = createTestContainer();
 
         try {
           const url1 = 'http://camera1.local:8080/stream';
@@ -287,7 +344,7 @@ void main() {
       });
 
       test('should handle container disposal during connection', () async {
-        final testContainer = ProviderContainer();
+        final testContainer = createTestContainer();
         final notifier = testContainer.read(videoStateProvider.notifier);
 
         // Start connection
@@ -308,7 +365,7 @@ void main() {
     late ProviderContainer networkContainer;
 
     setUp(() {
-      networkContainer = ProviderContainer();
+      networkContainer = createTestContainer();
     });
 
     tearDown(() {

@@ -22,6 +22,7 @@ class MockSensorRepository extends Mock implements SensorRepository {}
 void main() {
   setUpAll(() {
     Logger.init(isTest: true);
+    registerFallbackValue(const Duration(seconds: 1));
   });
 
   // Helper to wait for provider value with timeout
@@ -56,21 +57,37 @@ void main() {
         () => mockMqttService.sensorDataStream,
       ).thenAnswer((_) => sensorDataController.stream);
 
+      // Provide a connection stream that emits a connected event to satisfy
+      // repository initialization wait logic.
+      when(() => mockMqttService.connectionStream).thenAnswer(
+        (_) => Stream<String>.value('connected'),
+      );
+      when(() => mockMqttService.isConnected).thenReturn(true);
+
       // Mock MQTT service connection
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success<void>(null));
+      when(() => mockMqttService.ensureInitialized(timeout: any(named: 'timeout')))
+          .thenAnswer((_) async {});
 
       // Mock InfluxDB service initialization
       when(
         () => mockInfluxService.initialize(),
       ).thenAnswer((_) async => const Success<void>(null));
 
-      // Create container with mocked services
+      // Create container with mocked services and a strict initialization repository
       container = ProviderContainer(
         overrides: [
           mqttServiceProvider.overrideWithValue(mockMqttService),
           influxServiceProvider.overrideWithValue(mockInfluxService),
+          sensorRepositoryProvider.overrideWithValue(
+            SensorRepository(
+              mqttService: mockMqttService,
+              influxService: mockInfluxService,
+              strictInit: true,
+            ),
+          ),
         ],
       );
       addTearDown(() {
@@ -275,11 +292,20 @@ void main() {
         when(
           () => failingMqttService.connect(),
         ).thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));
+        when(() => failingMqttService.ensureInitialized(timeout: any(named: 'timeout')))
+            .thenAnswer((_) async {});
 
         final failingContainer = ProviderContainer(
           overrides: [
             mqttServiceProvider.overrideWithValue(failingMqttService),
             influxServiceProvider.overrideWithValue(mockInfluxService),
+            sensorRepositoryProvider.overrideWithValue(
+              SensorRepository(
+                mqttService: failingMqttService,
+                influxService: mockInfluxService,
+                strictInit: true,
+              ),
+            ),
           ],
         );
 

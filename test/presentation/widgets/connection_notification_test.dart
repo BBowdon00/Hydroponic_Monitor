@@ -7,10 +7,26 @@ import 'package:hydroponic_monitor/presentation/widgets/connection_notification.
 import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
 import 'package:hydroponic_monitor/presentation/providers/manual_reconnect_provider.dart';
 import 'package:hydroponic_monitor/data/connection_recovery_service.dart';
+import 'package:hydroponic_monitor/presentation/providers/config_provider.dart';
+import 'package:hydroponic_monitor/data/repos/config_repository.dart';
+import 'package:hydroponic_monitor/domain/entities/app_config.dart';
 
 // Mock class
-class MockConnectionRecoveryService extends Mock
-    implements ConnectionRecoveryService {}
+class MockConnectionRecoveryService extends Mock implements ConnectionRecoveryService {}
+
+class _InMemoryRepo implements ConfigRepository {
+  AppConfig _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  );
+  @override
+  Future<AppConfig> loadConfig() async => _config;
+  @override
+  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  @override
+  Future<void> clearConfig() async {}
+}
 
 void main() {
   group('ConnectionNotification', () {
@@ -19,6 +35,8 @@ void main() {
     setUp(() {
       mockRecoveryService = MockConnectionRecoveryService();
     });
+
+    ConfigRepository _testRepo() => _InMemoryRepo();
 
     testWidgets('shows red notification when services are disconnected', (
       WidgetTester tester,
@@ -37,6 +55,7 @@ void main() {
           connectionRecoveryServiceProvider.overrideWithValue(
             mockRecoveryService,
           ),
+          configRepositoryProvider.overrideWithValue(_testRepo()),
         ],
       );
 
@@ -73,6 +92,7 @@ void main() {
           connectionRecoveryServiceProvider.overrideWithValue(
             mockRecoveryService,
           ),
+          configRepositoryProvider.overrideWithValue(_testRepo()),
         ],
       );
 
@@ -110,6 +130,7 @@ void main() {
           connectionRecoveryServiceProvider.overrideWithValue(
             mockRecoveryService,
           ),
+          configRepositoryProvider.overrideWithValue(_testRepo()),
         ],
       );
 
@@ -148,6 +169,7 @@ void main() {
           connectionRecoveryServiceProvider.overrideWithValue(
             mockRecoveryService,
           ),
+          configRepositoryProvider.overrideWithValue(_testRepo()),
         ],
       );
 

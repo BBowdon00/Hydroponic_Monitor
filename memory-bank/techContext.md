@@ -211,3 +211,46 @@ flowchart LR
 
 ---
 *Last Updated: 2025-09-24*
+\n+## Runtime Configuration (TASK010 Dynamic Extension)
+
+### Overview
+Runtime editing of connectivity and streaming parameters is now fully reactive:
+
+| Layer | Artifact | Responsibility |
+|-------|----------|----------------|
+| Domain | `AppConfig` (MQTT/Influx/MJPEG) | Immutable snapshot of runtime settings |
+| Data | `ConfigRepository` | Dual persistence: SharedPreferences (non-secret) + Secure Storage (secrets) |
+| Presentation | `configProvider` | Async load + mutation + reset of config state |
+| Services | `mqttServiceProvider`, `influxServiceProvider` | Rebuild on config change; new instances adopt updated fields |
+| UI | `SettingsPage` | Edit dialogs, validation, invalidation + manual reconnect trigger |
+| Video | `videoStateProvider` | Initial URL from config; passive sync while idle |
+
+### Lifecycle of a Change
+1. User edits a field (dialog) -> `configProvider.updateConfig()` persists & emits new state.
+2. Service providers watching config rebuild with new ctor args.
+3. User taps Apply Changes -> explicit invalidation + manual reconnect ensures new instances connect with updated credentials.
+4. Connection banners / status badges refresh via emitted status streams after reconnection.
+
+### Secrets Handling
+- MQTT password & Influx token written only to secure storage keys.
+- Masked in all model `toString()` outputs (***).
+- Not logged in repository operations.
+
+### Edge Cases
+| Case | Behavior |
+|------|----------|
+| Config updated while reconnect in progress | Underlying service may rebuild mid-cycle; reconnect uses latest instance |
+| Empty username/password | Passed as null to MQTT for anonymous auth |
+| Invalid port input | Rejected client-side (1-65535) before persistence |
+| MJPEG URL edited while playing | State unchanged; user must disconnect + reconnect |
+
+### Testing Strategy Additions
+- Added dynamic service provider unit tests verifying rebuild semantics.
+- Existing tests unchanged aside from timing tolerances (provider load). No brittle reliance on static Env inside service providers.
+
+### Observability
+- Rebuild path relies on provider lifecycle; add future metrics hook (e.g., counting rebuilds) if performance tuning needed.
+
+### Open Considerations
+- Potential to debounce multiple edits before reconnection.
+- Could add active connection metadata (e.g., effective host/token) for transparency vs staged config.

@@ -9,6 +9,31 @@ import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 import 'package:hydroponic_monitor/presentation/widgets/device_card.dart';
 import '../mocks/mock_device_repository.dart';
 import '../test_utils.dart';
+import 'package:hydroponic_monitor/data/repos/sensor_repository.dart';
+import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
+import 'package:hydroponic_monitor/data/influx/influx_service.dart';
+import 'package:hydroponic_monitor/presentation/providers/config_provider.dart';
+import 'package:hydroponic_monitor/data/repos/config_repository.dart';
+import 'package:hydroponic_monitor/domain/entities/app_config.dart';
+
+class _InMemoryConfigRepository implements ConfigRepository {
+  AppConfig _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  );
+  @override
+  Future<AppConfig> loadConfig() async => _config;
+  @override
+  Future<void> saveConfig(AppConfig config) async { _config = config; }
+  @override
+  Future<void> clearConfig() async { _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(url: 'http://localhost:8086', token: '', org: 'org', bucket: 'bucket'),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  ); }
+}
 
 void main() {
   group('Actuator confirmation integration', () {
@@ -27,7 +52,19 @@ void main() {
         // Build app with Provider overrides to inject our mock repository
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [deviceRepositoryProvider.overrideWithValue(mockRepo)],
+            overrides: [
+              deviceRepositoryProvider.overrideWithValue(mockRepo),
+              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              sensorRepositoryProvider.overrideWith((ref) {
+                final mqtt = ref.read(mqttServiceProvider);
+                final influx = ref.read(influxServiceProvider);
+                return SensorRepository(
+                  mqttService: mqtt,
+                  influxService: influx,
+                  strictInit: true,
+                );
+              }),
+            ],
             child: const MaterialApp(home: DevicesPage()),
           ),
         );

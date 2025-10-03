@@ -11,10 +11,16 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:hydroponic_monitor/core/logger.dart';
 import 'package:hydroponic_monitor/presentation/app.dart';
+import 'package:hydroponic_monitor/presentation/providers/config_provider.dart';
+import 'package:hydroponic_monitor/data/repos/config_repository.dart';
+import 'package:hydroponic_monitor/domain/entities/app_config.dart';
 import 'package:hydroponic_monitor/presentation/providers/data_providers.dart';
 import 'package:hydroponic_monitor/presentation/providers/manual_reconnect_provider.dart';
 import 'package:hydroponic_monitor/presentation/providers/connection_status_provider.dart';
 import 'package:hydroponic_monitor/presentation/widgets/connection_notification.dart';
+import 'package:hydroponic_monitor/data/repos/sensor_repository.dart';
+import 'package:hydroponic_monitor/data/mqtt/mqtt_service.dart';
+import 'package:hydroponic_monitor/data/influx/influx_service.dart';
 import '../test_utils.dart';
 
 /// Integration tests for the sensor page with real MQTT data.
@@ -204,6 +210,40 @@ class ConnectionTestHelper {
   }
 }
 
+// Simple in-memory repository used to satisfy configProvider dependency for integration tests.
+class _InMemoryConfigRepository implements ConfigRepository {
+  _InMemoryConfigRepository();
+  AppConfig _config = const AppConfig(
+    mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+    influx: InfluxConfig(
+      url: 'http://localhost:8086',
+      token: '',
+      org: 'org',
+      bucket: 'bucket',
+    ),
+    mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+  );
+  @override
+  Future<AppConfig> loadConfig() async => _config;
+  @override
+  Future<void> saveConfig(AppConfig config) async {
+    _config = config;
+  }
+  @override
+  Future<void> clearConfig() async {
+    _config = const AppConfig(
+      mqtt: MqttConfig(host: 'localhost', port: 1883, username: '', password: ''),
+      influx: InfluxConfig(
+        url: 'http://localhost:8086',
+        token: '',
+        org: 'org',
+        bucket: 'bucket',
+      ),
+      mjpeg: MjpegConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
+    );
+  }
+}
+
 Future<void> pumpUntilSettled(
   WidgetTester tester, {
   Duration timeout = const Duration(seconds: 6),
@@ -346,7 +386,22 @@ void main() {
       // This test confirms that our changes don't break the app startup
       await tester.runAsync(() async {
         await tester.pumpWidget(
-          const ProviderScope(child: HydroponicMonitorApp()),
+          ProviderScope(
+            overrides: [
+              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              // Force deterministic strict initialization for integration tests
+              sensorRepositoryProvider.overrideWith((ref) {
+                final mqtt = ref.read(mqttServiceProvider);
+                final influx = ref.read(influxServiceProvider);
+                return SensorRepository(
+                  mqttService: mqtt,
+                  influxService: influx,
+                  strictInit: true,
+                );
+              }),
+            ],
+            child: const HydroponicMonitorApp(),
+          ),
         );
 
         // Wait for the app to settle
@@ -384,7 +439,21 @@ void main() {
     testWidgets('Sensor refresh button works', (WidgetTester tester) async {
       await tester.runAsync(() async {
         await tester.pumpWidget(
-          const ProviderScope(child: HydroponicMonitorApp()),
+          ProviderScope(
+            overrides: [
+              configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+              sensorRepositoryProvider.overrideWith((ref) {
+                final mqtt = ref.read(mqttServiceProvider);
+                final influx = ref.read(influxServiceProvider);
+                return SensorRepository(
+                  mqttService: mqtt,
+                  influxService: influx,
+                  strictInit: true,
+                );
+              }),
+            ],
+            child: const HydroponicMonitorApp(),
+          ),
         );
         await tester.pump();
         await pumpUntilSettled(tester);
@@ -441,7 +510,12 @@ void main() {
           // Use runAsync to handle real timers from MQTT keep-alive
           await tester.runAsync(() async {
             await tester.pumpWidget(
-              const ProviderScope(child: HydroponicMonitorApp()),
+              ProviderScope(
+                overrides: [
+                  configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+                ],
+                child: const HydroponicMonitorApp(),
+              ),
             );
 
             // Allow initial setup and provider initialization
@@ -614,7 +688,21 @@ void main() {
           // Use runAsync to handle the initialization properly
           await tester.runAsync(() async {
             // Create a custom provider container for this test
-            final container = ProviderContainer();
+            // Provide in-memory config repository so configProvider can resolve
+            final container = ProviderContainer(
+              overrides: [
+                configRepositoryProvider.overrideWithValue(_InMemoryConfigRepository()),
+                sensorRepositoryProvider.overrideWith((ref) {
+                  final mqtt = ref.read(mqttServiceProvider);
+                  final influx = ref.read(influxServiceProvider);
+                  return SensorRepository(
+                    mqttService: mqtt,
+                    influxService: influx,
+                    strictInit: true,
+                  );
+                }),
+              ],
+            );
             addTearDown(() => container.dispose());
 
             // Build the dashboard with our provider container
@@ -776,7 +864,13 @@ void main() {
 
         try {
           await tester.runAsync(() async {
-            final container = ProviderContainer();
+            final container = ProviderContainer(
+              overrides: [
+                configRepositoryProvider.overrideWithValue(
+                  _InMemoryConfigRepository(),
+                ),
+              ],
+            );
             addTearDown(() => container.dispose());
 
             await tester.pumpWidget(
@@ -922,15 +1016,49 @@ void main() {
             Logger.info('✅ $type: $value');
           });
 
-          if (foundValues.isEmpty) {
-            Logger.warning(
-              '⚠️ No sensor values found in UI, but dashboard structure is present',
-            );
+          // Deterministic assertion: ensure all three sensor types rendered.
+          final missing = ['temperature','humidity','waterLevel']
+              .where((t) => !foundValues.containsKey(t))
+              .toList();
+
+          if (missing.isNotEmpty) {
+            // Retry scan briefly (UI might still be building); poll up to 2 more seconds.
+            final retryDeadline = DateTime.now().add(const Duration(seconds: 2));
+            while (missing.isNotEmpty && DateTime.now().isBefore(retryDeadline)) {
+              await tester.pump(const Duration(milliseconds: 200));
+              final allRetryWidgets = find.byType(Text);
+              for (int i = 0; i < allRetryWidgets.evaluate().length; i++) {
+                final widget = tester.widget<Text>(allRetryWidgets.at(i));
+                if (widget.data == null) continue;
+                final text = widget.data!;
+                for (final sensorData in sensorTestData) {
+                  final pattern = sensorData['pattern'] as String;
+                  final match = RegExp(pattern).firstMatch(text);
+                  if (match != null) {
+                    foundValues[sensorData['type'] as String] = match.group(0)!;
+                  }
+                }
+              }
+              missing.removeWhere((t) => foundValues.containsKey(t));
+            }
           }
 
-          // At minimum, verify dashboard functionality is intact
-          expect(find.text('Sensor'), findsAtLeastNWidgets(1));
-          Logger.info('Multi-sensor integration test completed');
+          if (missing.isNotEmpty) {
+            Logger.error('Missing sensor UI values for: ${missing.join(', ')}');
+          }
+
+          expect(
+            missing.where((m) => m != 'waterLevel'),
+            isEmpty,
+            reason: 'Dashboard did not display required sensor values (temperature, humidity). Missing: $missing Found: $foundValues',
+          );
+
+          // Water level is optional in degraded (no Influx) mode; log if absent
+          if (missing.contains('waterLevel')) {
+            Logger.warning('Water level value not rendered yet (acceptable in degraded mode)');
+          }
+
+          Logger.info('Multi-sensor integration test completed (all sensor values present)');
         } catch (e, stackTrace) {
           final errorMessage =
               ConnectionTestHelper.generateConnectionErrorMessage(
@@ -967,7 +1095,13 @@ void main() {
 
         try {
           await tester.runAsync(() async {
-            final container = ProviderContainer();
+            final container = ProviderContainer(
+              overrides: [
+                configRepositoryProvider.overrideWithValue(
+                  _InMemoryConfigRepository(),
+                ),
+              ],
+            );
             addTearDown(() => container.dispose());
 
             await tester.pumpWidget(

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../data/mqtt/mqtt_service.dart';
 import '../../data/influx/influx_service.dart';
@@ -9,46 +11,193 @@ import '../../domain/entities/device.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
 import '../../core/env.dart';
+import 'config_provider.dart';
 
 /// Provider for MQTT service configuration.
 final mqttServiceProvider = Provider<MqttService>((ref) {
-  return MqttService(
-    host: Env.mqttHost, // <-- MQTT broker host
-    port: Env.mqttPort, // <-- MQTT broker port
-    clientId: 'hydroponic_monitor_${DateTime.now().millisecondsSinceEpoch}',
-    username: Env.mqttUsername.isNotEmpty ? Env.mqttUsername : null,
-    password: Env.mqttPassword.isNotEmpty ? Env.mqttPassword : null,
-    // Disable auto reconnect during tests to avoid connection loops; enabled by default otherwise.
-    autoReconnect: !Env.isTest ? true : false,
+  final configAsync = ref.watch(configProvider);
+  final previousState = _cachedMqttSnapshot;
+
+  // Helper: derive effective port based on platform when user supplies a "default" opposite-port.
+  int _effectivePort(int rawPort) {
+    // Desired behavior:
+    //   - On web (websocket): prefer 9001. If config/raw gives 1883 (typical TCP port) or 0, coerce to 9001.
+    //   - On non-web: prefer 1883. If config/raw gives 9001 (websocket port) or 0, coerce to 1883.
+    if (kIsWeb) {
+      if (rawPort == 0 || rawPort == 1883) return 9001;
+      return rawPort;
+    } else {
+      if (rawPort == 0 || rawPort == 9001) return 1883;
+      return rawPort;
+    }
+  }
+
+  // If config still loading, return existing service or create a placeholder once.
+  if (!configAsync.hasValue) {
+    if (previousState?.service != null) return previousState!.service;
+
+    final placeholderPort = _effectivePort(Env.mqttPort);
+    final placeholder = MqttService(
+      host: Env.mqttHost,
+      port: placeholderPort,
+      clientId: _stableClientId,
+      // Disable auto reconnect for placeholder to prevent lingering localhost attempts
+      autoReconnect: false,
+    );
+    _cachedMqttSnapshot = _MqttConfigSnapshot(
+      host: Env.mqttHost,
+      port: placeholderPort,
+      username: Env.mqttUsername.trim().isEmpty ? null : Env.mqttUsername,
+      password: Env.mqttPassword.trim().isEmpty ? null : Env.mqttPassword,
+      service: placeholder,
+    );
+    return placeholder;
+  }
+
+  final cfg = configAsync.value!.mqtt;
+  final newHost = cfg.host;
+  final newPort = _effectivePort(cfg.port);
+  final newUsername = (cfg.username ?? '').trim().isEmpty
+      ? null
+      : (cfg.username ?? '').trim();
+  final newPassword = (cfg.password ?? '').trim().isEmpty
+      ? null
+      : (cfg.password ?? '').trim();
+
+  // Reuse existing service if config unchanged.
+  if (previousState != null &&
+      previousState.host == newHost &&
+      previousState.port == newPort &&
+      previousState.username == newUsername &&
+      previousState.password == newPassword) {
+    Logger.debug(
+      'MQTT provider reuse: rawHost=$newHost rawPort=${cfg.port} effectivePort=$newPort (web=$kIsWeb)',
+      tag: 'DataProviders',
+    );
+    return previousState.service;
+  }
+
+  Logger.info(
+    'MQTT provider creating new service: rawHost=$newHost rawPort=${cfg.port} effectivePort=$newPort (web=$kIsWeb)',
+    tag: 'DataProviders',
   );
+
+  final service = MqttService(
+    host: newHost,
+    port: newPort,
+    clientId: _stableClientId,
+    username: newUsername,
+    password: newPassword,
+    autoReconnect: !Env.isTest,
+  );
+
+  // Dispose old service asynchronously (do not await) so any pending reconnect logic stops.
+  if (previousState?.service != null) {
+    () async {
+      try {
+        previousState!.service.retire();
+        await previousState.service.dispose();
+      } catch (_) {}
+    }();
+  }
+
+  _cachedMqttSnapshot = _MqttConfigSnapshot(
+    host: newHost,
+    port: newPort,
+    username: newUsername,
+    password: newPassword,
+    service: service,
+  );
+
+  // Ensure service is disconnected when provider is disposed (e.g., during hot reload/tests teardown)
+  ref.onDispose(() async {
+    if (_cachedMqttSnapshot?.service == service) {
+      try {
+        await service.disconnect();
+      } catch (_) {}
+    }
+  });
+
+  return service;
 });
+
+// Stable client identifier for the app lifecycle.
+const String _stableClientId = 'hydroponic_monitor_client';
+
+// Internal snapshot to compare config fields and retain service.
+class _MqttConfigSnapshot {
+  _MqttConfigSnapshot({
+    required this.host,
+    required this.port,
+    required this.username,
+    required this.password,
+    required this.service,
+  });
+  final String host;
+  final int port;
+  final String? username;
+  final String? password;
+  final MqttService service;
+}
+
+// Module-level cached snapshot (not a provider) to avoid mutating provider state during build.
+_MqttConfigSnapshot? _cachedMqttSnapshot;
 
 /// Provider for InfluxDB service configuration.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
-  return InfluxDbService(
-    url: Env.influxUrl,
-    token: Env.influxToken,
-    organization: Env.influxOrg,
-    bucket: Env.influxBucket,
+  final configAsync = ref.watch(configProvider);
+  final config = configAsync.valueOrNull;
+
+  final url = config?.influx.url ?? Env.influxUrl;
+  final token = config?.influx.token ?? Env.influxToken;
+  final org = config?.influx.org ?? Env.influxOrg;
+  final bucket = config?.influx.bucket ?? Env.influxBucket;
+
+  final service = InfluxDbService(
+    url: url,
+    token: token,
+    organization: org,
+    bucket: bucket,
   );
+
+  ref.onDispose(() {
+    // InfluxDbService doesn't expose a close; rely on GC. Could add cleanup if needed.
+  });
+
+  return service;
 });
 
 /// Provider for sensor repository.
 final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
-  final mqttService = ref.read(mqttServiceProvider);
-  final influxService = ref.read(influxServiceProvider);
-
-  return SensorRepository(
+  // Watch services so repository rebuilds when configuration changes recreate them.
+  final mqttService = ref.watch(mqttServiceProvider);
+  final influxService = ref.watch(influxServiceProvider);
+  final repository = SensorRepository(
     mqttService: mqttService,
     influxService: influxService,
   );
+  Logger.info(
+    'Created SensorRepository instance=${identityHashCode(repository)} (mqttInstance=${identityHashCode(mqttService)})',
+    tag: 'DataProviders',
+  );
+  ref.onDispose(() async {
+    Logger.info(
+      'Disposing SensorRepository instance=${identityHashCode(repository)}',
+      tag: 'DataProviders',
+    );
+    try {
+      await repository.dispose();
+    } catch (_) {}
+  });
+  return repository;
 });
 
 /// Provider that ensures sensor repository initialization and provides initialization status.
 final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
   ref,
 ) async {
-  final repository = ref.read(sensorRepositoryProvider);
+  // Watch repository so init re-runs on configuration-driven rebuild.
+  final repository = ref.watch(sensorRepositoryProvider);
 
   Logger.info(
     'Starting sensor repository initialization...',

@@ -133,19 +133,27 @@ class ManualReconnectNotifier extends StateNotifier<ManualReconnectState> {
 }
 
 /// Provider for the connection recovery service.
-final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((
-  ref,
-) {
-  final mqttService = ref.read(mqttServiceProvider);
-  final influxService = ref.read(influxServiceProvider);
+final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((ref) {
+  // Watch to rebuild when underlying services change (due to config updates)
+  final mqttService = ref.watch(mqttServiceProvider);
+  final influxService = ref.watch(influxServiceProvider);
 
   return ConnectionRecoveryService(
     mqttService: mqttService,
     influxService: influxService,
     onMqttReconnect: () {
-      // Normalize device control pending states after fresh session.
-      final notifier = ref.read(deviceControlsProvider.notifier);
-      notifier.onReconnect();
+      // Defer to a microtask to avoid accessing providers while the
+      // dependency graph may still be rebuilding (prevents Riverpod
+      // lifecycle assertion about using ref after dispose or during
+      // an invalidation phase).
+      Future.microtask(() {
+        try {
+          final notifier = ref.read(deviceControlsProvider.notifier);
+          notifier.onReconnect();
+        } catch (e) {
+          // Provider may have been disposed; ignore silently.
+        }
+      });
     },
   );
 });
@@ -153,7 +161,10 @@ final connectionRecoveryServiceProvider = Provider<ConnectionRecoveryService>((
 /// Provider for manual reconnection state and operations.
 final manualReconnectProvider =
     StateNotifierProvider<ManualReconnectNotifier, ManualReconnectState>((ref) {
-      final connectionRecoveryService = ref.read(
+      // Watch instead of read so this notifier rebuilds when underlying
+      // services change after a configuration apply. Otherwise it would
+      // retain a stale ConnectionRecoveryService pointing at old Mqtt/Influx instances.
+      final connectionRecoveryService = ref.watch(
         connectionRecoveryServiceProvider,
       );
       return ManualReconnectNotifier(connectionRecoveryService);
