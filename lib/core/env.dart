@@ -1,10 +1,18 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'dart:io' show Platform;
 
 /// Environment configuration helper.
 /// Loads configuration from .env file or environment variables.
 class Env {
+  /// Application environment: 'prod' for production, anything else for test.
+  /// Determined from compile-time --dart-define=APP_ENV=prod flag.
+  static String get appEnv =>
+      const String.fromEnvironment('APP_ENV', defaultValue: 'test');
+
+  /// Whether running in production mode (explicitly set via APP_ENV=prod).
+  static bool get isProd => appEnv.toLowerCase() == 'prod';
+
   static String get mqttHost =>
       dotenv.env['MQTT_HOST'] ?? 'm0rb1d-server.mynetworksettings.com';
   static String get mqttUsername => dotenv.env['MQTT_USERNAME'] ?? '';
@@ -92,27 +100,62 @@ class Env {
 
   /// Initialize environment configuration.
   /// Call this in main() before runApp().
+  /// Loads .env.test by default, .env when APP_ENV=prod is set.
   static Future<void> init() async {
     try {
-      // Prefer .env.test in test contexts if present; fall back to .env
+      final envFile = isProd ? '.env' : '.env.test';
       try {
-        await dotenv.load(fileName: '.env.test');
-        print('✅ Environment configuration loaded from .env.test file');
+        await dotenv.load(fileName: envFile);
+        print('✅ Environment configuration loaded from $envFile file');
       } catch (_) {
-        await dotenv.load(fileName: '.env');
-        print('✅ Environment configuration loaded from .env file');
+        // If preferred file missing, try fallback
+        final fallback = isProd ? '.env.test' : '.env';
+        try {
+          await dotenv.load(fileName: fallback);
+          print(
+            '⚠️  Warning: $envFile not found, loaded $fallback instead',
+          );
+        } catch (e) {
+          print('⚠️ Warning: No .env file found, using default values');
+          print('   Make sure .env is included in pubspec.yaml assets section');
+          print('   Error: $e');
+        }
       }
     } catch (e) {
-      // .env file not found or couldn't be loaded - using defaults
-      print('⚠️ Warning: .env file not found, using default values');
-      print('   Make sure .env is included in pubspec.yaml assets section');
-      print('   Error: $e');
+      print('⚠️ Error loading environment: $e');
+    }
+  }
+
+  /// Debug-only assertion helper to log missing required configuration keys.
+  /// Non-fatal - logs warnings but allows app to continue with defaults.
+  static void assertConfigured() {
+    if (!kDebugMode) return;
+
+    final warnings = <String>[];
+
+    // Check critical keys
+    if (mqttHost.isEmpty) warnings.add('MQTT_HOST not configured');
+    if (influxUrl.isEmpty) warnings.add('INFLUX_URL not configured');
+    if (influxToken.isEmpty) warnings.add('INFLUX_TOKEN not configured');
+    if (influxOrg.isEmpty) warnings.add('INFLUX_ORG not configured');
+    if (influxBucket.isEmpty) warnings.add('INFLUX_BUCKET not configured');
+
+    if (warnings.isNotEmpty) {
+      print('⚠️  Configuration warnings (using defaults):');
+      for (final warning in warnings) {
+        print('   - $warning');
+      }
+    } else {
+      print('✅ All required environment keys configured');
     }
   }
 
   /// Whether the current runtime is a test environment.
-  /// Checks .env TEST_ENV and common environment variables used during tests.
+  /// Checks .env TEST_ENV flag and APP_ENV compile-time setting.
   static bool get isTest {
+    // If APP_ENV is explicitly prod, we're not in test
+    if (isProd) return false;
+
     final envFlag = dotenv.env['TEST_ENV'];
     if (envFlag != null && envFlag.toLowerCase() == 'true') return true;
 
@@ -122,8 +165,9 @@ class Env {
       final platformFlag =
           Platform.environment['FLUTTER_TEST'] ??
           Platform.environment['DART_TEST'];
-      if (platformFlag != null && platformFlag.toLowerCase() == 'true')
+      if (platformFlag != null && platformFlag.toLowerCase() == 'true') {
         return true;
+      }
     }
     return false;
   }
