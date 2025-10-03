@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../core/theme.dart';
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
 import '../../presentation/pages/charts_page.dart';
 import '../../presentation/providers/chart_providers.dart';
 
@@ -108,8 +109,18 @@ class SensorChartCard extends ConsumerWidget {
       return _buildEmptyState(context);
     }
 
-    // Convert time series points to chart data
-    final spots = chartState.points
+    // Filter out invalid numeric values (NaN/Infinity) before plotting.
+    final cleanedPoints = <TimeSeriesPoint>[];
+    for (final p in chartState.points) {
+      final v = p.value;
+      if (v.isNaN || v.isInfinite) continue;
+      cleanedPoints.add(p);
+    }
+    if (cleanedPoints.isEmpty) {
+      return _buildEmptyState(context);
+    }
+    // Convert time series points to chart data (index-based X for uniform spacing)
+    final spots = cleanedPoints
         .asMap()
         .entries
         .map(
@@ -120,19 +131,64 @@ class SensorChartCard extends ConsumerWidget {
         )
         .toList();
 
-    // Calculate Y-axis bounds with 5% padding
-    final minY = chartState.stats.min;
-    final maxY = chartState.stats.max;
-    final padding = (maxY - minY) * 0.05;
-    final yMin = ((minY - padding).clamp(0, double.infinity)).toDouble();
-    final yMax = (maxY + padding).toDouble();
+    // Calculate Y-axis bounds with 5% padding. Guard against zero range
+    // (all points equal) which can trigger fl_chart assertions by expanding
+    // the domain slightly. Also ensure we never produce a zero or negative
+    // grid interval.
+  final rawValues = cleanedPoints.map((p) => p.value);
+  final rawMin = rawValues.reduce((a, b) => a < b ? a : b);
+  final rawMax = rawValues.reduce((a, b) => a > b ? a : b);
+    double padding = (rawMax - rawMin) * 0.05;
+    if (padding == 0) {
+      // Single value or flat line; choose a nominal padding
+      padding = (rawMin.abs() * 0.05).clamp(0.1, 5.0);
+    }
+    double yMin = (rawMin - padding);
+    double yMax = (rawMax + padding);
+    if (yMin == yMax) {
+      // Still identical (rawMin == rawMax == 0 maybe). Expand symmetrically.
+      yMin -= 1;
+      yMax += 1;
+    }
+    // Prevent negative lower bound for inherently non-negative sensors while
+    // still allowing negative domains if data truly is negative.
+    if (rawMin >= 0 && yMin < 0) {
+      yMin = 0;
+      if (yMax - yMin < 1) yMax = yMin + 1; // maintain span
+    }
+
+    final ySpan = yMax - yMin;
+    final horizontalInterval = (ySpan / 4).clamp(0.1, double.infinity);
+
+    // Determine adaptive unit scale (k, M, B) for large ranges
+    final magnitude = (rawMax.abs() > rawMin.abs() ? rawMax.abs() : rawMin.abs());
+    double scale = 1.0;
+    String unitSuffix = '';
+    if (magnitude >= 1e9) {
+      scale = 1e9;
+      unitSuffix = 'B';
+    } else if (magnitude >= 1e6) {
+      scale = 1e6;
+      unitSuffix = 'M';
+    } else if (magnitude >= 1e3) {
+      scale = 1e3;
+      unitSuffix = 'k';
+    }
+
+    String formatScaled(double v) {
+      final scaled = v / scale;
+      // Use fewer decimals for large numbers
+      if (scaled.abs() >= 100) return scaled.toStringAsFixed(0);
+      if (scaled.abs() >= 10) return scaled.toStringAsFixed(1);
+      return scaled.toStringAsFixed(2);
+    }
 
     return LineChart(
       LineChartData(
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: (yMax - yMin) / 4,
+          horizontalInterval: horizontalInterval,
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -155,10 +211,10 @@ class SensorChartCard extends ConsumerWidget {
               interval: spots.isEmpty ? 1 : (spots.length / 4).ceilToDouble(),
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index < 0 || index >= chartState.points.length) {
+                if (index < 0 || index >= cleanedPoints.length) {
                   return const SizedBox.shrink();
                 }
-                final point = chartState.points[index];
+                final point = cleanedPoints[index];
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
@@ -177,7 +233,7 @@ class SensorChartCard extends ConsumerWidget {
               reservedSize: 40,
               getTitlesWidget: (value, meta) {
                 return Text(
-                  value.toStringAsFixed(0),
+                  '${formatScaled(value)}$unitSuffix',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -192,10 +248,11 @@ class SensorChartCard extends ConsumerWidget {
             color: theme.colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
-        minX: 0,
-        maxX: spots.isEmpty ? 1.0 : (spots.length - 1).toDouble(),
-        minY: yMin,
-        maxY: yMax,
+  minX: 0,
+  // If only one point, expand domain to avoid zero-width assertion.
+        maxX: spots.length <= 1 ? 1.0 : (spots.length - 1).toDouble(),
+  minY: yMin,
+  maxY: yMax,
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -216,12 +273,12 @@ class SensorChartCard extends ConsumerWidget {
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final index = spot.x.toInt();
-                if (index < 0 || index >= chartState.points.length) {
+                if (index < 0 || index >= cleanedPoints.length) {
                   return null;
                 }
-                final point = chartState.points[index];
+                final point = cleanedPoints[index];
                 return LineTooltipItem(
-                  '${point.value.toStringAsFixed(1)} ${sensorType.defaultUnit}\n${_formatTimestamp(point.timestamp)}',
+                  '${formatScaled(point.value)}$unitSuffix ${sensorType.defaultUnit}\n${_formatTimestamp(point.timestamp)}',
                   theme.textTheme.bodySmall!.copyWith(
                     color: theme.colorScheme.onPrimary,
                   ),

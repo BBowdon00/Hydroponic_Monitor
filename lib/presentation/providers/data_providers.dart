@@ -154,7 +154,7 @@ final influxServiceProvider = Provider<InfluxDbService>((ref) {
   final bucket = config?.influx.bucket ?? Env.influxBucket;
 
   final service = InfluxDbService(
-    url: url,
+    url: InfluxDbService.normalizeUrl(url),
     token: token,
     organization: org,
     bucket: bucket,

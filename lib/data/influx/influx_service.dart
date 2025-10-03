@@ -18,6 +18,41 @@ class InfluxDbService {
     required this.bucket,
   });
 
+  /// Normalize a user-provided InfluxDB base URL to ensure the underlying
+  /// client library can parse it reliably. Common issues addressed:
+  ///  - Missing URL scheme ("http://") when user enters host:port/path
+  ///  - Accidental surrounding whitespace
+  /// The function intentionally does NOT attempt to validate reachability –
+  /// only syntactic normalization required to avoid FormatException inside
+  /// the influxdb_client (which tries to parse host/port early).
+  static String normalizeUrl(String raw) {
+    var trimmed = raw.trim();
+    if (trimmed.isEmpty) return trimmed; // Let caller decide how to handle.
+    // If no scheme present, default to http:// (reverse proxy or local dev).
+    if (!trimmed.contains('://')) {
+      trimmed = 'http://$trimmed';
+    }
+    // Allow Uri parsing to validate basic structure; if it fails we still
+    // return the best-effort value so higher layer can surface an error.
+    try {
+      final uri = Uri.parse(trimmed);
+      // If user accidentally put path-like content into what becomes the host
+      // (happens when scheme missing), Uri.parse will treat entire string as
+      // a relative path. In that case we keep the raw prefixed variant.
+      if (uri.host.isEmpty) return trimmed; // Nothing more to do.
+      // Reconstruct normalized string (preserve path if provided).
+      final normalized = Uri(
+        scheme: uri.scheme.isEmpty ? 'http' : uri.scheme,
+        host: uri.host,
+        port: uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
+        path: uri.path, // path already without query/fragment
+      ).toString();
+      return normalized;
+    } catch (_) {
+      return trimmed; // Fallback – upstream code will log on failure.
+    }
+  }
+
   final String url;
   final String token;
   final String organization;
@@ -76,6 +111,8 @@ class InfluxDbService {
   Future<Result<void>> initialize() async {
     try {
       Logger.info('Initializing InfluxDB client for $url', tag: 'InfluxDB');
+      Logger.info('Influx configuration => org=$organization bucket=$bucket',
+          tag: 'InfluxDB');
 
       _client = InfluxDBClient(
         url: url,
@@ -91,7 +128,7 @@ class InfluxDbService {
       final healthy = await checkHealth();
       if (healthy) {
         Logger.info(
-          'Successfully connected to InfluxDB (health pass)',
+          'Successfully connected to InfluxDB (health pass, bucket=$bucket)',
           tag: 'InfluxDB',
         );
         _startHealthMonitoring();
@@ -112,11 +149,11 @@ class InfluxDbService {
     }
   }
 
-  /// Explicit lightweight health check.
-  /// Strategy:
-  /// 1. Use Ping API (fast, minimal auth requirement) to verify server reachability.
-  /// 2. Use Ready API to verify the instance is ready (not initializing / upgrading).
-  /// If both pass, we mark as connected. Any failure marks disconnected.
+  /// Explicit lightweight health check using only the InfluxDB `/health` endpoint.
+  /// Previous logic used Ping + Ready (and adaptive web handling) which introduced
+  /// CORS preflight friction (204 responses) and redundancy. We now rely solely on
+  /// the health endpoint which returns a 200 JSON body when the instance is up.
+  /// Any failure marks the service disconnected.
   Future<bool> checkHealth() async {
     try {
       if (_client == null) {
@@ -135,36 +172,12 @@ class InfluxDbService {
       }
 
       var healthy = false;
-      // Step 1: ping
-      bool pingIndicatesReachable = false;
       try {
-        await _client!.getPingApi().getPing();
-        pingIndicatesReachable = true; // reachable
+        // Use HealthApi (supports /health) – replaces previous PingApi.getHealth usage
+        await _client!.getHealthApi().getHealth();
+        healthy = true; // If no exception thrown, service is up.
       } catch (e) {
-        // In some InfluxDB setups the ping endpoint can return a 400 while the instance is otherwise healthy.
-        // If we detect a 400 ApiException, we will proceed to the READY check before declaring failure.
-        if (e is ApiException && e.code == 400) {
-          Logger.debug(
-            'Ping returned 400 (tolerated) – proceeding to READY check',
-            tag: 'InfluxDB',
-          );
-          pingIndicatesReachable =
-              true; // treat as soft success, defer real decision to READY
-        } else {
-          Logger.debug('Ping failed: $e', tag: 'InfluxDB');
-        }
-      }
-
-      // Step 2: always attempt ready (even if ping failed) – it gives definitive cluster readiness.
-      try {
-        final ready = await _client!.getReadyApi().getReady();
-        healthy = (ready.status == ReadyStatusEnum.ready);
-      } catch (e) {
-        // If READY fails but ping looked fine, log separately for diagnostics.
-        Logger.debug(
-          'Ready check failed: $e (pingReachable=$pingIndicatesReachable)',
-          tag: 'InfluxDB',
-        );
+        Logger.debug('Health endpoint check failed: $e', tag: 'InfluxDB');
         healthy = false;
       }
       if (healthy) {
