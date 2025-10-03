@@ -25,102 +25,119 @@ void main() {
       );
     });
 
-    test('querySensorData returns InfluxUnavailableError when not initialized',
-        () async {
-      Logger.info(
-        'Testing querySensorData failure propagation',
-        tag: 'ProdReadiness',
-      );
+    test(
+      'querySensorData returns InfluxUnavailableError when not initialized',
+      () async {
+        Logger.info(
+          'Testing querySensorData failure propagation',
+          tag: 'ProdReadiness',
+        );
 
-      final result = await influxService.querySensorData(
-        sensorType: SensorType.temperature,
-        start: DateTime.now().subtract(const Duration(hours: 1)),
-        end: DateTime.now(),
-        limit: 10,
-      );
-
-      // Verify explicit failure instead of synthetic data
-      expect(result, isA<Failure<List<SensorData>>>());
-      final error = (result as Failure<List<SensorData>>).error;
-      expect(error, isA<InfluxUnavailableError>());
-      expect(error.message, equals('InfluxDB client not initialized'));
-
-      Logger.info('✓ querySensorData correctly returns failure', tag: 'ProdReadiness');
-    });
-
-    test('queryLatestSensorData returns InfluxUnavailableError when not initialized',
-        () async {
-      Logger.info(
-        'Testing queryLatestSensorData failure propagation',
-        tag: 'ProdReadiness',
-      );
-
-      final result = await influxService.queryLatestSensorData();
-
-      // Verify explicit failure instead of synthetic data
-      expect(result, isA<Failure<List<SensorData>>>());
-      final error = (result as Failure<List<SensorData>>).error;
-      expect(error, isA<InfluxUnavailableError>());
-      expect(error.message, equals('InfluxDB client not initialized'));
-
-      Logger.info('✓ queryLatestSensorData correctly returns failure', tag: 'ProdReadiness');
-    });
-
-    test('queryTimeSeries returns InfluxUnavailableError when not initialized',
-        () async {
-      Logger.info(
-        'Testing queryTimeSeries failure propagation',
-        tag: 'ProdReadiness',
-      );
-
-      final result = await influxService.queryTimeSeries(
-        SensorType.humidity,
-        ChartRange.hours24,
-      );
-
-      // Verify explicit failure instead of synthetic data
-      expect(result, isA<Failure<List<TimeSeriesPoint>>>());
-      final error = (result as Failure<List<TimeSeriesPoint>>).error;
-      expect(error, isA<InfluxUnavailableError>());
-      expect(error.message, equals('InfluxDB client not initialized'));
-
-      Logger.info('✓ queryTimeSeries correctly returns failure', tag: 'ProdReadiness');
-    });
-
-    test('all sensor types produce explicit failures when service unavailable',
-        () async {
-      Logger.info(
-        'Testing failure propagation for all sensor types',
-        tag: 'ProdReadiness',
-      );
-
-      for (final sensorType in SensorType.values) {
         final result = await influxService.querySensorData(
-          sensorType: sensorType,
+          sensorType: SensorType.temperature,
           start: DateTime.now().subtract(const Duration(hours: 1)),
           end: DateTime.now(),
-          limit: 5,
+          limit: 10,
         );
 
-        expect(
-          result,
-          isA<Failure<List<SensorData>>>(),
-          reason: '${sensorType.name} should return Failure',
-        );
-
+        // Verify explicit failure instead of synthetic data
+        expect(result, isA<Failure<List<SensorData>>>());
         final error = (result as Failure<List<SensorData>>).error;
-        expect(
-          error,
-          isA<InfluxUnavailableError>(),
-          reason: '${sensorType.name} should return InfluxUnavailableError',
-        );
-      }
+        expect(error, isA<InfluxUnavailableError>());
+        expect(error.message, equals('InfluxDB client not initialized'));
 
-      Logger.info(
-        '✓ All ${SensorType.values.length} sensor types correctly return failures',
-        tag: 'ProdReadiness',
-      );
-    });
+        Logger.info(
+          '✓ querySensorData correctly returns failure',
+          tag: 'ProdReadiness',
+        );
+      },
+    );
+
+    test(
+      'queryLatestSensorData returns InfluxUnavailableError when not initialized',
+      () async {
+        Logger.info(
+          'Testing queryLatestSensorData failure propagation',
+          tag: 'ProdReadiness',
+        );
+
+        final result = await influxService.queryLatestSensorData();
+
+        // Verify explicit failure instead of synthetic data
+        expect(result, isA<Failure<List<SensorData>>>());
+        final error = (result as Failure<List<SensorData>>).error;
+        expect(error, isA<InfluxUnavailableError>());
+        expect(error.message, equals('InfluxDB client not initialized'));
+
+        Logger.info(
+          '✓ queryLatestSensorData correctly returns failure',
+          tag: 'ProdReadiness',
+        );
+      },
+    );
+
+    test(
+      'queryTimeSeries returns InfluxUnavailableError when not initialized',
+      () async {
+        Logger.info(
+          'Testing queryTimeSeries failure propagation',
+          tag: 'ProdReadiness',
+        );
+
+        final result = await influxService.queryTimeSeries(
+          SensorType.humidity,
+          ChartRange.hours24,
+        );
+
+        // Verify explicit failure instead of synthetic data
+        expect(result, isA<Failure<List<TimeSeriesPoint>>>());
+        final error = (result as Failure<List<TimeSeriesPoint>>).error;
+        expect(error, isA<InfluxUnavailableError>());
+        expect(error.message, equals('InfluxDB client not initialized'));
+
+        Logger.info(
+          '✓ queryTimeSeries correctly returns failure',
+          tag: 'ProdReadiness',
+        );
+      },
+    );
+
+    test(
+      'all sensor types produce explicit failures when service unavailable',
+      () async {
+        Logger.info(
+          'Testing failure propagation for all sensor types',
+          tag: 'ProdReadiness',
+        );
+
+        for (final sensorType in SensorType.values) {
+          final result = await influxService.querySensorData(
+            sensorType: sensorType,
+            start: DateTime.now().subtract(const Duration(hours: 1)),
+            end: DateTime.now(),
+            limit: 5,
+          );
+
+          expect(
+            result,
+            isA<Failure<List<SensorData>>>(),
+            reason: '${sensorType.name} should return Failure',
+          );
+
+          final error = (result as Failure<List<SensorData>>).error;
+          expect(
+            error,
+            isA<InfluxUnavailableError>(),
+            reason: '${sensorType.name} should return InfluxUnavailableError',
+          );
+        }
+
+        Logger.info(
+          '✓ All ${SensorType.values.length} sensor types correctly return failures',
+          tag: 'ProdReadiness',
+        );
+      },
+    );
 
     tearDown(() async {
       Logger.info('Tearing down production failure test', tag: 'ProdReadiness');

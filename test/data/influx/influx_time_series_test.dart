@@ -44,10 +44,7 @@ void main() {
         );
 
         expect(error, isA<InfluxUnavailableError>());
-        expect(
-          error.message,
-          equals('InfluxDB client not initialized'),
-        );
+        expect(error.message, equals('InfluxDB client not initialized'));
       });
 
       test('returns failure for all ranges when not initialized', () async {
@@ -80,65 +77,80 @@ void main() {
         }
       });
 
-      test('returns failure for chronological ordering check when not initialized', () async {
-        Logger.info(
-          'Testing that ordering check returns failure when not initialized',
-          tag: 'TimeSeriesTest',
-        );
+      test(
+        'returns failure for chronological ordering check when not initialized',
+        () async {
+          Logger.info(
+            'Testing that ordering check returns failure when not initialized',
+            tag: 'TimeSeriesTest',
+          );
 
-        final result = await influxService.queryTimeSeries(
-          SensorType.temperature,
-          ChartRange.hours24,
-        );
-
-        expect(result, isA<Failure<List<TimeSeriesPoint>>>());
-        final error = (result as Failure<List<TimeSeriesPoint>>).error;
-        expect(error, isA<InfluxUnavailableError>());
-
-        Logger.info('Ordering check failure verified', tag: 'TimeSeriesTest');
-      });
-
-      test('returns failure for deterministic data check when not initialized', () async {
-        Logger.info(
-          'Testing that deterministic check returns failure when not initialized',
-          tag: 'TimeSeriesTest',
-        );
-
-        final result1 = await influxService.queryTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        );
-
-        final result2 = await influxService.queryTimeSeries(
-          SensorType.temperature,
-          ChartRange.hour1,
-        );
-
-        expect(result1, isA<Failure<List<TimeSeriesPoint>>>());
-        expect(result2, isA<Failure<List<TimeSeriesPoint>>>());
-
-        Logger.info('Deterministic check failure verified', tag: 'TimeSeriesTest');
-      });
-
-      test('returns failure for realistic values check when not initialized', () async {
-        Logger.info('Testing that realistic values check returns failure when not initialized', tag: 'TimeSeriesTest');
-
-        for (final sensorType in SensorType.values) {
           final result = await influxService.queryTimeSeries(
-            sensorType,
-            ChartRange.hour1,
+            SensorType.temperature,
+            ChartRange.hours24,
           );
 
           expect(result, isA<Failure<List<TimeSeriesPoint>>>());
           final error = (result as Failure<List<TimeSeriesPoint>>).error;
           expect(error, isA<InfluxUnavailableError>());
 
-          Logger.debug(
-            '${sensorType.name}: correctly returned failure',
+          Logger.info('Ordering check failure verified', tag: 'TimeSeriesTest');
+        },
+      );
+
+      test(
+        'returns failure for deterministic data check when not initialized',
+        () async {
+          Logger.info(
+            'Testing that deterministic check returns failure when not initialized',
             tag: 'TimeSeriesTest',
           );
-        }
-      });
+
+          final result1 = await influxService.queryTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          );
+
+          final result2 = await influxService.queryTimeSeries(
+            SensorType.temperature,
+            ChartRange.hour1,
+          );
+
+          expect(result1, isA<Failure<List<TimeSeriesPoint>>>());
+          expect(result2, isA<Failure<List<TimeSeriesPoint>>>());
+
+          Logger.info(
+            'Deterministic check failure verified',
+            tag: 'TimeSeriesTest',
+          );
+        },
+      );
+
+      test(
+        'returns failure for realistic values check when not initialized',
+        () async {
+          Logger.info(
+            'Testing that realistic values check returns failure when not initialized',
+            tag: 'TimeSeriesTest',
+          );
+
+          for (final sensorType in SensorType.values) {
+            final result = await influxService.queryTimeSeries(
+              sensorType,
+              ChartRange.hour1,
+            );
+
+            expect(result, isA<Failure<List<TimeSeriesPoint>>>());
+            final error = (result as Failure<List<TimeSeriesPoint>>).error;
+            expect(error, isA<InfluxUnavailableError>());
+
+            Logger.debug(
+              '${sensorType.name}: correctly returned failure',
+              tag: 'TimeSeriesTest',
+            );
+          }
+        },
+      );
     });
   });
 }
