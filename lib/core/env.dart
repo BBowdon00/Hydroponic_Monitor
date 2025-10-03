@@ -63,8 +63,7 @@ class Env {
   }
 
   static String get mjpegUrl =>
-      dotenv.env['MJPEG_URL'] ??
-      'http://m0rb1d-server.mynetworksettings.com:8080/stream';
+      dotenv.env['MJPEG_URL'] ?? 'http://raspberrypi:8000/stream.mjpg';
 
   /// Feature flag: enable real MJPEG streaming implementation.
   /// Controlled via REAL_MJPEG environment variable ("true" to enable).
