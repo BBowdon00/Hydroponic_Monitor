@@ -6,6 +6,8 @@ import 'package:influxdb_client/api.dart';
 import '../../core/logger.dart';
 import '../../core/errors.dart';
 import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/time_series_point.dart';
+import '../../presentation/pages/charts_page.dart';
 
 /// InfluxDB client for storing and querying time-series sensor data.
 class InfluxDbService {
@@ -727,6 +729,266 @@ from(bucket: "$bucket")
       case SensorType.powerUsage:
         return 'esp32_2'; // Power monitoring
     }
+  }
+
+  /// Query time series data for a sensor type with aggregation for charts.
+  /// Returns a list of time series points aggregated over the specified range.
+  Future<Result<List<TimeSeriesPoint>>> queryTimeSeries(
+    SensorType sensorType,
+    ChartRange range,
+  ) async {
+    // Determine time range and aggregation window
+    final now = DateTime.now();
+    DateTime startTime;
+    String aggregationWindow;
+
+    switch (range) {
+      case ChartRange.hour1:
+        startTime = now.subtract(const Duration(hours: 1));
+        aggregationWindow = '5m';
+        break;
+      case ChartRange.hours24:
+        startTime = now.subtract(const Duration(hours: 24));
+        aggregationWindow = '1h';
+        break;
+      case ChartRange.days7:
+        startTime = now.subtract(const Duration(days: 7));
+        aggregationWindow = '3h';
+        break;
+      case ChartRange.days30:
+        startTime = now.subtract(const Duration(days: 30));
+        aggregationWindow = '12h';
+        break;
+    }
+
+    // If client is not initialized, return dummy data
+    if (_client == null || _queryApi == null) {
+      Logger.info(
+        'InfluxDB client not initialized, returning dummy time series data',
+        tag: 'InfluxDB',
+      );
+      final dummyData = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: now,
+        range: range,
+      );
+      return Success(dummyData);
+    }
+
+    try {
+      Logger.info(
+        'Querying time series for ${sensorType.name} from $startTime to $now with window $aggregationWindow',
+        tag: 'InfluxDB',
+      );
+
+      // Build Flux query with aggregation
+      final query = '''
+from(bucket: "$bucket")
+  |> range(start: ${startTime.toUtc().toIso8601String()}, stop: ${now.toUtc().toIso8601String()})
+  |> filter(fn: (r) => r["_measurement"] == "sensor")
+  |> filter(fn: (r) => r["_field"] == "value")
+  |> filter(fn: (r) => r["deviceType"] == "${sensorType.name}")
+  |> aggregateWindow(every: $aggregationWindow, fn: mean, createEmpty: false)
+  |> sort(columns: ["_time"])
+  |> limit(n: 180)
+''';
+
+      Logger.debug('Executing time series Flux query: $query', tag: 'InfluxDB');
+
+      final queryResult = await _queryApi!.query(query);
+      final points = await _parseTimeSeriesResult(queryResult);
+
+      Logger.info(
+        'Retrieved ${points.length} time series points from InfluxDB',
+        tag: 'InfluxDB',
+      );
+
+      // Mark healthy since query succeeded
+      if (_lastConnectionStatus != 'connected') {
+        _lastConnectionStatus = 'connected';
+        _connectionController.add('connected');
+      }
+
+      return Success(points);
+    } catch (e) {
+      final error = 'Error querying time series from InfluxDB: $e';
+      Logger.error(error, tag: 'InfluxDB', error: e);
+
+      // Don't mark as disconnected on query failure (connection might be fine, just no data)
+      Logger.warning(
+        'Falling back to dummy time series data due to query error',
+        tag: 'InfluxDB',
+      );
+
+      final dummyData = _generateDummyTimeSeries(
+        sensorType: sensorType,
+        start: startTime,
+        end: now,
+        range: range,
+      );
+      return Success(dummyData);
+    }
+  }
+
+  /// Parse time series query result.
+  Future<List<TimeSeriesPoint>> _parseTimeSeriesResult(
+    Stream<FluxRecord> queryResult,
+  ) async {
+    final points = <TimeSeriesPoint>[];
+
+    try {
+      await for (final record in queryResult) {
+        try {
+          final timestampRaw = record['_time'];
+          final value = record['_value'];
+
+          if (timestampRaw == null || value == null) continue;
+
+          // Parse timestamp
+          DateTime? timestamp;
+          if (timestampRaw is DateTime) {
+            timestamp = timestampRaw;
+          } else if (timestampRaw is String) {
+            timestamp = DateTime.tryParse(timestampRaw);
+          }
+
+          if (timestamp == null) continue;
+
+          // Parse value as double
+          final doubleValue = value is double
+              ? value
+              : double.tryParse(value.toString());
+          if (doubleValue == null) continue;
+
+          points.add(
+            TimeSeriesPoint(
+              timestamp: timestamp,
+              value: double.parse(doubleValue.toStringAsFixed(2)),
+            ),
+          );
+        } catch (e) {
+          Logger.warning(
+            'Failed to parse time series record: $e',
+            tag: 'InfluxDB',
+          );
+        }
+      }
+
+      Logger.debug(
+        'Finished parsing time series result with ${points.length} points',
+        tag: 'InfluxDB',
+      );
+    } catch (e) {
+      Logger.error(
+        'Error parsing time series result: $e',
+        tag: 'InfluxDB',
+        error: e,
+      );
+    }
+
+    return points;
+  }
+
+  /// Generate dummy time series data for testing.
+  /// Uses deterministic seeding based on sensor type and range for reproducibility.
+  List<TimeSeriesPoint> _generateDummyTimeSeries({
+    required SensorType sensorType,
+    required DateTime start,
+    required DateTime end,
+    required ChartRange range,
+  }) {
+    // Use deterministic seed for reproducibility
+    final seed = sensorType.index * 1000 + range.index;
+    final random = Random(seed);
+
+    // Determine number of points based on range
+    int pointCount;
+    Duration interval;
+
+    switch (range) {
+      case ChartRange.hour1:
+        pointCount = 12; // 5 min intervals
+        interval = const Duration(minutes: 5);
+        break;
+      case ChartRange.hours24:
+        pointCount = 24; // 1 hour intervals
+        interval = const Duration(hours: 1);
+        break;
+      case ChartRange.days7:
+        pointCount = 56; // 3 hour intervals
+        interval = const Duration(hours: 3);
+        break;
+      case ChartRange.days30:
+        pointCount = 60; // 12 hour intervals
+        interval = const Duration(hours: 12);
+        break;
+    }
+
+    final points = <TimeSeriesPoint>[];
+
+    for (int i = 0; i < pointCount; i++) {
+      final timestamp = start.add(interval * i);
+
+      // Generate realistic values based on sensor type
+      double value;
+      switch (sensorType) {
+        case SensorType.temperature:
+          final hourOfDay = timestamp.hour;
+          final baseTemp = 22.0;
+          final variation = 5.0 * sin((hourOfDay * pi) / 12);
+          value = baseTemp + variation + (random.nextDouble() - 0.5) * 2;
+          break;
+        case SensorType.humidity:
+          value = 60.0 +
+              random.nextDouble() * 20 +
+              sin(timestamp.hour * pi / 12) * 10;
+          value = value.clamp(30.0, 90.0).toDouble();
+          break;
+        case SensorType.pH:
+          value = 6.2 + (random.nextDouble() - 0.5) * 0.6;
+          value = value.clamp(5.5, 7.5).toDouble();
+          break;
+        case SensorType.waterLevel:
+          value = 15.0 +
+              random.nextDouble() * 10 +
+              sin(timestamp.hour * pi / 6) * 3;
+          value = value.clamp(5.0, 30.0).toDouble();
+          break;
+        case SensorType.electricalConductivity:
+          value = 1200.0 + random.nextDouble() * 400;
+          break;
+        case SensorType.lightIntensity:
+          final hourOfDay = timestamp.hour;
+          if (hourOfDay >= 6 && hourOfDay <= 18) {
+            value = 15000.0 + random.nextDouble() * 10000;
+          } else {
+            value = random.nextDouble() * 100;
+          }
+          break;
+        case SensorType.airQuality:
+          value = 400.0 + random.nextDouble() * 200;
+          break;
+        case SensorType.powerUsage:
+          final hourOfDay = timestamp.hour;
+          final baseUsage = 50.0;
+          if (hourOfDay >= 6 && hourOfDay <= 18) {
+            value = baseUsage + 120.0 + random.nextDouble() * 80;
+          } else {
+            value = baseUsage + random.nextDouble() * 50;
+          }
+          break;
+      }
+
+      points.add(
+        TimeSeriesPoint(
+          timestamp: timestamp,
+          value: double.parse(value.toStringAsFixed(2)),
+        ),
+      );
+    }
+
+    return points;
   }
 
   /// Close the InfluxDB client.

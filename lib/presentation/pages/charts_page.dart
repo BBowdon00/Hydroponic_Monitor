@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/theme.dart';
+import '../../domain/entities/sensor_data.dart';
+import '../widgets/sensor_chart_card.dart';
+import '../providers/chart_providers.dart';
 
 /// Charts page for viewing historical sensor data and trends.
 class ChartsPage extends ConsumerWidget {
@@ -19,7 +22,8 @@ class ChartsPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Refresh charts
+              // Increment refresh trigger to invalidate all chart data
+              ref.read(chartDataRefreshTriggerProvider.notifier).state++;
             },
           ),
         ],
@@ -71,31 +75,9 @@ class ChartsPage extends ConsumerWidget {
 
             const SizedBox(height: AppTheme.spaceMd),
 
-            // Charts area
+            // Charts area - Grid of sensor chart cards
             Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spaceMd),
-                  child: _buildChartsPlaceholder(context),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: AppTheme.spaceMd),
-
-            // Chart legend and statistics
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spaceMd),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Statistics', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: AppTheme.spaceSm),
-                    _buildStatisticsGrid(context),
-                  ],
-                ),
-              ),
+              child: _buildChartsGrid(context, selectedRange),
             ),
           ],
         ),
@@ -103,171 +85,45 @@ class ChartsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildChartsPlaceholder(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _buildChartsGrid(BuildContext context, ChartRange selectedRange) {
+    // Order sensors by importance as specified in TASK011
+    const sensorOrder = [
+      SensorType.temperature,
+      SensorType.humidity,
+      SensorType.pH,
+      SensorType.electricalConductivity,
+      SensorType.waterLevel,
+      SensorType.lightIntensity,
+      SensorType.airQuality,
+      SensorType.powerUsage,
+    ];
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.analytics_outlined,
-            size: 64,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppTheme.spaceMd),
-          Text('No Data Yet', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppTheme.spaceSm),
-          Text(
-            'Charts will appear here once sensor data is collected',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppTheme.spaceLg),
-          // Placeholder chart area
-          Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.3,
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.show_chart,
-                    size: 32,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spaceSm),
-                  Text(
-                    'Chart Area',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatisticsGrid(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive grid: more columns on wider screens
-        final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: AppTheme.spaceMd,
-          mainAxisSpacing: AppTheme.spaceMd,
-          childAspectRatio: 2.5,
-          children: [
-            _buildStatCard(
-              context,
-              title: 'Avg Temperature',
-              value: '24.2°C',
-              trend: '+0.5°C',
-              trendPositive: true,
-            ),
-            _buildStatCard(
-              context,
-              title: 'Avg Humidity',
-              value: '68%',
-              trend: '-2%',
-              trendPositive: false,
-            ),
-            _buildStatCard(
-              context,
-              title: 'Water Usage',
-              value: '15.2L',
-              trend: '+1.2L',
-              trendPositive: null,
-            ),
-            _buildStatCard(
-              context,
-              title: 'pH Stability',
-              value: '±0.1',
-              trend: 'Good',
-              trendPositive: true,
-            ),
-          ],
+        // Responsive grid: adjust columns based on screen width
+        final crossAxisCount = constraints.maxWidth > 1200
+            ? 3
+            : constraints.maxWidth > 800
+                ? 2
+                : 1;
+
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: AppTheme.spaceMd,
+            mainAxisSpacing: AppTheme.spaceMd,
+            childAspectRatio: 1.4,
+          ),
+          itemCount: sensorOrder.length,
+          itemBuilder: (context, index) {
+            return SensorChartCard(
+              sensorType: sensorOrder[index],
+              range: selectedRange,
+            );
+          },
         );
       },
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required String trend,
-    bool? trendPositive,
-  }) {
-    final theme = Theme.of(context);
-
-    Color? trendColor;
-    if (trendPositive != null) {
-      trendColor = trendPositive ? Colors.green : Colors.red;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spaceSm),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          const SizedBox(height: AppTheme.spaceXs),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          Text(
-            trend,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: trendColor ?? theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ],
-      ),
     );
   }
 
