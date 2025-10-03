@@ -124,8 +124,8 @@ class SensorChartCard extends ConsumerWidget {
     final minY = chartState.stats.min;
     final maxY = chartState.stats.max;
     final padding = (maxY - minY) * 0.05;
-    final yMin = (minY - padding).clamp(0, double.infinity);
-    final yMax = maxY + padding;
+    final yMin = ((minY - padding).clamp(0, double.infinity)).toDouble();
+    final yMax = (maxY + padding).toDouble();
 
     return LineChart(
       LineChartData(
