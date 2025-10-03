@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -169,7 +170,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _buildConfigTile(
               context,
               icon: Icons.numbers,
-              title: 'Port',
+              title: kIsWeb ? 'WebSocket Port' : 'Port',
               value: config.mqtt.port.toString(),
               onTap: () => _showPortDialog(context, ref, config),
             ),

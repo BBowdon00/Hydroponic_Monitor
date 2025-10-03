@@ -20,6 +20,16 @@ class Env {
   static int get mqttPort =>
       int.tryParse(dotenv.env['MQTT_PORT'] ?? '1883') ?? 1883;
 
+  /// WebSocket MQTT port (used for browser / web builds). Falls back to 9001 if
+  /// not specified. If not running on web, prefer the standard TCP port.
+  static int get mqttWsPort =>
+    int.tryParse(dotenv.env['MQTT_WS_PORT'] ?? '9001') ?? 9001;
+
+  /// Effective port to use for MQTT connections based on platform.
+  /// - Web (kIsWeb): use MQTT_WS_PORT (default 9001)
+  /// - Other platforms: use MQTT_PORT (default 1883)
+  static int get effectiveMqttPort => kIsWeb ? mqttWsPort : mqttPort;
+
   // Prefer explicit OS environment variables (set by CI or test runner)
   // so tests can inject tokens/urls without modifying .env file.
   // Note: Platform.environment is not available on web, so use dotenv only
