@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -37,13 +38,7 @@ void main() {
 
     group('initialization', () {
       test('successful initialization of both services', () async {
-        when(
-          () => mockMqttService.connect(),
-        ).thenAnswer((_) async => const Success(null));
-        when(
-          () => mockMqttService.connectionStream,
-        ).thenAnswer((_) => Stream<String>.value('connected'));
-        when(() => mockMqttService.isConnected).thenReturn(true);
+        // MQTT is assumed to already be connected via mqttConnectionProvider
         when(
           () =>
               mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
@@ -58,35 +53,26 @@ void main() {
         final result = await repository.initialize();
 
         expect(result, isA<Success>());
-        verify(() => mockMqttService.connect()).called(1);
+        verifyNever(() => mockMqttService.connect()); // connect() no longer called
         verify(() => mockInfluxService.initialize()).called(1);
       });
 
-      test('fails when MQTT connection fails', () async {
-        when(() => mockMqttService.connect()).thenAnswer(
-          (_) async => const Failure(MqttError('MQTT connection failed')),
-        );
+      test('fails when MQTT is not ready', () async {
+        // If MQTT is not ready (timeout), initialization fails
         when(
-          () => mockMqttService.connectionStream,
-        ).thenAnswer((_) => const Stream<String>.empty());
-        when(() => mockMqttService.isConnected).thenReturn(false);
+          () =>
+              mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
+        ).thenThrow(TimeoutException('MQTT not ready'));
 
         final result = await repository.initialize();
 
         expect(result, isA<Failure>());
-        expect((result as Failure).error, isA<MqttError>());
-        verify(() => mockMqttService.connect()).called(1);
+        expect((result as Failure).error, isA<UnknownError>());
         verifyNever(() => mockInfluxService.initialize());
       });
 
       test('fails when InfluxDB initialization fails', () async {
-        when(
-          () => mockMqttService.connect(),
-        ).thenAnswer((_) async => const Success(null));
-        when(
-          () => mockMqttService.connectionStream,
-        ).thenAnswer((_) => Stream<String>.value('connected'));
-        when(() => mockMqttService.isConnected).thenReturn(true);
+        // strictInit = true causes immediate failure on InfluxDB error
         when(
           () =>
               mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
@@ -100,7 +86,7 @@ void main() {
 
         expect(result, isA<Failure>());
         expect((result as Failure).error, isA<InfluxError>());
-        verify(() => mockMqttService.connect()).called(1);
+        verifyNever(() => mockMqttService.connect()); // connect() no longer called
         verify(() => mockInfluxService.initialize()).called(1);
       });
     });
