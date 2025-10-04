@@ -36,6 +36,7 @@ class MqttService {
   bool _retired =
       false; // Set when provider replaces this instance; suppress further connects
   bool get isRetired => _retired;
+  int _attemptCount = 0;
   Completer<void> _initializedCompleter = Completer<void>();
   final StreamController<SensorData> _sensorDataController =
       StreamController<SensorData>.broadcast();
@@ -128,6 +129,12 @@ class MqttService {
       StreamController.broadcast();
   Stream<HydroMqttMessage> get messageStream => _messageController.stream;
 
+  /// Get the current attempt count for diagnostics.
+  int get attemptCount => _attemptCount;
+
+  /// Increment and return the attempt counter.
+  int incrementAttempt() => ++_attemptCount;
+
   /// Initialize and connect to MQTT broker.
   Future<Result<void>> connect() async {
     if (_retired) {
@@ -138,9 +145,10 @@ class MqttService {
       return const Success(null);
     }
     try {
-      final attemptId = ++_globalAttemptCounter;
+      final attemptId = incrementAttempt();
+      final sw = Stopwatch()..start();
       Logger.info(
-        'Connecting to MQTT broker at $host:$port (attempt #$attemptId, instance=${identityHashCode(this)})',
+        'Connecting to MQTT broker at $host:$port (attempt=$attemptId, instance=${identityHashCode(this)})',
         tag: 'MQTT',
       );
 
@@ -234,7 +242,7 @@ class MqttService {
       if (status?.state == MqttConnectionState.connected) {
         _isConnecting = false;
         Logger.info(
-          'Successfully connected to MQTT broker (attempt #$attemptId, instance=${identityHashCode(this)})',
+          'MQTT connected (attempt=$attemptId, ms=${sw.elapsedMilliseconds}, instance=${identityHashCode(this)})',
           tag: 'MQTT',
         );
         // Set up message handling
@@ -258,14 +266,14 @@ class MqttService {
       } else {
         _isConnecting = false;
         final error =
-            'Failed to connect to MQTT broker: ${status?.state} (attempt #$attemptId, instance=${identityHashCode(this)})';
+            'MQTT connect failed: ${status?.state} (attempt=$attemptId, instance=${identityHashCode(this)})';
         Logger.error(error, tag: 'MQTT');
         return Failure(MqttError(error));
       }
     } catch (e, stackTrace) {
       _isConnecting = false;
       final error =
-          'Error connecting to MQTT broker (attempt #${_globalAttemptCounter}, instance=${identityHashCode(this)}): $e';
+          'MQTT connect error (attempt=$attemptCount, instance=${identityHashCode(this)}): $e';
       Logger.error(error, tag: 'MQTT', error: e);
       Logger.debug('Stack trace: $stackTrace', tag: 'MQTT');
       return Failure(MqttError(error));
@@ -742,9 +750,6 @@ class MqttService {
     } catch (_) {}
   }
 }
-
-// Global diagnostics counter (process lifetime)
-int _globalAttemptCounter = 0;
 
 /// Custom MQTT message container for raw topic and payload data.
 class HydroMqttMessage {

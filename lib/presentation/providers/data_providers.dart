@@ -32,37 +32,16 @@ final mqttServiceProvider = Provider<MqttService>((ref) {
     }
   }
 
-  // If config still loading, return existing service or create a placeholder once.
-  if (!configAsync.hasValue) {
-    if (previousState?.service != null) return previousState!.service;
-
-    final placeholderPort = _effectivePort(Env.mqttPort);
-    final placeholder = MqttService(
-      host: Env.mqttHost,
-      port: placeholderPort,
-      clientId: _stableClientId,
-      // Disable auto reconnect for placeholder to prevent lingering localhost attempts
-      autoReconnect: false,
-    );
-    _cachedMqttSnapshot = _MqttConfigSnapshot(
-      host: Env.mqttHost,
-      port: placeholderPort,
-      username: Env.mqttUsername.trim().isEmpty ? null : Env.mqttUsername,
-      password: Env.mqttPassword.trim().isEmpty ? null : Env.mqttPassword,
-      service: placeholder,
-    );
-    return placeholder;
-  }
-
-  final cfg = configAsync.value!.mqtt;
+  // Provider suspends until config is ready (no placeholder service)
+  final cfg = configAsync.requireValue.mqtt;
   final newHost = cfg.host;
   final newPort = _effectivePort(cfg.port);
-  final newUsername = (cfg.username ?? '').trim().isEmpty
+  final newUsername = cfg.username.trim().isEmpty
       ? null
-      : (cfg.username ?? '').trim();
-  final newPassword = (cfg.password ?? '').trim().isEmpty
+      : cfg.username.trim();
+  final newPassword = cfg.password.trim().isEmpty
       ? null
-      : (cfg.password ?? '').trim();
+      : cfg.password.trim();
 
   // Reuse existing service if config unchanged.
   if (previousState != null &&
@@ -143,6 +122,35 @@ class _MqttConfigSnapshot {
 // Module-level cached snapshot (not a provider) to avoid mutating provider state during build.
 _MqttConfigSnapshot? _cachedMqttSnapshot;
 
+/// Provider that performs the initial MQTT connection after config is ready.
+/// This eliminates duplicate connects and ensures proper ordering.
+final mqttConnectionProvider = FutureProvider<void>((ref) async {
+  // 1. Wait for runtime config (eliminates placeholder service churn)
+  final configAsync = ref.watch(configProvider);
+  if (!configAsync.hasValue) {
+    throw Exception('Config not ready');
+  }
+  
+  // 2. Acquire service (built with final config)
+  final service = ref.watch(mqttServiceProvider);
+  
+  // 3. Connect once
+  final sw = Stopwatch()..start();
+  final attempt = service.incrementAttempt();
+  final result = await service.connect();
+  
+  result.when(
+    success: (_) => Logger.info(
+      'MQTT connected (attempt=$attempt, ms=${sw.elapsedMilliseconds})',
+      tag: 'MQTT',
+    ),
+    failure: (e) => Logger.error(
+      'MQTT connect failed (attempt=$attempt): $e',
+      tag: 'MQTT',
+    ),
+  );
+});
+
 /// Provider for InfluxDB service configuration.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
   final configAsync = ref.watch(configProvider);
@@ -196,6 +204,17 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
 final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
   ref,
 ) async {
+  // Await MQTT connection first (ensures proper ordering)
+  try {
+    await ref.watch(mqttConnectionProvider.future);
+  } catch (e) {
+    Logger.warning(
+      'MQTT connection failed during init: $e',
+      tag: 'DataProviders',
+    );
+    // Continue in degraded mode
+  }
+  
   // Watch repository so init re-runs on configuration-driven rebuild.
   final repository = ref.watch(sensorRepositoryProvider);
 
@@ -204,7 +223,7 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
     tag: 'DataProviders',
   );
 
-  // Initialize the repository
+  // Initialize the repository (without calling connect - already connected)
   final result = await repository.initialize();
 
   return result.when(
