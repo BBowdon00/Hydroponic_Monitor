@@ -89,6 +89,10 @@ void main() {
           mqttConnectionProvider.overrideWith((ref) async {
             // Just complete successfully without connecting
           }),
+          // Override influxConnectionProvider to complete immediately (no config needed)
+          influxConnectionProvider.overrideWith((ref) async {
+            // Just complete successfully without connecting
+          }),
           sensorRepositoryProvider.overrideWithValue(
             SensorRepository(
               mqttService: mockMqttService,
@@ -115,9 +119,10 @@ void main() {
       final repository = await repositoryFuture;
 
       expect(repository, isA<SensorRepository>());
-      // connect() is no longer called during repository init (handled by mqttConnectionProvider)
+      // connect() and initialize() are no longer called during repository init
+      // (handled by mqttConnectionProvider and influxConnectionProvider)
       verifyNever(() => mockMqttService.connect());
-      verify(() => mockInfluxService.initialize()).called(1);
+      verifyNever(() => mockInfluxService.initialize());
     });
 
     test('Real-time sensor data accumulates by sensor type', () async {
@@ -317,6 +322,10 @@ void main() {
             // Override mqttConnectionProvider to complete immediately with failure
             mqttConnectionProvider.overrideWith((ref) async {
               throw Exception('MQTT connection failed');
+            }),
+            // Override influxConnectionProvider to fail as well
+            influxConnectionProvider.overrideWith((ref) async {
+              throw Exception('InfluxDB connection failed');
             }),
             sensorRepositoryProvider.overrideWithValue(
               SensorRepository(

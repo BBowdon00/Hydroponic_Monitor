@@ -46,20 +46,8 @@ class SensorRepository {
         timeout: const Duration(seconds: 4),
       );
 
-      // Initialize InfluxDB service
-      final influxResult = await influxService.initialize();
-      if (influxResult is Failure) {
-        if (strictInit) {
-          _initialized = false;
-          return Failure(influxResult.error);
-        }
-        Logger.warning(
-          'InfluxDB connection failed (soft-fail). Historical data unavailable: ${influxResult.error}',
-          tag: 'SensorRepository',
-        );
-      } else {
-        Logger.info('InfluxDB connected successfully', tag: 'SensorRepository');
-      }
+      // InfluxDB is already initialized via influxConnectionProvider - no action needed
+      // Services are ready, just subscribe to sensor stream
 
       // Subscribe to MQTT sensor stream for real-time monitoring only
       _mqttSubscription = mqttService.sensorDataStream.listen(

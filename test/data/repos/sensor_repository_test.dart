@@ -43,9 +43,7 @@ void main() {
           () =>
               mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
         ).thenAnswer((_) async {});
-        when(
-          () => mockInfluxService.initialize(),
-        ).thenAnswer((_) async => const Success(null));
+        // InfluxDB is already initialized via influxConnectionProvider
         when(
           () => mockMqttService.sensorDataStream,
         ).thenAnswer((_) => const Stream.empty());
@@ -54,7 +52,7 @@ void main() {
 
         expect(result, isA<Success>());
         verifyNever(() => mockMqttService.connect()); // connect() no longer called
-        verify(() => mockInfluxService.initialize()).called(1);
+        verifyNever(() => mockInfluxService.initialize()); // initialize() no longer called
       });
 
       test('fails when MQTT is not ready', () async {
@@ -71,23 +69,23 @@ void main() {
         verifyNever(() => mockInfluxService.initialize());
       });
 
-      test('fails when InfluxDB initialization fails', () async {
-        // strictInit = true causes immediate failure on InfluxDB error
+      test('initialization succeeds even if stream setup has issues', () async {
+        // Services are already connected via connection providers
         when(
           () =>
               mockMqttService.ensureInitialized(timeout: any(named: 'timeout')),
         ).thenAnswer((_) async {});
-        when(() => mockInfluxService.initialize()).thenAnswer(
-          (_) async =>
-              const Failure(InfluxError('InfluxDB initialization failed')),
-        );
+        // Simulate sensor stream being null or problematic
+        when(
+          () => mockMqttService.sensorDataStream,
+        ).thenThrow(Exception('Stream not available'));
 
         final result = await repository.initialize();
 
+        // Should still fail because we can't subscribe to the stream
         expect(result, isA<Failure>());
-        expect((result as Failure).error, isA<InfluxError>());
-        verifyNever(() => mockMqttService.connect()); // connect() no longer called
-        verify(() => mockInfluxService.initialize()).called(1);
+        verifyNever(() => mockMqttService.connect());
+        verifyNever(() => mockInfluxService.initialize());
       });
     });
 

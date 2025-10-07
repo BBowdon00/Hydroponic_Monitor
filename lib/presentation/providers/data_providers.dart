@@ -154,25 +154,53 @@ final mqttConnectionProvider = FutureProvider<void>((ref) async {
 /// Provider for InfluxDB service configuration.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
   final configAsync = ref.watch(configProvider);
-  final config = configAsync.valueOrNull;
-
-  final url = config?.influx.url ?? Env.influxUrl;
-  final token = config?.influx.token ?? Env.influxToken;
-  final org = config?.influx.org ?? Env.influxOrg;
-  final bucket = config?.influx.bucket ?? Env.influxBucket;
+  
+  // Provider suspends until config is ready (no fallback to env vars)
+  final cfg = configAsync.requireValue.influx;
 
   final service = InfluxDbService(
-    url: InfluxDbService.normalizeUrl(url),
-    token: token,
-    organization: org,
-    bucket: bucket,
+    url: InfluxDbService.normalizeUrl(cfg.url),
+    token: cfg.token,
+    organization: cfg.org,
+    bucket: cfg.bucket,
   );
 
-  ref.onDispose(() {
-    // InfluxDbService doesn't expose a close; rely on GC. Could add cleanup if needed.
+  ref.onDispose(() async {
+    try {
+      await service.close();
+    } catch (_) {}
   });
 
   return service;
+});
+
+/// Provider that performs the initial InfluxDB connection after config is ready.
+/// This eliminates duplicate connects and ensures proper ordering.
+final influxConnectionProvider = FutureProvider<void>((ref) async {
+  // 1. Wait for runtime config (eliminates early initialization)
+  final configAsync = ref.watch(configProvider);
+  if (!configAsync.hasValue) {
+    throw Exception('Config not ready');
+  }
+  
+  // 2. Acquire service (built with final config)
+  final service = ref.watch(influxServiceProvider);
+  
+  // 3. Initialize once
+  final sw = Stopwatch()..start();
+  final attempt = service.incrementAttempt();
+  final result = await service.initialize();
+  
+  result.when(
+    success: (_) => Logger.info(
+      'InfluxDB connected (attempt=$attempt, ms=${sw.elapsedMilliseconds})',
+      tag: 'InfluxDB',
+    ),
+    failure: (e) => Logger.error(
+      'InfluxDB connect failed (attempt=$attempt): $e',
+      tag: 'InfluxDB',
+    ),
+  );
 });
 
 /// Provider for sensor repository.
@@ -204,12 +232,22 @@ final sensorRepositoryProvider = Provider<SensorRepository>((ref) {
 final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
   ref,
 ) async {
-  // Await MQTT connection first (ensures proper ordering)
+  // Await both MQTT and InfluxDB connections (ensures proper ordering)
   try {
     await ref.watch(mqttConnectionProvider.future);
   } catch (e) {
     Logger.warning(
       'MQTT connection failed during init: $e',
+      tag: 'DataProviders',
+    );
+    // Continue in degraded mode
+  }
+  
+  try {
+    await ref.watch(influxConnectionProvider.future);
+  } catch (e) {
+    Logger.warning(
+      'InfluxDB connection failed during init: $e',
       tag: 'DataProviders',
     );
     // Continue in degraded mode
@@ -223,7 +261,7 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
     tag: 'DataProviders',
   );
 
-  // Initialize the repository (without calling connect - already connected)
+  // Initialize the repository (services already connected)
   final result = await repository.initialize();
 
   return result.when(
