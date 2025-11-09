@@ -7,21 +7,21 @@ import '../logger.dart';
 class HlsStreamController {
   VideoPlayerController? _controller;
   final _eventController = StreamController<HlsEvent>.broadcast();
-  
+
   /// Stream of HLS events (started, error, ended, etc.)
   Stream<HlsEvent> get events => _eventController.stream;
-  
+
   /// Whether the controller is currently active
   bool get isActive => _controller != null;
-  
+
   /// Start HLS stream playback
   Future<void> start(String url) async {
     // Stop any existing stream first
     await stop();
-    
+
     try {
       Logger.info('Starting HLS stream from URL: $url', tag: 'HlsController');
-      
+
       // Create and initialize video player controller for HLS stream
       // Use network constructor for better HLS support
       _controller = VideoPlayerController.networkUrl(
@@ -35,59 +35,63 @@ class HlsStreamController {
           'Accept': '*/*',
         },
       );
-      
+
       Logger.debug('Video player controller created', tag: 'HlsController');
-      
+
       // Listen for errors and state changes
       _controller!.addListener(_onPlayerChange);
-      
+
       // Initialize the controller with timeout
       Logger.debug('Initializing video player...', tag: 'HlsController');
       await _controller!.initialize().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          Logger.error('Video player initialization timeout', tag: 'HlsController');
-          throw TimeoutException('Failed to initialize video player after 10 seconds');
+          Logger.error(
+            'Video player initialization timeout',
+            tag: 'HlsController',
+          );
+          throw TimeoutException(
+            'Failed to initialize video player after 10 seconds',
+          );
         },
       );
-      
+
       // Check if initialization was successful
       if (!_controller!.value.isInitialized) {
         Logger.error('Video player not initialized', tag: 'HlsController');
         throw Exception('Video player failed to initialize');
       }
-      
+
       Logger.info(
         'Video player initialized successfully. Resolution: ${_controller!.value.size.width}x${_controller!.value.size.height}',
         tag: 'HlsController',
       );
-      
+
       // Emit stream started event with resolution
-      _eventController.add(HlsStreamStarted(
-        width: _controller!.value.size.width,
-        height: _controller!.value.size.height,
-        timestamp: DateTime.now(),
-      ));
-      
+      _eventController.add(
+        HlsStreamStarted(
+          width: _controller!.value.size.width,
+          height: _controller!.value.size.height,
+          timestamp: DateTime.now(),
+        ),
+      );
+
       // Start playback
       await _controller!.play();
       Logger.info('HLS stream playback started', tag: 'HlsController');
-      
     } catch (e, stack) {
       Logger.error(
         'Failed to start HLS stream: $e',
         tag: 'HlsController',
         error: e,
       );
-      _eventController.add(HlsStreamError(
-        error: e,
-        stackTrace: stack,
-        timestamp: DateTime.now(),
-      ));
+      _eventController.add(
+        HlsStreamError(error: e, stackTrace: stack, timestamp: DateTime.now()),
+      );
       await stop();
     }
   }
-  
+
   /// Stop HLS stream playback
   Future<void> stop() async {
     if (_controller != null) {
@@ -95,49 +99,49 @@ class HlsStreamController {
       await _controller!.pause();
       await _controller!.dispose();
       _controller = null;
-      
-      _eventController.add(HlsStreamEnded(
-        timestamp: DateTime.now(),
-        reason: 'User stopped stream',
-      ));
+
+      _eventController.add(
+        HlsStreamEnded(
+          timestamp: DateTime.now(),
+          reason: 'User stopped stream',
+        ),
+      );
     }
   }
-  
+
   /// Get the current video player controller (for rendering in UI)
   VideoPlayerController? get controller => _controller;
-  
+
   /// Get the view ID (only used on web platform, returns null on mobile)
   String? get viewId => null;
-  
+
   /// Handle player state changes
   void _onPlayerChange() {
     if (_controller == null) return;
-    
+
     final value = _controller!.value;
-    
+
     // Check for errors
     if (value.hasError) {
-      _eventController.add(HlsStreamError(
-        error: value.errorDescription ?? 'Unknown error',
-        stackTrace: null,
-        timestamp: DateTime.now(),
-      ));
+      _eventController.add(
+        HlsStreamError(
+          error: value.errorDescription ?? 'Unknown error',
+          stackTrace: null,
+          timestamp: DateTime.now(),
+        ),
+      );
     }
-    
+
     // Check for buffer/playing state changes
     if (value.isPlaying) {
       // Stream is actively playing
-      _eventController.add(HlsStreamPlaying(
-        timestamp: DateTime.now(),
-      ));
+      _eventController.add(HlsStreamPlaying(timestamp: DateTime.now()));
     } else if (value.isBuffering) {
       // Stream is buffering
-      _eventController.add(HlsStreamBuffering(
-        timestamp: DateTime.now(),
-      ));
+      _eventController.add(HlsStreamBuffering(timestamp: DateTime.now()));
     }
   }
-  
+
   /// Dispose of resources
   void dispose() {
     stop();
@@ -158,7 +162,7 @@ class HlsStreamStarted extends HlsEvent {
     required this.height,
     required super.timestamp,
   });
-  
+
   final double width;
   final double height;
 }
@@ -180,17 +184,14 @@ class HlsStreamError extends HlsEvent {
     required this.stackTrace,
     required super.timestamp,
   });
-  
+
   final Object error;
   final StackTrace? stackTrace;
 }
 
 /// Event emitted when stream ends
 class HlsStreamEnded extends HlsEvent {
-  const HlsStreamEnded({
-    required super.timestamp,
-    this.reason,
-  });
-  
+  const HlsStreamEnded({required super.timestamp, this.reason});
+
   final String? reason;
 }

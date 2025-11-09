@@ -251,10 +251,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: AppTheme.spaceMd),
-          Text(
-            'Buffering...',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Buffering...', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppTheme.spaceSm),
           Text(
             'Loading video stream',
@@ -270,14 +267,14 @@ class _VideoPageState extends ConsumerState<VideoPage> {
 
   Widget _buildPlayingState(BuildContext context, VideoState videoState) {
     final hlsController = ref.read(hlsStreamControllerProvider);
-    
+
     // On web, use HtmlElementView to display the iframe
     if (kIsWeb) {
       final viewId = hlsController.viewId;
       if (viewId == null) {
         return _buildBufferingState(context);
       }
-      
+
       return AspectRatio(
         aspectRatio: 16 / 9,
         child: ClipRRect(
@@ -321,10 +318,10 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         ),
       );
     }
-    
+
     // On mobile/desktop, use video_player
     final videoController = hlsController.controller;
-    
+
     if (videoController == null || !videoController.value.isInitialized) {
       return _buildBufferingState(context);
     }
@@ -340,10 +337,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Hero(
-              tag: 'videoFrameHero',
-              child: VideoPlayer(videoController),
-            ),
+            Hero(tag: 'videoFrameHero', child: VideoPlayer(videoController)),
             // Fullscreen button (only when playing)
             Positioned(
               right: 4,
@@ -496,13 +490,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
 }
 
 /// Connection phases for HLS streaming
-enum VideoConnectionPhase {
-  idle,
-  connecting,
-  buffering,
-  playing,
-  error,
-}
+enum VideoConnectionPhase { idle, connecting, buffering, playing, error }
 
 /// Video state model with phase-based connection states for HLS
 class VideoState {
@@ -716,7 +704,8 @@ class _FullscreenVideoPage extends ConsumerStatefulWidget {
   const _FullscreenVideoPage();
 
   @override
-  ConsumerState<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+  ConsumerState<_FullscreenVideoPage> createState() =>
+      _FullscreenVideoPageState();
 }
 
 class _FullscreenVideoPageState extends ConsumerState<_FullscreenVideoPage> {
@@ -740,7 +729,7 @@ class _FullscreenVideoPageState extends ConsumerState<_FullscreenVideoPage> {
     final hlsController = ref.read(hlsStreamControllerProvider);
 
     Widget videoContent;
-    
+
     // On web, use HtmlElementView
     if (kIsWeb) {
       final viewId = hlsController.viewId;
@@ -777,10 +766,7 @@ class _FullscreenVideoPageState extends ConsumerState<_FullscreenVideoPage> {
           Center(
             child: Hero(
               tag: 'videoFrameHero',
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: videoContent,
-              ),
+              child: AspectRatio(aspectRatio: 16 / 9, child: videoContent),
             ),
           ),
           Positioned(
@@ -797,10 +783,7 @@ class _FullscreenVideoPageState extends ConsumerState<_FullscreenVideoPage> {
     );
   }
 
-  Widget _buildFullscreenContent(
-    BuildContext context,
-    VideoState videoState,
-  ) {
+  Widget _buildFullscreenContent(BuildContext context, VideoState videoState) {
     switch (videoState.phase) {
       case VideoConnectionPhase.buffering:
         return const Center(
