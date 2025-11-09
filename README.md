@@ -7,7 +7,7 @@ A cross-platform Flutter application to monitor and control hydroponic systems w
 
 - **Real-time Dashboard**: Monitor key sensors (water level, temperature, humidity, pH, EC, light) with live updates and trend indicators
 - **Device Controls**: Remote control of water pumps, circulation fans, LED grow lights, and heaters with intensity adjustment
-- **Video Feed**: Live MJPEG stream viewing from Raspberry Pi cameras with connection management
+- **Video Feed**: Live HLS stream viewing from Raspberry Pi cameras with connection management
 - **Historical Charts**: Time-series analytics with customizable ranges (1h, 24h, 7d, 30d) powered by InfluxDB
 - **Smart Alerts**: Configurable alert rules and incident management for system monitoring
 - **MQTT Integration**: Real-time data ingestion and device control via MQTT protocol
@@ -149,7 +149,7 @@ The app defaults to test mode when `.env.test` is present, preventing accidental
 **Production (`.env`):**
 - MQTT: `m0rb1d-server.mynetworksettings.com:1883`
 - InfluxDB: `http://m0rb1d-server.mynetworksettings.com:8080`
-- Video: `http://raspberrypi:8000/stream.mjpg`
+- Video: `http://raspberrypi:8000/hls/stream.m3u8`
 - Bucket: `grow_data` (long-retention)
 
 **Test (`.env.test`):**
@@ -198,7 +198,7 @@ The infrastructure behind the Hydroponic Monitor app consists of a distributed n
 The system is built around multiple microcontroller nodes deployed throughout the hydroponic environment:
 
 - **Ubuntu Server**: MQTT Broker, runs influxdb, and other containers
-- **Raspberry Pi devices**: Primary controllers running full Linux OS, hosting cameras for MJPEG streams and managing multiple sensors/actuators
+- **Raspberry Pi devices**: Primary controllers running full Linux OS, hosting cameras for HLS streams and managing multiple sensors/actuators
 - **ESP32 microcontrollers**: Distributed sensor nodes and actuator controllers positioned strategically around growing areas
 - **Sensors**: Temperature, humidity, pH, electrical conductivity (EC), water level sensors, and total power usage sensors
 - **Actuators**: Water pumps, circulation fans, LED grow lights
