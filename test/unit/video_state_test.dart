@@ -11,7 +11,7 @@ import 'package:hydroponic_monitor/data/repos/config_repository.dart';
 import 'package:hydroponic_monitor/presentation/pages/video_page.dart';
 import '../test_utils.dart';
 
-/// Unit tests for MJPEG streaming video state management.
+/// Unit tests for HLS streaming video state management.
 /// Tests the core logic for connection handling, state transitions,
 /// and stream parameter management without requiring actual network connections.
 class _FakeConfigRepository implements ConfigRepository {
@@ -39,7 +39,7 @@ class _FakeConfigRepository implements ConfigRepository {
         org: 'org',
         bucket: 'bucket',
       ),
-      mjpeg: MjpegConfig(
+      hls: HlsConfig(
         url: 'http://192.168.1.100:8080/stream',
         autoReconnect: true,
       ),
@@ -49,15 +49,15 @@ class _FakeConfigRepository implements ConfigRepository {
 
 void main() {
   setUpAll(() async {
-    // Load .env then override REAL_MJPEG to false so tests exercise simulation branch
+    // Load .env then override HLS_URL to false so tests exercise simulation branch
     await Env.init();
     // flutter_dotenv doesn't support mutation, but we can rely on absence or set via Platform env; for simplicity
-    // we assert in tests that enableRealMjpeg is false.
+    // we assert in tests that hlsUrl is false.
     expect(
-      Env.enableRealMjpeg,
+      Env.hlsUrl,
       isFalse,
       reason:
-          'REAL_MJPEG should be disabled for deterministic unit tests. Ensure test runner sets REAL_MJPEG=',
+          'HLS_URL should be disabled for deterministic unit tests. Ensure test runner sets HLS_URL=',
     );
   });
 
@@ -69,7 +69,7 @@ void main() {
       org: 'org',
       bucket: 'bucket',
     ),
-    mjpeg: MjpegConfig(
+    hls: HlsConfig(
       url: 'http://192.168.1.100:8080/stream',
       autoReconnect: true,
     ),
@@ -89,8 +89,6 @@ void main() {
         phase: VideoConnectionPhase.idle,
         hasAttempted: false,
         resolution: Size(640, 480),
-        fps: 30,
-        latency: 150,
       );
 
       expect(state.streamUrl, equals('http://test.local:8080/stream'));
@@ -99,8 +97,6 @@ void main() {
       expect(state.isConnected, isFalse); // Derived getter
       expect(state.isConnecting, isFalse); // Derived getter
       expect(state.resolution, equals(const Size(640, 480)));
-      expect(state.fps, equals(30));
-      expect(state.latency, equals(150));
     });
 
     test('should create copy with modified fields', () {
@@ -109,8 +105,6 @@ void main() {
         phase: VideoConnectionPhase.idle,
         hasAttempted: false,
         resolution: Size(640, 480),
-        fps: 30,
-        latency: 150,
       );
 
       final modified = original.copyWith(
@@ -124,8 +118,6 @@ void main() {
       expect(modified.isConnected, isTrue); // Derived getter
       expect(modified.hasAttempted, isFalse); // Unchanged
       expect(modified.resolution, equals(const Size(1280, 720)));
-      expect(modified.fps, equals(30)); // Unchanged
-      expect(modified.latency, equals(150)); // Unchanged
     });
 
     test('should create copy without changes when no parameters provided', () {
@@ -134,8 +126,6 @@ void main() {
         phase: VideoConnectionPhase.playing,
         hasAttempted: true,
         resolution: Size(1280, 720),
-        fps: 60,
-        latency: 100,
       );
 
       final copy = original.copyWith();
@@ -146,8 +136,6 @@ void main() {
       expect(copy.isConnected, equals(original.isConnected)); // Derived
       expect(copy.isConnecting, equals(original.isConnecting)); // Derived
       expect(copy.resolution, equals(original.resolution));
-      expect(copy.fps, equals(original.fps));
-      expect(copy.latency, equals(original.latency));
     });
   });
 
@@ -192,12 +180,10 @@ void main() {
       expect(state.isConnected, isFalse);
       expect(state.isConnecting, isFalse);
       expect(state.resolution, equals(const Size(640, 480)));
-      expect(state.fps, equals(30));
-      expect(state.latency, equals(150));
     });
 
     test('should update stream URL', () {
-      const newUrl = 'http://raspberry.local:8080/mjpeg';
+      const newUrl = 'http://raspberry.local:8080/hls';
 
       notifier.setStreamUrl(newUrl);
 
@@ -238,9 +224,6 @@ void main() {
       expect(state.isConnecting, isFalse);
       expect(state.isConnected, isTrue);
       expect(state.resolution, equals(const Size(1280, 720))); // HD resolution
-      expect(state.fps, equals(30));
-      expect(state.latency, greaterThanOrEqualTo(120));
-      expect(state.latency, lessThanOrEqualTo(220));
     });
 
     test('should disconnect immediately', () {
@@ -264,34 +247,24 @@ void main() {
       expect(state.isConnecting, isFalse);
     });
 
-    test('should update latency on refresh when playing', () {
-      // First, set the state to playing phase
       container.read(videoStateProvider.notifier).state = container
           .read(videoStateProvider)
           .copyWith(phase: VideoConnectionPhase.playing);
 
-      final originalLatency = container.read(videoStateProvider).latency;
 
       notifier.refresh();
 
-      final newLatency = container.read(videoStateProvider).latency;
       expect(newLatency, isNot(equals(originalLatency)));
       expect(newLatency, greaterThanOrEqualTo(100));
       expect(newLatency, lessThanOrEqualTo(250));
     });
 
-    test('should not update latency on refresh when not playing', () {
-      // State is idle by default
-      final originalLatency = container.read(videoStateProvider).latency;
 
       notifier.refresh();
 
-      final newLatency = container.read(videoStateProvider).latency;
       expect(newLatency, equals(originalLatency)); // Should remain unchanged
     });
 
-    test('should handle multiple refreshes when playing', () async {
-      // First, set the state to playing phase
       container.read(videoStateProvider.notifier).state = container
           .read(videoStateProvider)
           .copyWith(phase: VideoConnectionPhase.playing);
@@ -301,7 +274,6 @@ void main() {
       // Multiple refreshes should generate different latencies
       for (int i = 0; i < 10; i++) {
         notifier.refresh();
-        latencies.add(container.read(videoStateProvider).latency);
         // Small delay to ensure different millisecond values
         await Future.delayed(const Duration(milliseconds: 1));
       }
@@ -325,7 +297,7 @@ void main() {
     test('should handle multiple URL changes', () {
       const urls = [
         'http://camera1.local:8080/stream',
-        'http://camera2.local:8080/mjpeg',
+        'http://camera2.local:8080/hls',
         'http://192.168.1.200:8080/stream',
         'http://pi.local:8080/stream',
       ];
@@ -432,7 +404,7 @@ void main() {
       final notifier = container.read(videoStateProvider.notifier);
       const specialUrls = [
         'https://secure.camera.local:8443/stream',
-        'http://camera.local/video.mjpeg',
+        'http://camera.local/video.hls',
         'rtsp://camera.local:554/stream1',
         'http://username:password@camera.local:8080/stream',
       ];

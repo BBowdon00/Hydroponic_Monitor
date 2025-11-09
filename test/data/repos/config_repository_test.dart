@@ -52,7 +52,7 @@ void main() {
       expect(config, isA<AppConfig>());
       expect(config.mqtt, isA<MqttConfig>());
       expect(config.influx, isA<InfluxConfig>());
-      expect(config.mjpeg, isA<MjpegConfig>());
+      expect(config.hls, isA<HlsConfig>());
     });
 
     test(
@@ -71,7 +71,7 @@ void main() {
             org: 'testorg',
             bucket: 'testbucket',
           ),
-          mjpeg: MjpegConfig(
+          hls: HlsConfig(
             url: 'http://test.stream.com:8080/stream',
             autoReconnect: false,
           ),
@@ -87,10 +87,10 @@ void main() {
         expect(prefs.getString('influx_org'), 'testorg');
         expect(prefs.getString('influx_bucket'), 'testbucket');
         expect(
-          prefs.getString('mjpeg_url'),
+          prefs.getString('hls_url'),
           'http://test.stream.com:8080/stream',
         );
-        expect(prefs.getBool('mjpeg_auto_reconnect'), false);
+        expect(prefs.getBool('hls_auto_reconnect'), false);
 
         // Verify secrets are saved to secure storage
         verify(
@@ -120,8 +120,8 @@ void main() {
       await prefs.setString('influx_url', 'http://saved.influx.com:8086');
       await prefs.setString('influx_org', 'savedorg');
       await prefs.setString('influx_bucket', 'savedbucket');
-      await prefs.setString('mjpeg_url', 'http://saved.stream.com:8080/stream');
-      await prefs.setBool('mjpeg_auto_reconnect', true);
+      await prefs.setString('hls_url', 'http://saved.stream.com:8080/stream');
+      await prefs.setBool('hls_auto_reconnect', true);
 
       // Load the configuration
       final config = await repository.loadConfig();
@@ -134,8 +134,8 @@ void main() {
       expect(config.influx.token, 'saved_token');
       expect(config.influx.org, 'savedorg');
       expect(config.influx.bucket, 'savedbucket');
-      expect(config.mjpeg.url, 'http://saved.stream.com:8080/stream');
-      expect(config.mjpeg.autoReconnect, true);
+      expect(config.hls.url, 'http://saved.stream.com:8080/stream');
+      expect(config.hls.autoReconnect, true);
     });
 
     test('clearConfig removes all saved configuration', () async {
@@ -190,7 +190,7 @@ void main() {
           org: 'testorg',
           bucket: 'testbucket',
         ),
-        mjpeg: MjpegConfig(
+        hls: HlsConfig(
           url: 'http://test.stream.com:8080/stream',
           autoReconnect: false,
         ),
