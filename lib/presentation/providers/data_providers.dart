@@ -33,6 +33,10 @@ final mqttServiceProvider = Provider<MqttService>((ref) {
   }
 
   // Provider suspends until config is ready (no placeholder service)
+  if (!configAsync.hasValue) {
+    // Return a placeholder service or throw to suspend the provider chain
+    throw Exception('Config still loading');
+  }
   final cfg = configAsync.requireValue.mqtt;
   final newHost = cfg.host;
   final newPort = _effectivePort(cfg.port);
@@ -126,10 +130,7 @@ _MqttConfigSnapshot? _cachedMqttSnapshot;
 /// This eliminates duplicate connects and ensures proper ordering.
 final mqttConnectionProvider = FutureProvider<void>((ref) async {
   // 1. Wait for runtime config (eliminates placeholder service churn)
-  final configAsync = ref.watch(configProvider);
-  if (!configAsync.hasValue) {
-    throw Exception('Config not ready');
-  }
+  // This will suspend the provider chain until config is ready
   
   // 2. Acquire service (built with final config)
   final service = ref.watch(mqttServiceProvider);
@@ -156,6 +157,9 @@ final influxServiceProvider = Provider<InfluxDbService>((ref) {
   final configAsync = ref.watch(configProvider);
   
   // Provider suspends until config is ready (no fallback to env vars)
+  if (!configAsync.hasValue) {
+    throw Exception('Config still loading');
+  }
   final cfg = configAsync.requireValue.influx;
 
   final service = InfluxDbService(

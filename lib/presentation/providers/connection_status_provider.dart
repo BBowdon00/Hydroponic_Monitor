@@ -163,7 +163,7 @@ final connectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
       // proactively trigger a health check (covers cases where initial event was lost).
       Timer(const Duration(seconds: 3), () async {
         if (controller.isClosed) return;
-        if (!currentStatus.influxConnected && repository != null) {
+        if (!currentStatus.influxConnected) {
           Logger.debug(
             'connectionStatusProvider: no Influx event within 3s – forcing health check',
             tag: 'ConnectionStatus',
