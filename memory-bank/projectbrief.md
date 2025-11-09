@@ -34,7 +34,7 @@ Build a comprehensive, cross-platform Flutter application to monitor and control
 - **Safety**: Timeout handling, retry logic, error reporting
 
 #### Video Integration
-- **Live Feed**: MJPEG stream viewing from Raspberry Pi cameras
+- **Live Feed**: H.264 HLS stream viewing from Raspberry Pi cameras with fullscreen support
 - **Connection Management**: Stream health monitoring and reconnection
 - **Multi-camera**: Support for multiple video sources
 
