@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
 
 import '../../core/env.dart';
@@ -303,8 +304,59 @@ class _VideoPageState extends ConsumerState<VideoPage> {
   }
 
   Widget _buildPlayingState(BuildContext context, VideoState videoState) {
-    // Get the video player controller from HLS stream controller
     final hlsController = ref.read(hlsStreamControllerProvider);
+    
+    // On web, use HtmlElementView to display the iframe
+    if (kIsWeb) {
+      final viewId = hlsController.viewId;
+      if (viewId == null) {
+        return _buildBufferingState(context);
+      }
+      
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              HtmlElementView(viewType: viewId),
+              // Fullscreen button (only when playing)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: IconButton(
+                  key: const Key('fullscreen_button'),
+                  icon: const Icon(Icons.fullscreen, color: Colors.white70),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const _FullscreenVideoPage(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Error overlay
+              if (videoState.errorMessage != null)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    color: Colors.red.withValues(alpha: 0.7),
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      videoState.errorMessage!,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // On mobile/desktop, use video_player
     final videoController = hlsController.controller;
     
     if (videoController == null || !videoController.value.isInitialized) {
@@ -700,7 +752,37 @@ class _FullscreenVideoPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final videoState = ref.watch(videoStateProvider);
     final hlsController = ref.read(hlsStreamControllerProvider);
-    final videoController = hlsController.controller;
+
+    Widget videoContent;
+    
+    // On web, use HtmlElementView
+    if (kIsWeb) {
+      final viewId = hlsController.viewId;
+      if (viewId != null && videoState.phase == VideoConnectionPhase.playing) {
+        videoContent = HtmlElementView(viewType: viewId);
+      } else {
+        videoContent = Container(
+          color: Colors.black,
+          child: _buildFullscreenContent(context, videoState),
+        );
+      }
+    } else {
+      // On mobile/desktop, use video_player
+      final videoController = hlsController.controller;
+      if (videoController != null && videoController.value.isInitialized) {
+        videoContent = AspectRatio(
+          aspectRatio: videoController.value.aspectRatio > 0
+              ? videoController.value.aspectRatio
+              : 16 / 9,
+          child: VideoPlayer(videoController),
+        );
+      } else {
+        videoContent = Container(
+          color: Colors.black,
+          child: _buildFullscreenContent(context, videoState),
+        );
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -710,20 +792,10 @@ class _FullscreenVideoPage extends ConsumerWidget {
             Center(
               child: Hero(
                 tag: 'videoFrameHero',
-                child: videoController != null && videoController.value.isInitialized
-                    ? AspectRatio(
-                        aspectRatio: videoController.value.aspectRatio > 0
-                            ? videoController.value.aspectRatio
-                            : 16 / 9,
-                        child: VideoPlayer(videoController),
-                      )
-                    : AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Container(
-                          color: Colors.black,
-                          child: _buildFullscreenContent(context, videoState),
-                        ),
-                      ),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: videoContent,
+                ),
               ),
             ),
             Positioned(
