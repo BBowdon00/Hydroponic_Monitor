@@ -51,8 +51,12 @@ void main() {
         final result = await repository.initialize();
 
         expect(result, isA<Success>());
-        verifyNever(() => mockMqttService.connect()); // connect() no longer called
-        verifyNever(() => mockInfluxService.initialize()); // initialize() no longer called
+        verifyNever(
+          () => mockMqttService.connect(),
+        ); // connect() no longer called
+        verifyNever(
+          () => mockInfluxService.initialize(),
+        ); // initialize() no longer called
       });
 
       test('fails when MQTT is not ready', () async {

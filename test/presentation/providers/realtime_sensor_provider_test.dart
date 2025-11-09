@@ -65,9 +65,7 @@ void main() {
       when(() => mockMqttService.isConnected).thenReturn(true);
 
       // Mock MQTT service connection
-      when(
-        () => mockMqttService.incrementAttempt(),
-      ).thenReturn(1);
+      when(() => mockMqttService.incrementAttempt()).thenReturn(1);
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success<void>(null));
@@ -303,9 +301,7 @@ void main() {
       () async {
         // Create a new container with failing MQTT service
         final failingMqttService = MockMqttService();
-        when(
-          () => failingMqttService.incrementAttempt(),
-        ).thenReturn(1);
+        when(() => failingMqttService.incrementAttempt()).thenReturn(1);
         when(
           () => failingMqttService.connect(),
         ).thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));

@@ -40,12 +40,8 @@ final mqttServiceProvider = Provider<MqttService>((ref) {
   final cfg = configAsync.requireValue.mqtt;
   final newHost = cfg.host;
   final newPort = _effectivePort(cfg.port);
-  final newUsername = cfg.username.trim().isEmpty
-      ? null
-      : cfg.username.trim();
-  final newPassword = cfg.password.trim().isEmpty
-      ? null
-      : cfg.password.trim();
+  final newUsername = cfg.username.trim().isEmpty ? null : cfg.username.trim();
+  final newPassword = cfg.password.trim().isEmpty ? null : cfg.password.trim();
 
   // Reuse existing service if config unchanged.
   if (previousState != null &&
@@ -131,31 +127,29 @@ _MqttConfigSnapshot? _cachedMqttSnapshot;
 final mqttConnectionProvider = FutureProvider<void>((ref) async {
   // 1. Wait for runtime config (eliminates placeholder service churn)
   // This will suspend the provider chain until config is ready
-  
+
   // 2. Acquire service (built with final config)
   final service = ref.watch(mqttServiceProvider);
-  
+
   // 3. Connect once
   final sw = Stopwatch()..start();
   final attempt = service.incrementAttempt();
   final result = await service.connect();
-  
+
   result.when(
     success: (_) => Logger.info(
       'MQTT connected (attempt=$attempt, ms=${sw.elapsedMilliseconds})',
       tag: 'MQTT',
     ),
-    failure: (e) => Logger.error(
-      'MQTT connect failed (attempt=$attempt): $e',
-      tag: 'MQTT',
-    ),
+    failure: (e) =>
+        Logger.error('MQTT connect failed (attempt=$attempt): $e', tag: 'MQTT'),
   );
 });
 
 /// Provider for InfluxDB service configuration.
 final influxServiceProvider = Provider<InfluxDbService>((ref) {
   final configAsync = ref.watch(configProvider);
-  
+
   // Provider suspends until config is ready (no fallback to env vars)
   if (!configAsync.hasValue) {
     throw Exception('Config still loading');
@@ -186,15 +180,15 @@ final influxConnectionProvider = FutureProvider<void>((ref) async {
   if (!configAsync.hasValue) {
     throw Exception('Config not ready');
   }
-  
+
   // 2. Acquire service (built with final config)
   final service = ref.watch(influxServiceProvider);
-  
+
   // 3. Initialize once
   final sw = Stopwatch()..start();
   final attempt = service.incrementAttempt();
   final result = await service.initialize();
-  
+
   result.when(
     success: (_) => Logger.info(
       'InfluxDB connected (attempt=$attempt, ms=${sw.elapsedMilliseconds})',
@@ -246,7 +240,7 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
     );
     // Continue in degraded mode
   }
-  
+
   try {
     await ref.watch(influxConnectionProvider.future);
   } catch (e) {
@@ -256,7 +250,7 @@ final sensorRepositoryInitProvider = FutureProvider<SensorRepository>((
     );
     // Continue in degraded mode
   }
-  
+
   // Watch repository so init re-runs on configuration-driven rebuild.
   final repository = ref.watch(sensorRepositoryProvider);
 

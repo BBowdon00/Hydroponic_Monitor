@@ -40,11 +40,9 @@ class SensorRepository {
     try {
       Logger.info('Initializing sensor repository', tag: 'SensorRepository');
       _initialized = true;
-      
+
       // MQTT is already connected via mqttConnectionProvider - just wait for ready state
-      await mqttService.ensureInitialized(
-        timeout: const Duration(seconds: 4),
-      );
+      await mqttService.ensureInitialized(timeout: const Duration(seconds: 4));
 
       // InfluxDB is already initialized via influxConnectionProvider - no action needed
       // Services are ready, just subscribe to sensor stream
