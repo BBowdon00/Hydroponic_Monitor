@@ -32,10 +32,7 @@ class _InMemoryConfigRepository implements ConfigRepository {
       org: 'org',
       bucket: 'bucket',
     ),
-    hls: HlsConfig(
-      url: 'http://localhost:8080/stream',
-      autoReconnect: true,
-    ),
+    hls: HlsConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
   );
   @override
   Future<AppConfig> loadConfig() async => _config;
@@ -59,10 +56,7 @@ class _InMemoryConfigRepository implements ConfigRepository {
         org: 'org',
         bucket: 'bucket',
       ),
-      hls: HlsConfig(
-        url: 'http://localhost:8080/stream',
-        autoReconnect: true,
-      ),
+      hls: HlsConfig(url: 'http://localhost:8080/stream', autoReconnect: true),
     );
   }
 }

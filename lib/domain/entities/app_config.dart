@@ -11,11 +11,7 @@ class AppConfig {
   final InfluxConfig influx;
   final HlsConfig hls;
 
-  AppConfig copyWith({
-    MqttConfig? mqtt,
-    InfluxConfig? influx,
-    HlsConfig? hls,
-  }) {
+  AppConfig copyWith({MqttConfig? mqtt, InfluxConfig? influx, HlsConfig? hls}) {
     return AppConfig(
       mqtt: mqtt ?? this.mqtt,
       influx: influx ?? this.influx,
