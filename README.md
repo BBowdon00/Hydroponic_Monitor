@@ -7,7 +7,7 @@ A cross-platform Flutter application to monitor and control hydroponic systems w
 
 - **Real-time Dashboard**: Monitor key sensors (water level, temperature, humidity, pH, EC, light) with live updates and trend indicators
 - **Device Controls**: Remote control of water pumps, circulation fans, LED grow lights, and heaters with intensity adjustment
-- **Video Feed**: Live HLS stream viewing from Raspberry Pi cameras with connection management
+- **Video Feed**: Live H.264 HLS stream viewing from Raspberry Pi cameras with fullscreen mode and connection management
 - **Historical Charts**: Time-series analytics with customizable ranges (1h, 24h, 7d, 30d) powered by InfluxDB
 - **Smart Alerts**: Configurable alert rules and incident management for system monitoring
 - **MQTT Integration**: Real-time data ingestion and device control via MQTT protocol
@@ -149,13 +149,13 @@ The app defaults to test mode when `.env.test` is present, preventing accidental
 **Production (`.env`):**
 - MQTT: `m0rb1d-server.mynetworksettings.com:1883`
 - InfluxDB: `http://m0rb1d-server.mynetworksettings.com:8080`
-- Video: `http://raspberrypi:8000/hls/stream.m3u8`
+- HLS Video: `http://raspberrypi:8000/stream.m3u8`
 - Bucket: `grow_data` (long-retention)
 
 **Test (`.env.test`):**
 - MQTT: `localhost:1883`
 - InfluxDB: `http://localhost:8086`
-- Video: `http://localhost:8080/stream`
+- HLS Video: `http://localhost:8000/stream.m3u8`
 - Bucket: `test-bucket`
 - Flag: `TEST_ENV=true`
 
