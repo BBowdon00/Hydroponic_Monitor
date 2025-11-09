@@ -61,6 +61,7 @@ class InfluxDbService {
   InfluxDBClient? _client;
   WriteService? _writeApi;
   QueryService? _queryApi;
+  int _attemptCount = 0;
   final StreamController<String> _connectionController =
       StreamController<String>.broadcast();
   String? _lastConnectionStatus;
@@ -89,6 +90,12 @@ class InfluxDbService {
     }, isBroadcast: true);
   }
 
+  /// Get the current attempt count for diagnostics.
+  int get attemptCount => _attemptCount;
+
+  /// Increment and return the attempt counter.
+  int incrementAttempt() => ++_attemptCount;
+
   /// Re-emit the last known connection status (e.g., after manual reconnect) so
   /// any dependent combined status providers can refresh without waiting for
   /// another periodic health check.
@@ -110,9 +117,10 @@ class InfluxDbService {
   /// Initialize the InfluxDB client.
   Future<Result<void>> initialize() async {
     try {
-      Logger.info('Initializing InfluxDB client for $url', tag: 'InfluxDB');
+      final attemptId = incrementAttempt();
+      final sw = Stopwatch()..start();
       Logger.info(
-        'Influx configuration => org=$organization bucket=$bucket',
+        'Initializing InfluxDB client for $url (attempt=$attemptId, org=$organization, bucket=$bucket)',
         tag: 'InfluxDB',
       );
 
@@ -130,7 +138,7 @@ class InfluxDbService {
       final healthy = await checkHealth();
       if (healthy) {
         Logger.info(
-          'Successfully connected to InfluxDB (health pass, bucket=$bucket)',
+          'InfluxDB connected (attempt=$attemptId, ms=${sw.elapsedMilliseconds}, bucket=$bucket)',
           tag: 'InfluxDB',
         );
         _startHealthMonitoring();
@@ -138,16 +146,16 @@ class InfluxDbService {
         emitCurrentStatus();
         return Success(null);
       } else {
-        final error = 'InfluxDB health check failed during initialization';
+        final error = 'InfluxDB health check failed (attempt=$attemptId)';
         Logger.warning(error, tag: 'InfluxDB');
         return Failure(InfluxError(error));
       }
     } catch (e) {
-      final error = 'Error initializing InfluxDB client: $e';
+      final error = 'InfluxDB init error (attempt=$attemptCount): $e';
       Logger.error(error, tag: 'InfluxDB', error: e);
       _lastConnectionStatus = 'disconnected';
       _connectionController.add('disconnected');
-      return Failure(InfluxError(error)); // remove `const` unless allowed
+      return Failure(InfluxError(error));
     }
   }
 

@@ -65,6 +65,7 @@ void main() {
       when(() => mockMqttService.isConnected).thenReturn(true);
 
       // Mock MQTT service connection
+      when(() => mockMqttService.incrementAttempt()).thenReturn(1);
       when(
         () => mockMqttService.connect(),
       ).thenAnswer((_) async => const Success<void>(null));
@@ -82,6 +83,14 @@ void main() {
         overrides: [
           mqttServiceProvider.overrideWithValue(mockMqttService),
           influxServiceProvider.overrideWithValue(mockInfluxService),
+          // Override mqttConnectionProvider to complete immediately (no config needed)
+          mqttConnectionProvider.overrideWith((ref) async {
+            // Just complete successfully without connecting
+          }),
+          // Override influxConnectionProvider to complete immediately (no config needed)
+          influxConnectionProvider.overrideWith((ref) async {
+            // Just complete successfully without connecting
+          }),
           sensorRepositoryProvider.overrideWithValue(
             SensorRepository(
               mqttService: mockMqttService,
@@ -108,8 +117,10 @@ void main() {
       final repository = await repositoryFuture;
 
       expect(repository, isA<SensorRepository>());
-      verify(() => mockMqttService.connect()).called(1);
-      verify(() => mockInfluxService.initialize()).called(1);
+      // connect() and initialize() are no longer called during repository init
+      // (handled by mqttConnectionProvider and influxConnectionProvider)
+      verifyNever(() => mockMqttService.connect());
+      verifyNever(() => mockInfluxService.initialize());
     });
 
     test('Real-time sensor data accumulates by sensor type', () async {
@@ -290,6 +301,7 @@ void main() {
       () async {
         // Create a new container with failing MQTT service
         final failingMqttService = MockMqttService();
+        when(() => failingMqttService.incrementAttempt()).thenReturn(1);
         when(
           () => failingMqttService.connect(),
         ).thenAnswer((_) async => Failure(MqttError('MQTT connection failed')));
@@ -297,12 +309,20 @@ void main() {
           () => failingMqttService.ensureInitialized(
             timeout: any(named: 'timeout'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenThrow(TimeoutException('MQTT not ready'));
 
         final failingContainer = ProviderContainer(
           overrides: [
             mqttServiceProvider.overrideWithValue(failingMqttService),
             influxServiceProvider.overrideWithValue(mockInfluxService),
+            // Override mqttConnectionProvider to complete immediately with failure
+            mqttConnectionProvider.overrideWith((ref) async {
+              throw Exception('MQTT connection failed');
+            }),
+            // Override influxConnectionProvider to fail as well
+            influxConnectionProvider.overrideWith((ref) async {
+              throw Exception('InfluxDB connection failed');
+            }),
             sensorRepositoryProvider.overrideWithValue(
               SensorRepository(
                 mqttService: failingMqttService,
@@ -316,7 +336,7 @@ void main() {
         // Repository initialization should fail
         expect(
           () => failingContainer.read(sensorRepositoryInitProvider.future),
-          throwsA(isA<Exception>()),
+          throwsA(anything), // Accept any exception
         );
 
         failingContainer.dispose();

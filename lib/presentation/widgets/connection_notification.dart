@@ -121,15 +121,20 @@ class _ConnectionNotificationState
 
   @override
   Widget build(BuildContext context) {
-    final connectionStatusAsync = ref.watch(connectionStatusProvider);
-    final manualReconnectState = ref.watch(manualReconnectProvider);
+    try {
+      final connectionStatusAsync = ref.watch(connectionStatusProvider);
+      final manualReconnectState = ref.watch(manualReconnectProvider);
 
-    return connectionStatusAsync.when(
-      data: (status) =>
-          _buildConnectionBanner(context, status, manualReconnectState),
-      loading: () => _buildLoadingBanner(context),
-      error: (error, stack) => _buildErrorBanner(context),
-    );
+      return connectionStatusAsync.when(
+        data: (status) =>
+            _buildConnectionBanner(context, status, manualReconnectState),
+        loading: () => _buildLoadingBanner(context),
+        error: (error, stack) => _buildErrorBanner(context),
+      );
+    } catch (e) {
+      // Handle provider initialization errors (like "Config still loading")
+      return _buildLoadingBanner(context);
+    }
   }
 
   Widget _buildConnectionBanner(
