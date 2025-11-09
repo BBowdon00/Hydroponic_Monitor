@@ -14,7 +14,7 @@ The Hydroponic Monitor app has migrated from MJPEG (Motion JPEG) streaming to H.
 - **Environment Variable**: `MJPEG_URL` → `HLS_URL`
 - **URL Format**: 
   - Old: `http://raspberrypi:8000/stream.mjpg`
-  - New: `http://raspberrypi:8080/hls/stream.m3u8`
+  - New: `http://raspberrypi:8000/stream.m3u8`
 - **Settings UI**: "MJPEG Stream URL" → "HLS Stream URL"
 
 ### Code Changes
@@ -41,12 +41,12 @@ To serve HLS streams from your Raspberry Pi camera:
 # Install FFmpeg
 sudo apt-get install ffmpeg
 
-# Stream from camera to HLS
+# Stream from camera to HLS (serves on port 8000 by default)
 ffmpeg -f v4l2 -i /dev/video0 \
   -c:v libx264 -preset ultrafast -tune zerolatency \
   -f hls -hls_time 1 -hls_list_size 3 \
   -hls_flags delete_segments \
-  /var/www/html/hls/stream.m3u8
+  /var/www/html/stream.m3u8
 ```
 
 ### Option 2: Using nginx-rtmp
@@ -91,7 +91,7 @@ pip3 install picamera2
 MJPEG_URL=http://raspberrypi:8000/stream.mjpg
 
 # New
-HLS_URL=http://raspberrypi:8080/hls/stream.m3u8
+HLS_URL=http://raspberrypi:8000/stream.m3u8
 ```
 
 ### Update Settings in App

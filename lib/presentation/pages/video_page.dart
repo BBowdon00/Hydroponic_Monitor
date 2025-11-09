@@ -129,7 +129,7 @@ class _VideoPageState extends ConsumerState<VideoPage> {
                       TextFormField(
                         controller: urlController,
                         decoration: const InputDecoration(
-                          hintText: 'http://192.168.1.100:8080/hls/stream.m3u8',
+                          hintText: 'http://raspberrypi:8000/stream.m3u8',
                           prefixIcon: Icon(Icons.link),
                         ),
                       ),
@@ -543,7 +543,7 @@ final videoStateProvider = StateNotifierProvider<VideoStateNotifier, VideoState>
         ? config!.hls.url
         : (Env.hlsUrl.isNotEmpty
               ? Env.hlsUrl
-              : 'http://192.168.1.100:8080/hls/stream.m3u8');
+              : 'http://raspberrypi:8000/stream.m3u8');
     return VideoStateNotifier(ref, initialUrl: initialUrl);
   },
 );

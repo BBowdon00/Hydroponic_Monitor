@@ -1,5 +1,6 @@
 import 'package:video_player/video_player.dart';
 import 'dart:async';
+import '../logger.dart';
 
 /// HLS Stream controller for H.264 video streaming.
 /// Provides a unified interface for HLS playback across all platforms.
@@ -19,20 +20,47 @@ class HlsStreamController {
     await stop();
     
     try {
+      Logger.info('Starting HLS stream from URL: $url', tag: 'HlsController');
+      
       // Create and initialize video player controller for HLS stream
+      // Use network constructor for better HLS support
       _controller = VideoPlayerController.networkUrl(
         Uri.parse(url),
         videoPlayerOptions: VideoPlayerOptions(
           allowBackgroundPlayback: false,
           mixWithOthers: false,
         ),
+        httpHeaders: {
+          // Add headers that might be needed for HLS streaming
+          'Accept': '*/*',
+        },
       );
       
-      // Listen for errors
+      Logger.debug('Video player controller created', tag: 'HlsController');
+      
+      // Listen for errors and state changes
       _controller!.addListener(_onPlayerChange);
       
-      // Initialize the controller
-      await _controller!.initialize();
+      // Initialize the controller with timeout
+      Logger.debug('Initializing video player...', tag: 'HlsController');
+      await _controller!.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          Logger.error('Video player initialization timeout', tag: 'HlsController');
+          throw TimeoutException('Failed to initialize video player after 10 seconds');
+        },
+      );
+      
+      // Check if initialization was successful
+      if (!_controller!.value.isInitialized) {
+        Logger.error('Video player not initialized', tag: 'HlsController');
+        throw Exception('Video player failed to initialize');
+      }
+      
+      Logger.info(
+        'Video player initialized successfully. Resolution: ${_controller!.value.size.width}x${_controller!.value.size.height}',
+        tag: 'HlsController',
+      );
       
       // Emit stream started event with resolution
       _eventController.add(HlsStreamStarted(
@@ -43,8 +71,14 @@ class HlsStreamController {
       
       // Start playback
       await _controller!.play();
+      Logger.info('HLS stream playback started', tag: 'HlsController');
       
     } catch (e, stack) {
+      Logger.error(
+        'Failed to start HLS stream: $e',
+        tag: 'HlsController',
+        error: e,
+      );
       _eventController.add(HlsStreamError(
         error: e,
         stackTrace: stack,
