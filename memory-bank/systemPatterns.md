@@ -300,26 +300,30 @@ The dashboard delivers node-aware actuator control with confirmation feedback:
 
 **Enhancements Planned**: extend command payload schema (request ID, reason), integrate MQTT LWT for node offline detection, and add integration smoke tests for publish/ack parity.
 
-### Video Streaming Pattern (TASK007)
+### Video Streaming Pattern
 
-#### Phase-Based MJPEG Handler
+#### Phase-Based HLS Handler
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
     Idle --> Connecting : connect()
-    Connecting --> WaitingFirstFrame : StreamStarted
-    Connecting --> Error : Timeout / StreamError
-    WaitingFirstFrame --> Playing : FrameBytes
-    WaitingFirstFrame --> Error : Timeout / StreamError
+    Connecting --> Buffering : HLS Stream Started
+    Connecting --> Error : Timeout / Connection Failed
+    Buffering --> Playing : Buffer Ready
+    Buffering --> Error : Stream Error
+    Playing --> Buffering : Network Stall
     Playing --> Idle : disconnect()
-    Playing --> Error : StreamError / abort()
+    Playing --> Error : Fatal Stream Error
     Error --> Connecting : retry()/connect()
 ```
 
-- **Controllers**: `MjpegStreamController` (IO + Web) parse multipart boundaries; Web version leverages Fetch + ReadableStream and emits `FrameResolution` before first frame rendering.
-- **Timeouts**: `VideoStateNotifier` triggers a 5s timeout if first frame is not received, transitioning to `error` with user-facing message.
-- **UI States**: `VideoPage` renders explicit copy for idle, connecting, waiting for first frame, playing, and error phases. Simulation mode is labeled when `Env.enableRealMjpeg == false`.
-- **Resource Cleanup**: Provider auto-dispose plus `shutdown()` prevents provider reads during widget teardown.
+- **Controllers**: 
+  - **Mobile/Desktop**: `HlsStreamController` uses `video_player` package with `VideoPlayerController.networkUrl()` for native HLS support
+  - **Web**: `HlsStreamControllerWeb` embeds camera server's HTML page (with HLS.js library) in iframe for cross-browser compatibility
+- **Camera Server**: Raspberry Pi streams H.264 via `picamera2` FfmpegOutput to HLS format (`.m3u8` playlist + `.ts` segments)
+- **Fullscreen**: Root navigator push with `SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky)` for true fullscreen on mobile
+- **UI States**: `VideoPage` renders explicit states for idle, connecting, buffering, playing, and error phases with appropriate messaging
+- **Resource Cleanup**: Provider auto-dispose plus `shutdown()` prevents provider reads during widget teardown
 
 ## Performance Patterns
 

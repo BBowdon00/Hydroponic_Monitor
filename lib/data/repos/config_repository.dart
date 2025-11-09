@@ -24,8 +24,8 @@ class ConfigRepository {
   static const _keyInfluxUrl = 'influx_url';
   static const _keyInfluxOrg = 'influx_org';
   static const _keyInfluxBucket = 'influx_bucket';
-  static const _keyMjpegUrl = 'mjpeg_url';
-  static const _keyMjpegAutoReconnect = 'mjpeg_auto_reconnect';
+  static const _keyHlsUrl = 'hls_url';
+  static const _keyHlsAutoReconnect = 'hls_auto_reconnect';
 
   // Keys for FlutterSecureStorage (secrets)
   static const _keyMqttPassword = 'mqtt_password';
@@ -55,9 +55,9 @@ class ConfigRepository {
       final influxBucket =
           _prefs.getString(_keyInfluxBucket) ?? Env.influxBucket;
 
-      // Load MJPEG config
-      final mjpegUrl = _prefs.getString(_keyMjpegUrl) ?? Env.mjpegUrl;
-      final mjpegAutoReconnect = _prefs.getBool(_keyMjpegAutoReconnect) ?? true;
+      // Load HLS config
+      final hlsUrl = _prefs.getString(_keyHlsUrl) ?? Env.hlsUrl;
+      final hlsAutoReconnect = _prefs.getBool(_keyHlsAutoReconnect) ?? true;
 
       final config = AppConfig(
         mqtt: MqttConfig(
@@ -72,7 +72,7 @@ class ConfigRepository {
           org: influxOrg,
           bucket: influxBucket,
         ),
-        mjpeg: MjpegConfig(url: mjpegUrl, autoReconnect: mjpegAutoReconnect),
+        hls: HlsConfig(url: hlsUrl, autoReconnect: hlsAutoReconnect),
       );
 
       Logger.info('Configuration loaded successfully', tag: 'ConfigRepository');
@@ -111,9 +111,9 @@ class ConfigRepository {
       await _prefs.setString(_keyInfluxOrg, config.influx.org);
       await _prefs.setString(_keyInfluxBucket, config.influx.bucket);
 
-      // Save MJPEG config
-      await _prefs.setString(_keyMjpegUrl, config.mjpeg.url);
-      await _prefs.setBool(_keyMjpegAutoReconnect, config.mjpeg.autoReconnect);
+      // Save HLS config
+      await _prefs.setString(_keyHlsUrl, config.hls.url);
+      await _prefs.setBool(_keyHlsAutoReconnect, config.hls.autoReconnect);
 
       Logger.info('Configuration saved successfully', tag: 'ConfigRepository');
     } catch (e) {
@@ -141,8 +141,8 @@ class ConfigRepository {
       await _prefs.remove(_keyInfluxUrl);
       await _prefs.remove(_keyInfluxOrg);
       await _prefs.remove(_keyInfluxBucket);
-      await _prefs.remove(_keyMjpegUrl);
-      await _prefs.remove(_keyMjpegAutoReconnect);
+      await _prefs.remove(_keyHlsUrl);
+      await _prefs.remove(_keyHlsAutoReconnect);
 
       // Clear FlutterSecureStorage
       await _secureStorage.delete(key: _keyMqttPassword);
@@ -177,7 +177,7 @@ class ConfigRepository {
         org: Env.influxOrg,
         bucket: Env.influxBucket,
       ),
-      mjpeg: MjpegConfig(url: Env.mjpegUrl, autoReconnect: true),
+      hls: HlsConfig(url: Env.hlsUrl, autoReconnect: true),
     );
   }
 }

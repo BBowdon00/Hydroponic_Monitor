@@ -34,10 +34,11 @@
 - **Web Support**: Attempts `MqttBrowserClient` over WebSocket (`ws://host:9001`), falls back to TCP client for tests.
 - **Manual Reconnect**: Enhanced with `reset()` method for clean client recreation, preserving streams during reconnection cycles via `ConnectionRecoveryService`.
 
-#### MJPEG Streaming
-- **Native**: `dart:io` HttpClient parser with boundary scanning + resolution events
-- **Web**: Fetch + ReadableStream via `package:web`, manual multipart parsing, AbortController for teardown
-- **State**: `VideoStateNotifier` enforces 5s connection timeout, phase transitions, simulation fallback when `REAL_MJPEG=false`
+#### HLS Video Streaming
+- **Native (Mobile/Desktop)**: `video_player` package with `VideoPlayerController.networkUrl()` for HLS playback
+- **Web**: Platform-specific implementation using iframe embedding of camera server's HLS.js-enabled page (bypasses browser HLS limitations)
+- **State**: `VideoStateNotifier` manages connection phases (idle, connecting, buffering, playing) with HLS stream lifecycle
+- **Camera Server**: Raspberry Pi streams H.264 via `picamera2` FfmpegOutput to HLS format (.m3u8 playlist + .ts segments)
 
 #### Time-Series Data (InfluxDB)
 - **Package**: `influxdb_client`
@@ -64,7 +65,7 @@
 
 ### Storage & Configuration
 
-- **Environment**: `flutter_dotenv` + OS environment variables (prefers OS for non-web) configured via `Env` helper (MQTT, Influx, MJPEG feature flag).
+- **Environment**: `flutter_dotenv` + OS environment variables (prefers OS for non-web) configured via `Env` helper (MQTT, Influx, HLS video URLs).
 - **Secure Storage**: `flutter_secure_storage` dependency available for future secrets (not yet in active use).
 
 ### Development Tools
@@ -124,8 +125,8 @@ INFLUX_TOKEN=your_influxdb_token
 INFLUX_ORG=hydroponic_org
 INFLUX_BUCKET=sensor_data
 
-# Video Stream
-MJPEG_URL=http://192.168.1.101:8080/stream
+# HLS Video Stream
+HLS_URL=http://raspberrypi:8000/stream.m3u8
 ```
 
 #### Build Configuration
@@ -169,8 +170,8 @@ flutter build apk --release --dart-define-from-file=dart_defines.json
 - Integration suite optional due to Docker dependencies (manual trigger recommended before release).
 
 #### Test Environment
-- Docker Compose stack (Mosquitto, InfluxDB, Telegraf, optional fake MJPEG server) under `test/integration/`.
-- Test utilities include `test/test_utils/fake_mjpeg_server.dart` for deterministic MJPEG parsing tests.
+- Docker Compose stack (Mosquitto, InfluxDB, Telegraf) under `test/integration/`.
+- HLS video streaming tested with fake video state notifier that simulates connection phases without real network calls.
 
 ### Testing Procedure
 For complete testing instructions, procedures, and troubleshooting, see the **[Testing Procedure](./testing-procedure.md)** document.
@@ -214,17 +215,17 @@ flowchart LR
 
 ## Runtime Configuration (TASK010)
 
-Runtime editing of connectivity and streaming parameters (MQTT, InfluxDB, MJPEG) is fully reactive and coupled with an explicit Apply + Manual Reconnect workflow for deterministic ordering.
+Runtime editing of connectivity and streaming parameters (MQTT, InfluxDB, HLS) is fully reactive and coupled with an explicit Apply + Manual Reconnect workflow for deterministic ordering.
 
 ### Layer Responsibilities
 | Layer | Artifact | Responsibility |
 |-------|----------|----------------|
-| Domain | `AppConfig` (MQTT/Influx/MJPEG) | Immutable snapshot of runtime settings |
+| Domain | `AppConfig` (MQTT/Influx/HLS) | Immutable snapshot of runtime settings |
 | Data | `ConfigRepository` | Persists non-secrets (SharedPreferences) & secrets (Secure Storage) |
 | Presentation | `configProvider` | Async load, mutation, reset; exposes `AsyncValue<AppConfig>` |
 | Services | `mqttServiceProvider`, `influxServiceProvider` | Recreated on config change; prior instances retired/disposed |
 | UI | `SettingsPage` | Draft editing, validation, Apply action + provider invalidation + manual reconnect trigger |
-| Video | `videoStateProvider` | Seeds from config; auto-adopts new URL only while idle |
+| Video | `videoStateProvider` | Seeds from config; auto-adopts new URL only while idle; uses HLS stream controller |
 
 ### Change Lifecycle
 1. User edits draft fields locally.
@@ -243,7 +244,7 @@ Runtime editing of connectivity and streaming parameters (MQTT, InfluxDB, MJPEG)
 | Rapid host/port edits | Previous MQTT client `retire()` prevents stale callbacks |
 | Reconnect mid-edit | Reconnect uses latest rebuilt instances |
 | Config load race | Repositories wait for actual connected event before success log |
-| MJPEG URL while playing | Deferred; user must disconnect to adopt new URL |
+| HLS URL while playing | Deferred; user must disconnect to adopt new URL |
 | Empty username/password | Treated as anonymous auth (null) |
 | Invalid port | Rejected client-side (range 1–65535) |
 

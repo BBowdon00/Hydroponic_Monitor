@@ -74,7 +74,7 @@ void main() {
           org: 'neworg',
           bucket: 'newbucket',
         ),
-        mjpeg: MjpegConfig(
+        hls: HlsConfig(
           url: 'http://new.stream.com:8080/stream',
           autoReconnect: true,
         ),
@@ -144,7 +144,7 @@ const _defaultConfig = AppConfig(
     org: 'hydroponic-monitor',
     bucket: 'sensors',
   ),
-  mjpeg: MjpegConfig(
+  hls: HlsConfig(
     url: 'http://m0rb1d-server.mynetworksettings.com:8080/stream',
     autoReconnect: true,
   ),

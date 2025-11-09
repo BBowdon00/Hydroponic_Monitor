@@ -30,7 +30,7 @@ void main() {
       const AppConfig(
         mqtt: MqttConfig(host: 'f', port: 1883, username: '', password: ''),
         influx: InfluxConfig(url: 'http://f', token: '', org: 'o', bucket: 'b'),
-        mjpeg: MjpegConfig(url: 'http://f/stream', autoReconnect: true),
+        hls: HlsConfig(url: 'http://f/stream', autoReconnect: true),
       ),
     );
   });
@@ -67,7 +67,7 @@ void main() {
           org: 'org1',
           bucket: 'b1',
         ),
-        mjpeg: MjpegConfig(url: 'http://cam1/stream', autoReconnect: true),
+        hls: HlsConfig(url: 'http://cam1/stream', autoReconnect: true),
       );
       updatedConfig = const AppConfig(
         mqtt: MqttConfig(
@@ -82,7 +82,7 @@ void main() {
           org: 'org2',
           bucket: 'b2',
         ),
-        mjpeg: MjpegConfig(url: 'http://cam2/stream', autoReconnect: false),
+        hls: HlsConfig(url: 'http://cam2/stream', autoReconnect: false),
       );
     });
 
