@@ -16,16 +16,16 @@ void main() {
         org: 'org',
         bucket: 'bucket',
       );
-      const mjpeg = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const hls = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 
-      const config = AppConfig(mqtt: mqtt, influx: influx, mjpeg: mjpeg);
+      const config = AppConfig(mqtt: mqtt, influx: influx, hls: hls);
 
       expect(config.mqtt, mqtt);
       expect(config.influx, influx);
-      expect(config.mjpeg, mjpeg);
+      expect(config.hls, hls);
     });
 
     test('copyWith creates a new instance with updated values', () {
@@ -41,12 +41,12 @@ void main() {
         org: 'org',
         bucket: 'bucket',
       );
-      const mjpeg = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const hls = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 
-      const config = AppConfig(mqtt: mqtt, influx: influx, mjpeg: mjpeg);
+      const config = AppConfig(mqtt: mqtt, influx: influx, hls: hls);
 
       final newMqtt = mqtt.copyWith(host: 'newhost');
       final updatedConfig = config.copyWith(mqtt: newMqtt);
@@ -54,7 +54,7 @@ void main() {
       expect(updatedConfig.mqtt.host, 'newhost');
       expect(updatedConfig.mqtt.port, 1883);
       expect(updatedConfig.influx, influx);
-      expect(updatedConfig.mjpeg, mjpeg);
+      expect(updatedConfig.hls, hls);
     });
 
     test('equality works correctly', () {
@@ -70,13 +70,13 @@ void main() {
         org: 'org',
         bucket: 'bucket',
       );
-      const mjpeg = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const hls = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 
-      const config1 = AppConfig(mqtt: mqtt, influx: influx, mjpeg: mjpeg);
-      const config2 = AppConfig(mqtt: mqtt, influx: influx, mjpeg: mjpeg);
+      const config1 = AppConfig(mqtt: mqtt, influx: influx, hls: hls);
+      const config2 = AppConfig(mqtt: mqtt, influx: influx, hls: hls);
 
       expect(config1, config2);
       expect(config1.hashCode, config2.hashCode);
@@ -95,17 +95,17 @@ void main() {
         org: 'org',
         bucket: 'bucket',
       );
-      const mjpeg = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const hls = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 
-      const config = AppConfig(mqtt: mqtt, influx: influx, mjpeg: mjpeg);
+      const config = AppConfig(mqtt: mqtt, influx: influx, hls: hls);
 
       expect(config.toString(), contains('AppConfig'));
       expect(config.toString(), contains('mqtt:'));
       expect(config.toString(), contains('influx:'));
-      expect(config.toString(), contains('mjpeg:'));
+      expect(config.toString(), contains('hls:'));
     });
   });
 
@@ -169,26 +169,26 @@ void main() {
     });
   });
 
-  group('MjpegConfig', () {
+  group('HlsConfig', () {
     test('copyWith updates only specified fields', () {
-      const config = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const config = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 
       final updated = config.copyWith(autoReconnect: false);
 
-      expect(updated.url, 'http://localhost:8080/stream');
+      expect(updated.url, 'http://localhost:8080/hls/stream.m3u8');
       expect(updated.autoReconnect, false);
     });
 
     test('equality works correctly', () {
-      const config1 = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const config1 = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
-      const config2 = MjpegConfig(
-        url: 'http://localhost:8080/stream',
+      const config2 = HlsConfig(
+        url: 'http://localhost:8080/hls/stream.m3u8',
         autoReconnect: true,
       );
 

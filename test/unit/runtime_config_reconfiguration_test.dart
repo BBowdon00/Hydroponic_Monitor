@@ -75,7 +75,7 @@ void main() {
             org: 'orgA',
             bucket: 'bucketA',
           ),
-          mjpeg: MjpegConfig(url: 'http://mjpegA', autoReconnect: true),
+          hls: HlsConfig(url: 'http://mjpegA', autoReconnect: true),
         );
         final updated = AppConfig(
           mqtt: MqttConfig(
@@ -90,7 +90,7 @@ void main() {
             org: 'orgB',
             bucket: 'bucketB',
           ),
-          mjpeg: MjpegConfig(url: 'http://mjpegB', autoReconnect: false),
+          hls: HlsConfig(url: 'http://mjpegB', autoReconnect: false),
         );
 
         SharedPreferences.setMockInitialValues({});

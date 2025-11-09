@@ -221,7 +221,7 @@ class _InMemoryConfigRepository implements ConfigRepository {
       org: 'org',
       bucket: 'bucket',
     ),
-    mjpeg: MjpegConfig(
+    hls: HlsConfig(
       url: 'http://localhost:8080/stream',
       autoReconnect: true,
     ),
@@ -248,7 +248,7 @@ class _InMemoryConfigRepository implements ConfigRepository {
         org: 'org',
         bucket: 'bucket',
       ),
-      mjpeg: MjpegConfig(
+      hls: HlsConfig(
         url: 'http://localhost:8080/stream',
         autoReconnect: true,
       ),

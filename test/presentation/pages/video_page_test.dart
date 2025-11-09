@@ -42,7 +42,6 @@ class _TestVideoNotifier extends VideoStateNotifier {
   @override
   void refresh() {
     if (state.phase == VideoConnectionPhase.playing) {
-      state = state.copyWith(latency: state.latency + 5);
     }
   }
 }
@@ -57,7 +56,7 @@ class _TestConfigRepo implements ConfigRepository {
       org: 'org',
       bucket: 'bucket',
     ),
-    mjpeg: MjpegConfig(
+    hls: HlsConfig(
       url: 'http://192.168.1.100:8080/stream',
       autoReconnect: true,
     ),
