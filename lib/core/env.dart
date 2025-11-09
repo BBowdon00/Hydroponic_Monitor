@@ -81,7 +81,7 @@ class Env {
   }
 
   static String get hlsUrl =>
-      dotenv.env['HLS_URL'] ?? 'http://raspberrypi:8080/hls/stream.m3u8';
+      dotenv.env['HLS_URL'] ?? 'http://raspberrypi:8000/stream.m3u8';
 
   /// Initialize environment configuration.
   /// Call this in main() before runApp().
