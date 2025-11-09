@@ -80,33 +80,8 @@ class Env {
     return provided ?? 'grow_data';
   }
 
-  static String get mjpegUrl =>
-      dotenv.env['MJPEG_URL'] ?? 'http://raspberrypi:8000/stream.mjpg';
-
-  /// Feature flag: enable real MJPEG streaming implementation.
-  /// Controlled via REAL_MJPEG environment variable ("true" to enable).
-  /// Defaults to false to preserve existing simulated behavior until
-  /// the real implementation is fully vetted.
-  static bool get enableRealMjpeg {
-    String? raw;
-    try {
-      raw = dotenv.env['REAL_MJPEG'];
-    } catch (_) {
-      // Dotenv not initialized (tests) -> default false
-      raw = null;
-    }
-    raw = raw ?? (kIsWeb ? null : (Platform.environment['REAL_MJPEG']));
-    if (raw == null) return false;
-    switch (raw.toLowerCase()) {
-      case '1':
-      case 'true':
-      case 'yes':
-      case 'on':
-        return true;
-      default:
-        return false;
-    }
-  }
+  static String get hlsUrl =>
+      dotenv.env['HLS_URL'] ?? 'http://raspberrypi:8000/stream.m3u8';
 
   /// Initialize environment configuration.
   /// Call this in main() before runApp().

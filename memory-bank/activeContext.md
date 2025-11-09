@@ -1,7 +1,8 @@
 # Active Context
 
 ## High-Level Summary
-- Runtime configuration (TASK010) implemented: settings persistence, dynamic MQTT/Influx rebuild with retire pattern, idle-safe MJPEG URL updates.
+- Runtime configuration (TASK010) implemented: settings persistence, dynamic MQTT/Influx rebuild with retire pattern, idle-safe HLS URL updates.
+- HLS video streaming migration complete: H.264 streaming via video_player (mobile/desktop) and iframe embedding (web), fullscreen mode with immersive UI.
 - Sensor page refactor (TASK009) complete (naming, stale badge, separated controls).
 
 ## Recently Completed
@@ -15,4 +16,4 @@
 - Config diff banner & batch apply (future TASK010 enhancement).
 
 ## Testing
-- All suites passing: added config persistence tests, dynamic reconfiguration integration, updated video streaming tests to remove disposed notifier errors.
+- All suites passing: added config persistence tests, dynamic reconfiguration integration, recreated video_page_test.dart for HLS streaming with comprehensive widget tests.
