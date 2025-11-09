@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -170,42 +171,6 @@ class _VideoPageState extends ConsumerState<VideoPage> {
               ),
               const SizedBox(height: AppTheme.spaceMd),
               buildVideoArea(),
-              if (videoState.phase == VideoConnectionPhase.playing) ...[
-                const SizedBox(height: AppTheme.spaceMd),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.spaceMd),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Column(
-                          children: [
-                            Text(
-                              'Resolution',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                            Text(
-                              '${videoState.resolution.width.toInt()}×${videoState.resolution.height.toInt()}',
-                              style: theme.textTheme.titleSmall,
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            Text('Status', style: theme.textTheme.bodySmall),
-                            Text(
-                              'Playing',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ];
 
             final column = Column(
@@ -329,9 +294,10 @@ class _VideoPageState extends ConsumerState<VideoPage> {
                   key: const Key('fullscreen_button'),
                   icon: const Icon(Icons.fullscreen, color: Colors.white70),
                   onPressed: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (_) => const _FullscreenVideoPage(),
+                        fullscreenDialog: true,
                       ),
                     );
                   },
@@ -386,9 +352,10 @@ class _VideoPageState extends ConsumerState<VideoPage> {
                 key: const Key('fullscreen_button'),
                 icon: const Icon(Icons.fullscreen, color: Colors.white70),
                 onPressed: () {
-                  Navigator.of(context).push(
+                  Navigator.of(context, rootNavigator: true).push(
                     MaterialPageRoute(
                       builder: (_) => const _FullscreenVideoPage(),
+                      fullscreenDialog: true,
                     ),
                   );
                 },
@@ -745,11 +712,30 @@ class VideoStateNotifier extends StateNotifier<VideoState> {
 }
 
 /// Fullscreen video page for HLS video playback
-class _FullscreenVideoPage extends ConsumerWidget {
+class _FullscreenVideoPage extends ConsumerStatefulWidget {
   const _FullscreenVideoPage();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends ConsumerState<_FullscreenVideoPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Hide system UI (status bar and navigation bar) for true fullscreen
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    // Restore system UI when leaving fullscreen
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final videoState = ref.watch(videoStateProvider);
     final hlsController = ref.read(hlsStreamControllerProvider);
 
@@ -786,42 +772,27 @@ class _FullscreenVideoPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: Hero(
-                tag: 'videoFrameHero',
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: videoContent,
-                ),
+      body: Stack(
+        children: [
+          Center(
+            child: Hero(
+              tag: 'videoFrameHero',
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: videoContent,
               ),
             ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: 'Exit Fullscreen',
-              ),
+          ),
+          Positioned(
+            top: 8,
+            left: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Exit Fullscreen',
             ),
-            // Show status label
-            if (videoState.phase != VideoConnectionPhase.playing)
-              Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
-                child: Center(
-                  child: _StatChip(
-                    label: 'Status',
-                    value: videoState.phase.name,
-                  ),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -899,42 +870,5 @@ class _FullscreenVideoPage extends ConsumerWidget {
         // Should not reach here as we check for initialized controller
         return const SizedBox.shrink();
     }
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: Colors.white70),
-            ),
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
