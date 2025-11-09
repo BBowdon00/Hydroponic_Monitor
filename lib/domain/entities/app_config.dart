@@ -1,25 +1,25 @@
 /// Application configuration model with immutable data classes.
-/// Contains MQTT, InfluxDB, and MJPEG configuration.
+/// Contains MQTT, InfluxDB, and HLS video configuration.
 class AppConfig {
   const AppConfig({
     required this.mqtt,
     required this.influx,
-    required this.mjpeg,
+    required this.hls,
   });
 
   final MqttConfig mqtt;
   final InfluxConfig influx;
-  final MjpegConfig mjpeg;
+  final HlsConfig hls;
 
   AppConfig copyWith({
     MqttConfig? mqtt,
     InfluxConfig? influx,
-    MjpegConfig? mjpeg,
+    HlsConfig? hls,
   }) {
     return AppConfig(
       mqtt: mqtt ?? this.mqtt,
       influx: influx ?? this.influx,
-      mjpeg: mjpeg ?? this.mjpeg,
+      hls: hls ?? this.hls,
     );
   }
 
@@ -29,15 +29,15 @@ class AppConfig {
     return other is AppConfig &&
         other.mqtt == mqtt &&
         other.influx == influx &&
-        other.mjpeg == mjpeg;
+        other.hls == hls;
   }
 
   @override
-  int get hashCode => mqtt.hashCode ^ influx.hashCode ^ mjpeg.hashCode;
+  int get hashCode => mqtt.hashCode ^ influx.hashCode ^ hls.hashCode;
 
   @override
   String toString() {
-    return 'AppConfig(mqtt: $mqtt, influx: $influx, mjpeg: $mjpeg)';
+    return 'AppConfig(mqtt: $mqtt, influx: $influx, hls: $hls)';
   }
 }
 
@@ -142,15 +142,15 @@ class InfluxConfig {
   }
 }
 
-/// MJPEG stream configuration.
-class MjpegConfig {
-  const MjpegConfig({required this.url, required this.autoReconnect});
+/// HLS video stream configuration.
+class HlsConfig {
+  const HlsConfig({required this.url, required this.autoReconnect});
 
   final String url;
   final bool autoReconnect;
 
-  MjpegConfig copyWith({String? url, bool? autoReconnect}) {
-    return MjpegConfig(
+  HlsConfig copyWith({String? url, bool? autoReconnect}) {
+    return HlsConfig(
       url: url ?? this.url,
       autoReconnect: autoReconnect ?? this.autoReconnect,
     );
@@ -159,7 +159,7 @@ class MjpegConfig {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is MjpegConfig &&
+    return other is HlsConfig &&
         other.url == url &&
         other.autoReconnect == autoReconnect;
   }
@@ -169,6 +169,6 @@ class MjpegConfig {
 
   @override
   String toString() {
-    return 'MjpegConfig(url: $url, autoReconnect: $autoReconnect)';
+    return 'HlsConfig(url: $url, autoReconnect: $autoReconnect)';
   }
 }

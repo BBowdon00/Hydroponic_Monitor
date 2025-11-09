@@ -305,16 +305,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _buildConfigTile(
               context,
               icon: Icons.videocam,
-              title: 'MJPEG Stream URL',
-              value: config.mjpeg.url,
+              title: 'HLS Stream URL',
+              value: config.hls.url,
               onTap: () => _showConfigDialog(
                 context,
                 ref,
-                'MJPEG Stream URL',
-                config.mjpeg.url,
+                'HLS Stream URL',
+                config.hls.url,
                 (value) {
                   final base = _draft ?? config;
-                  return base.copyWith(mjpeg: base.mjpeg.copyWith(url: value));
+                  return base.copyWith(hls: base.hls.copyWith(url: value));
                 },
               ),
             ),
@@ -322,10 +322,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               secondary: const Icon(Icons.record_voice_over),
               title: const Text('Auto-reconnect'),
               subtitle: const Text('Automatically reconnect to video stream'),
-              value: config.mjpeg.autoReconnect,
+              value: config.hls.autoReconnect,
               onChanged: (value) {
                 final updated = config.copyWith(
-                  mjpeg: config.mjpeg.copyWith(autoReconnect: value),
+                  hls: config.hls.copyWith(autoReconnect: value),
                 );
                 _stageConfig(updated);
               },
